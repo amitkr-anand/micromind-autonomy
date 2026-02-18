@@ -1,0 +1,6 @@
+numpy>=1.24
+matplotlib>=3.7
+scipy>=1.10
+# Sprint S3 — add before dashboard work:
+# plotly>=5.0
+# dash>=2.0
