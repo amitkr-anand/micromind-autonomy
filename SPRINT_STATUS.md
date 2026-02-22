@@ -1,8 +1,9 @@
 # MicroMind / NanoCorteX — Sprint Status
 **Last Updated:** 22 February 2026
-**Active Sprint:** S7 (next — scope TBD, pending TASL meeting)
+**Active Sprint:** S8 (scope TBD — pending TASL meeting outcome)
 **GitHub:** amitkr-anand/micromind-autonomy
 **Branch:** main (all sprints merged)
+**Latest commit:** aa3302a
 **Environment:** conda `micromind-autonomy` / Python 3.10 / macOS Ventura
 
 ---
@@ -17,6 +18,7 @@
 | `MicroMind_PartTwo_TechReview_v1_1.docx` | Technical review — alignment analysis, gap list, architectural recommendations |
 | `MicroMind_Demand_Analysis.docx` | Demand and market analysis |
 | `SPRINT_STATUS.md` | This file — current sprint state, acceptance gates, decisions |
+| `HANDOFF_S7_to_S8.md` | Latest handoff — S7 deliverables, S8 scope options |
 
 **Reading priority for any new session:**
 1. SPRINT_STATUS.md — understand where we are right now
@@ -70,7 +72,7 @@
 ### Delivered
 - `core/ins/trn_stub.py` — TRN Kalman correction stub (NCC terrain matching)
 - `sim/nav_scenario.py` — 50 km corridor with GNSS loss event
-- `dashboard/mission_dashboard.py` — Plotly Dash live display
+- `dashboard/mission_dashboard.py` — Plotly Dash live display (S3 artefact — do not modify)
 
 ### Acceptance gate: PASSED — 8/8 ✅
 
@@ -113,41 +115,61 @@
 - `tests/test_s6_zpi_cems.py` — 36 tests (16 ZPI + 20 CEMS)
 
 ### Acceptance gate: PASSED — 36/36 + 7/7 CEMS criteria ✅
-- CEMS-01: Merge latency < 500 ms ✅
-- CEMS-02: Pre-terminal burst confirmed on both UAVs ✅
-- CEMS-03: Merged nodes with ≥ 2 source UAVs ✅
-- CEMS-04: Replay attack rejected ✅
-- CEMS-05: Cooperative picture confidence ≥ single-UAV ✅
-- CEMS-06: Both UAVs triggered replan from merged EW picture ✅
-- CEMS-07: ZPI duty cycle ≤ 0.5% on both UAVs ✅
-- S5 regression: 111/111 ✅
-
-### Key decisions
-- UAV formation offset: 150 m (within 200 m CEMS merge radius)
-- ZPI hop plan seeded from shared mission key → implicit time-sync between UAVs
-- Pre-terminal burst sent once only, T-30s before SHM, BurstType.PRE_TERMINAL
-- CEMS packet auth: HMAC-SHA256 over packet_id + timestamp + obs_id
-- Merge rate compliance threshold: 2 s (flags genuine stalls, not sim cadences)
 
 ---
 
-## Sprint S7 — TBD 🔲 NOT STARTED
-**Target:** Post-TASL meeting
+## Sprint S7 — Dashboard + Mission Debrief Report ✅ COMPLETE
+**Commit:** aa3302a
+**Date completed:** 22 February 2026
 
-### Candidate scope (pending TASL outcome)
-| Option | Modules | FRs |
-|---|---|---|
-| A — Cybersecurity hardening | `core/cybersec/` — key loading, envelope verification, PQC-ready | FR-109–112 |
-| B — DMRL CNN upgrade | Replace rule-based stub with trained CNN | FR-103 |
-| C — HIL integration prep | ROS2 node wrappers, PX4 SITL skeleton | — |
+### Delivered
+- `dashboard/bcmp1_dashboard.py` — 9-panel full-stack mission dashboard (S0–S6 in one view)
+- `dashboard/bcmp1_report.py` — self-contained HTML mission debrief report generator
 
-### Session start checklist for S7
+### Panels (bcmp1_dashboard.py)
+| Row | Panel 1 | Panel 2 | Panel 3 |
+|---|---|---|---|
+| 1 | Mission map (100km corridor, UAV tracks, jammer zones) | FSM state swimlane (7 states) | BIM trust score (5-run envelope) |
+| 2 | DMRL lock confidence (terminal phase) | L10s-SE gate decisions | EW latency waterfall (5 runs) |
+| 3 | CEMS cooperative EW picture | ZPI burst timeline (UAV-A + UAV-B) | KPI scorecard (15 criteria) |
+
+### Report sections (bcmp1_report.py)
+Programme header, gate banner, executive summary, full KPI table (15 criteria), 5-run statistics,
+CEMS picture summary, mission event timeline (T+0 to T+30), subsystem register (S0–S7),
+boundary constants register, test methodology note.
+
+### Output files
+- `dashboard/bcmp1_dashboard_<timestamp>.png` — 150 dpi static PNG
+- `dashboard/bcmp1_dashboard_<timestamp>.html` — self-contained HTML (image embedded)
+- `dashboard/bcmp1_debrief_<timestamp>.html` — TASL-ready mission debrief report
+
+### Run commands
 ```bash
-git checkout main && git pull origin main
-git log --oneline main | head -7
-python tests/test_s6_zpi_cems.py        # 36/36
-python run_s5_tests.py                  # 111/111
+PYTHONPATH=. python dashboard/bcmp1_dashboard.py [--seed N] [--show]
+PYTHONPATH=. python dashboard/bcmp1_report.py [--seed N]
 ```
+
+### Acceptance gate: PASSED ✅
+- Full regression clean: 111/111 (S5) + 36/36 (S6) — no regressions
+- Dashboard renders all 9 panels without error or warnings
+- KPI scorecard shows 15/15 criteria PASS
+- HTML report generates self-contained, no external dependencies
+- Both files committed to main @ aa3302a
+
+---
+
+## Full Regression State (22 Feb 2026 — post S7)
+
+```
+python run_s5_tests.py              → 111/111  PASS ✅
+python tests/test_s6_zpi_cems.py   → 36/36    PASS ✅
+PYTHONPATH=. python dashboard/bcmp1_dashboard.py → clean, no warnings ✅
+PYTHONPATH=. python dashboard/bcmp1_report.py    → clean ✅
+```
+
+Total tests on main: **147/147** passing (111 S5 + 36 S6)
+BCMP-1 acceptance: **5/5 runs × 11/11 criteria** every run
+CEMS acceptance: **7/7 criteria** passing
 
 ---
 
@@ -182,7 +204,11 @@ scenarios/bcmp1/
   bcmp1_scenario.py               ✅ S1
   bcmp1_runner.py                 ✅ S5
 
-dashboard/mission_dashboard.py    ✅ S3
+dashboard/
+  mission_dashboard.py            ✅ S3 (nav scenario — do not modify)
+  bcmp1_dashboard.py              ✅ S7
+  bcmp1_report.py                 ✅ S7
+
 logs/mission_log_schema.py        ✅ S1
 
 tests/
@@ -200,14 +226,40 @@ run_s5_tests.py                   ✅ S5 (repo root)
 Daily Logs/
   HANDOFF_S5_to_S6.md             ✅
   HANDOFF_S6_to_S7.md             ✅
+  HANDOFF_S7_to_S8.md             ✅ (generated this session)
   README_2026-02-21_S5_Complete.md ✅
+  README_2026-02-22_S7_Complete.md ✅ (generated this session)
+```
+
+---
+
+## Sprint S8 — Scope TBD 🔲 NOT STARTED
+**Trigger:** TASL meeting outcome
+
+### Candidate forks (choose one after TASL)
+
+| Fork | Modules | FRs | Readiness |
+|---|---|---|---|
+| A — Cybersecurity hardening | `core/cybersec/` — key loading, envelope verification, PQC-ready stack | FR-109–112 | Architecture ready, no blockers |
+| B — DMRL CNN upgrade | Replace rule-based stub with trained CNN — Hailo-8 target | FR-103 | Blocked: GPU + training data + Indigenous Threat Library clearance |
+| C — HIL integration prep | ROS2 node wrappers, PX4 SITL skeleton | — | Blocked: hardware platform decision from TASL |
+
+### Session start checklist for S8
+```bash
+git checkout main && git pull origin main
+git log --oneline main | head -5
+
+python run_s5_tests.py               # must be 111/111
+python tests/test_s6_zpi_cems.py     # must be 36/36
+
+# Expected clean before starting any S8 work
 ```
 
 ---
 
 ## Deferred (Post-TASL / HIL Phase)
-- Full CNN for DMRL (requires GPU + training data)
-- PQC cryptography stack (FR-109–112)
-- ROS2 node wrapping
-- Real RADALT hardware
-- Cross-mission learning pipeline (DD-02 Phase 2)
+- Full CNN for DMRL (requires GPU + training data + Indigenous Threat Library)
+- PQC cryptography stack (FR-109–112) — S8 candidate
+- ROS2 node wrapping — HIL phase
+- Real RADALT hardware — sensor procurement after TASL partnership
+- Cross-mission learning pipeline (DD-02 Phase 2) — post-HIL
