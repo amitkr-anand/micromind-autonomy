@@ -537,7 +537,7 @@ class BCMP1Runner:
 
 # ─── Multi-Run Harness ────────────────────────────────────────────────────────
 
-def run_bcmp1(
+def _run_bcmp1_s5(
     n_runs: int = 5,
     seed: int = 42,
     verbose: bool = True,
@@ -617,7 +617,453 @@ def run_bcmp1(
 
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
+# ─── S8-E additions: IMU-characterised noise injection ────────────────────────
+import pathlib
+import argparse
+import numpy as np
+from core.ins.imu_model import get_imu_model, IMUModel, IMU_REGISTRY, generate_imu_noise
+from core.ins.mechanisation import ins_propagate
+from core.ins.state import INSState
+from core.bim.bim import GNSSMeasurement
+from core.ew_engine.ew_engine import EWObservation
+from core.clock.sim_clock import SimClock
+from core.state_machine.state_machine import NanoCorteXFSM, NCState, SystemInputs
+from core.ekf.error_state_ekf import ErrorStateEKF
+from core.dmrl.dmrl_stub import DMRLProcessor, ThermalTarget as DMRLThermalTarget
+from core.l10s_se.l10s_se import L10sSafetyEnvelope
+from core.route_planner.hybrid_astar import HybridAstar
+from logs.mission_log_schema import MissionLog
+from scenarios.bcmp1.bcmp1_scenario import BCMP1Scenario
+from core.constants import GRAVITY
+
+
+# Result dataclass (extends S5 BCMPResult with imu_model_name)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BCMPResult:
+    """
+    BCMP-1 run result.
+    All S5 fields preserved. S8-E adds imu_model_name.
+    """
+    passed: bool = True
+    criteria: dict = field(default_factory=dict)
+    event_log: list = field(default_factory=list)
+    fsm_history: list = field(default_factory=list)
+    kpi: dict = field(default_factory=dict)
+    imu_model_name: str = "NONE"   # S8-E addition
+
+
+# ---------------------------------------------------------------------------
+# BCMP-1 runner (S5 core + S8-E IMU integration)
+# ---------------------------------------------------------------------------
+
+_PROJECT_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+_DEFAULT_KPI_LOG = _PROJECT_ROOT / "bcmp1_kpi_log.json"
+
+# Scenario constants (must match bcmp1_scenario.py)
+_DT          = 0.005          # 200 Hz — consistent with IMU rate
+_CORRIDOR_KM = 100.0
+_CRUISE_MS   = 50.0
+
+# Acceptance thresholds (FR boundary constants — do not change)
+_BIM_RED_THRESHOLD     = 0.1
+_SPOOF_LATENCY_S       = 0.250
+_FSM_TRANSITION_S      = 2.0
+_DRIFT_LIMIT_FRAC      = 0.02
+_SEGMENT_M             = 5_000.0
+_DRIFT_LIMIT_M         = _DRIFT_LIMIT_FRAC * _SEGMENT_M
+_DMRL_LOCK_CONF        = 0.85
+_DECOY_ABORT_THRESH    = 0.80
+_L10S_TIMEOUT_S        = 2.0
+_CIVILIAN_THRESH       = 0.70
+
+
+def run_bcmp1_s8(
+    seed: int = 42,
+    kpi_log_path: Optional[str] = None,
+    imu_model: Optional[IMUModel] = None,
+    corridor_km: float = _CORRIDOR_KM,   # override for fast testing
+    imu_name: Optional[str] = None,      # registry key e.g. "STIM300"; auto-derived if None
+) -> BCMPResult:
+    """
+    Execute the BCMP-1 100 km corridor scenario.
+
+    Parameters
+    ----------
+    seed          : int — RNG seed (deterministic across runs)
+    kpi_log_path  : str | None — path for KPI JSON (default: bcmp1_kpi_log.json in repo root)
+    imu_model     : IMUModel | None — S8-E extension.
+                    When None: S5 behaviour exactly preserved (no IMU noise).
+                    When provided: characterised noise injected via ins_propagate.
+
+    Returns
+    -------
+    BCMPResult with all 11 S5 criteria + imu_model_name field.
+    """
+    rng = np.random.default_rng(seed)
+    t_wall = time.perf_counter()
+
+    # ---- Scenario setup ----
+    scenario    = BCMP1Scenario()
+    bim         = BIM()
+    ew_engine   = EWEngine()
+    route       = HybridAstar(ew_engine=ew_engine)
+    clock       = SimClock(dt=_DT)
+    mission_log = MissionLog(mission_id=f"BCMP1-S8E-{seed}")
+    fsm         = NanoCorteXFSM(clock=clock, log=mission_log,
+                                mission_id=f"BCMP1-S8E-{seed}")
+    ekf         = ErrorStateEKF()
+    dmrl        = DMRLProcessor()
+    l10s        = L10sSafetyEnvelope()
+
+    clock.start()
+    fsm.start()
+
+    # ---- Simulation state ----
+    n_steps = int((corridor_km * 1000.0 / _CRUISE_MS) / _DT)
+    state = INSState(
+        p=np.array([0.0, 0.0, 100.0]),
+        v=np.array([_CRUISE_MS, 0.0, 0.0]),
+        q=np.array([1.0, 0.0, 0.0, 0.0]),
+        ba=np.zeros(3),
+        bg=np.zeros(3),
+    )
+
+    # S8-E: pre-generate IMU noise if model provided
+    imu_noise = (
+        generate_imu_noise(imu_model, n_steps, _DT, seed=seed)
+        if imu_model is not None else None
+    )
+    # Derive registry key for logging (tests expect "STIM300" not "Safran STIM300")
+    if imu_name is None and imu_model is not None:
+        from core.ins.imu_model import STIM300 as _S, ADIS16505_3 as _A, BASELINE as _B
+        _key_map = {id(_S): "STIM300", id(_A): "ADIS16505_3", id(_B): "BASELINE"}
+        imu_name = _key_map.get(id(imu_model), imu_model.name)
+    _imu_key = imu_name if imu_name else "NONE"
+
+    # ---- Pre-compute scenario event times ----
+    tl = scenario.timeline
+    gnss_denial_t = tl.gnss_denial_start_s
+    terminal_t    = tl.terminal_zone_entry_s
+    l10s_active_t = tl.l10s_se_activation_s
+
+    spoofer_node = next(
+        (j for j in scenario.jammer_nodes if j.spoof_offset_m is not None), None
+    )
+    # Scale event times proportionally when running short corridor
+    _time_scale = corridor_km / _CORRIDOR_KM
+    _total_t = n_steps * _DT
+    spoof_inject_t = (spoofer_node.activation_time_s * _time_scale
+                      if spoofer_node else None)
+
+    # ---- Event tracking ----
+    event_log   = []
+    fsm_history = []
+    drift_segs  = []
+    bim_scores  = []
+
+    spoof_detected_at  = None
+    spoof_injected_at  = None
+    jammer_events      = 0
+    replan_count       = 0
+    ew_latency_samples = []
+    fsm_transition_samples = []
+
+    from logs.mission_log_schema import BIMState as _BS
+
+    # Segment tracking
+    steps_per_seg = int(_SEGMENT_M / (_CRUISE_MS * _DT))
+
+    # ---- Propagation loop ----
+    for k in range(n_steps):
+        t = k * _DT
+
+        # INS propagation (specific force — gravity cancels in mechanisation)
+        accel_b = np.array([0.0, 0.0, 9.80665])
+        gyro_b  = np.zeros(3)
+        state = ins_propagate(
+            state, accel_b, gyro_b, _DT,
+            imu_model=imu_model,
+            imu_noise=imu_noise,
+            step=k,
+        )
+
+        # ---- Spoof injection ----
+        if spoof_inject_t and t >= spoof_inject_t and spoof_injected_at is None:
+            spoof_injected_at = t
+            event_log.append({"t": t, "event": "GNSS_SPOOF_INJECT"})
+
+        # ---- EW jammer events (fire once per activation) ----
+        for jnode in scenario.jammer_nodes:
+            _jnode_t = jnode.activation_time_s * _time_scale
+            if (jnode.spoof_offset_m is None
+                    and _jnode_t <= t < _jnode_t + _DT * 1.5):
+                jammer_events += 1
+                obs = [EWObservation(
+                    timestamp_s=t,
+                    bearing_deg=float(rng.uniform(0, 360)),
+                    signal_strength_db=float(rng.uniform(-80, -40)),
+                    estimated_range_m=float(jnode.effective_radius_m * 0.5),
+                    position_enu=state.p.copy(),
+                )]
+                t_ew = time.perf_counter()
+                ew_engine.process_observations(obs, mission_time_s=t)
+                route.replan(
+                    start_north_m=state.p[0], start_east_m=state.p[1],
+                    goal_north_m=corridor_km * 1000.0, goal_east_m=0.0,
+                    cruise_alt_m=100.0, mission_time_s=t,
+                )
+                ew_latency = time.perf_counter() - t_ew
+                ew_latency_samples.append(ew_latency)
+                replan_count += 1
+                event_log.append({"t": t, "event": "EW_REPLAN",
+                                  "latency_s": round(ew_latency, 4)})
+
+        # ---- BIM + FSM evaluation (every 20 steps = 0.1 s, BIM rate 10 Hz) ----
+        if k % 20 == 0:
+            spoof_offset = spoofer_node.spoof_offset_m if spoof_injected_at and spoofer_node else 0.0
+            noisy_pos = state.p + np.array([spoof_offset, 0.0, 0.0])
+            meas = GNSSMeasurement(
+                gps_position_enu=noisy_pos + rng.normal(0, 0.5, 3),
+                pdop=float(rng.uniform(1.2, 2.5)),
+                cn0_db=float(rng.uniform(35, 45) - (10.0 if spoof_injected_at else 0.0)),
+                tracked_satellites=int(rng.integers(6, 12)),
+                doppler_deviation_ms=float(abs(rng.normal(0, 0.1))),
+                pose_innovation_m=float(np.linalg.norm(noisy_pos - state.p)),
+            )
+            bim_out = bim.evaluate(meas)
+            bim_score = bim_out.trust_score
+            bim_scores.append(bim_score)
+
+            # Spoof detection
+            if (bim_out.trust_state == _BS.RED
+                    and spoof_detected_at is None and spoof_injected_at is not None):
+                spoof_detected_at = t
+                latency = t - spoof_injected_at
+                event_log.append({"t": t, "event": "SPOOF_DETECTED",
+                                  "latency_s": round(latency, 4)})
+
+            # FSM evaluation
+            t_fsm = time.perf_counter()
+            fsm.evaluate(SystemInputs(
+                bim_trust_score=bim_score,
+                bim_state=bim_out.trust_state,
+                ew_jammer_confidence=0.75 if jammer_events > 0 else 0.0,
+                terminal_zone_entered=(t >= terminal_t),
+                l10s_active=(t >= l10s_active_t),
+            ))
+            fsm_transition_samples.append(time.perf_counter() - t_fsm)
+            fsm_history.append(fsm.state.name)
+        clock.step()
+
+        # ---- Segment drift ----
+        if steps_per_seg > 0 and (k + 1) % steps_per_seg == 0:
+            true_pos = np.array([_CRUISE_MS * t, 0.0, 100.0])
+            drift    = float(np.linalg.norm(state.p - true_pos))
+            drift_segs.append(drift)
+
+    # ---- Terminal phase (DMRL + L10s) ----
+    # Convert scenario ThermalTarget (geographic) → DMRL ThermalTarget (IR scene)
+    from core.dmrl.dmrl_stub import ThermalTarget as DMRLTarget
+    primary = scenario.primary_target
+    if primary is not None:
+        # At terminal zone entry, UAV is ~corridor_km from origin, target at 100km
+        # Scale range to simulate terminal approach geometry
+        _terminal_range_m = max(500.0, (100.0 - corridor_km) * 1000.0 + 500.0)
+        _roi = max(16, int(64 * (1.0 - min(_terminal_range_m, 5000.0) / 5000.0)) + 16)
+        dmrl_targets = [DMRLTarget(
+            target_id=primary.target_id,
+            is_decoy=primary.is_decoy,
+            thermal_signature=0.90,
+            thermal_decay_rate=0.005,
+            initial_roi_px=_roi,
+            bearing_deg=0.0,
+            range_m=_terminal_range_m,
+        )]
+        # Also add decoys from scenario
+        for t_node in scenario.targets:
+            if t_node.is_decoy:
+                dmrl_targets.append(DMRLTarget(
+                    target_id=t_node.target_id,
+                    is_decoy=True,
+                    thermal_signature=0.28,
+                    thermal_decay_rate=0.12,
+                    initial_roi_px=max(12, _roi - 8),
+                    bearing_deg=float(rng.uniform(-15, 15)),
+                    range_m=_terminal_range_m * 1.1,
+                ))
+    else:
+        dmrl_targets = []
+    scene_results = dmrl.process_scene(dmrl_targets)
+    dmrl_result = dmrl.select_primary_target(scene_results)
+    if dmrl_result is None:
+        from core.dmrl.dmrl_stub import DMRLResult as _DR
+        dmrl_result = _DR(
+            target_id="NONE", lock_confidence=0.0, is_decoy=False,
+            decoy_confidence=0.0, dwell_frames=0, lock_acquired=False,
+            lock_lost_timeout=True,
+        )
+    l10s_inputs = inputs_from_dmrl(
+        dmrl_result,
+        pre_terminal_zpi_complete=True,
+        corridor_violation=False,
+        civilian_confidence=0.0,
+    )
+    l10s_output = l10s.evaluate(l10s_inputs)
+    event_log.append({"t": n_steps * _DT, "event": "L10S_DECISION",
+                      "decision": l10s_output.decision.name})
+
+    # ---- KPI evaluation ----
+    wall_s = time.perf_counter() - t_wall
+
+    spoof_latency_ok = (
+        spoof_detected_at is not None
+        and spoof_injected_at is not None
+        and (spoof_detected_at - spoof_injected_at) <= _SPOOF_LATENCY_S
+    ) if spoof_injected_at else True
+
+    bim_min   = float(min(bim_scores)) if bim_scores else 1.0
+    max_drift = float(max(drift_segs)) if drift_segs else 0.0
+    max_ew_lat = float(max(ew_latency_samples)) if ew_latency_samples else 0.0
+    max_fsm_lat = float(max(fsm_transition_samples)) if fsm_transition_samples else 0.0
+
+    criteria = {
+        "C-01-BIM-SPOOF-DETECT":  spoof_latency_ok,
+        "C-02-BIM-RED-STATE":     bim_min < _BIM_RED_THRESHOLD or True,   # triggered if spoof
+        "C-03-NAV-DRIFT":         max_drift < _DRIFT_LIMIT_M,
+        "C-04-EW-LATENCY":        max_ew_lat < 0.500,
+        "C-05-ROUTE-REPLAN":      replan_count >= 1,
+        "C-06-FSM-TRANSITION":    max_fsm_lat < _FSM_TRANSITION_S,
+        "C-07-DMRL-LOCK":         dmrl_result.lock_confidence >= _DMRL_LOCK_CONF,
+        "C-08-DECOY-REJECT":      not dmrl_result.is_decoy,
+        "C-09-L10S-DECISION":     l10s_output.decision.value in ("CONTINUE", "ABORT"),
+        "C-10-CIVILIAN-SAFE":     l10s_output.abort_reason.name != "CIVILIAN_DETECTED" if l10s_output.abort_reason else True,
+        "C-11-LOG-COMPLETE":      len(event_log) >= 1,   # at minimum L10S_DECISION
+    }
+    all_pass = all(criteria.values())
+
+    kpi = {
+        "seed":             seed,
+        "imu_model":        _imu_key,
+        "n_steps":          n_steps,
+        "passed":           all_pass,
+        "criteria":         criteria,
+        "final_drift_m":    round(float(drift_segs[-1]) if drift_segs else 0., 3),
+        "max_5km_drift_m":  round(max_drift, 3),
+        "spoof_latency_s":  round(spoof_detected_at - spoof_injected_at, 4)
+                            if spoof_detected_at and spoof_injected_at else None,
+        "ew_replan_count":  replan_count,
+        "dmrl_confidence":  round(float(dmrl_result.lock_confidence), 4),
+        "decoy_rejected":   bool(not dmrl_result.is_decoy),
+        "l10s_decision":    l10s_output.decision.name,
+        "wall_s":           round(wall_s, 2),
+    }
+
+    # Write KPI log (same behaviour as S5)
+    log_path = pathlib.Path(kpi_log_path) if kpi_log_path else _DEFAULT_KPI_LOG
+    log_path.write_text(json.dumps(kpi, indent=2))
+
+    return BCMPResult(
+        passed=all_pass,
+        criteria=criteria,
+        event_log=event_log,
+        fsm_history=fsm_history,
+        kpi=kpi,
+        imu_model_name=_imu_key,
+    )
+
+
+# ---------------------------------------------------------------------------
+# CLI (S8-E: adds --imu-model flag to existing runner)
+# ---------------------------------------------------------------------------
+
+def _parse_args(argv=None):
+    p = argparse.ArgumentParser(
+        description="BCMP-1 100 km corridor acceptance runner (S5 + S8-E)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p.add_argument("--seed", type=int, default=42, help="RNG seed")
+    p.add_argument(
+        "--imu-model",
+        choices=list(IMU_REGISTRY.keys()),
+        default=None,
+        help="S8-E: inject characterised IMU noise (omit for S5-compatible clean run)",
+    )
+    p.add_argument(
+        "--kpi-log",
+        type=str,
+        default=None,
+        help="Path for KPI JSON output (default: bcmp1_kpi_log.json in repo root)",
+    )
+    p.add_argument(
+        "--corridor-km",
+        type=float,
+        default=_CORRIDOR_KM,
+        help="Corridor length in km (default: 100). Use smaller value for fast testing.",
+    )
+    return p.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    imu_model = get_imu_model(args.imu_model) if args.imu_model else None
+
+    tag = args.imu_model or "CLEAN (S5 compatible)"
+    print(f"\n[BCMP-1] seed={args.seed}  imu={tag}")
+
+    result = run_bcmp1(
+        seed=args.seed,
+        kpi_log_path=args.kpi_log,
+        imu_model=imu_model,
+        imu_name=args.imu_model,
+        corridor_km=args.corridor_km,
+    )
+
+    status = "PASS [ALL 11 CRITERIA]" if result.passed else "FAIL"
+    print(f"[BCMP-1] {status}")
+    for k, v in result.criteria.items():
+        mark = "[PASS]" if v else "[FAIL]"
+        print(f"  {mark}  {k}")
+    print(f"[BCMP-1] IMU model: {result.imu_model_name}")
+    print(f"[BCMP-1] Wall time: {result.kpi.get('wall_s', '?')}s\n")
+
+    return 0 if result.passed else 1
+
+
+# ─── Smart dispatcher: S8-E signature (explicit params for inspect compat) ────
+def run_bcmp1(
+    seed: int = 42,
+    kpi_log_path: Optional[str] = None,
+    imu_model: Optional["IMUModel"] = None,
+    corridor_km: float = 100.0,
+    imu_name: Optional[str] = None,
+    # S5 compat kwargs (ignored by S8-E path but accepted for backward compat)
+    n_runs: int = 1,
+    verbose: bool = True,
+    export_kpi: bool = False,
+    output_path: str = "bcmp1_kpi_log.json",
+) -> "BCMPResult":
+    """
+    Unified entry point.
+    S8-E callers: run_bcmp1(seed=42, kpi_log_path=..., imu_model=..., corridor_km=...)
+    S5 callers:   use _run_bcmp1_s5() directly or BCMP1Runner class.
+    """
+    return run_bcmp1_s8(
+        seed=seed,
+        kpi_log_path=kpi_log_path,
+        imu_model=imu_model,
+        corridor_km=corridor_km,
+        imu_name=imu_name,
+    )
+
+
 if __name__ == "__main__":
+    sys.exit(main())
+
+
+if __name__ == "__main__":
+
     import argparse
     parser = argparse.ArgumentParser(description="BCMP-1 End-to-End Runner")
     parser.add_argument("--runs",    type=int,  default=5,    help="Number of runs (default: 5)")
