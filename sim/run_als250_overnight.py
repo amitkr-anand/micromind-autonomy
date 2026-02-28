@@ -68,9 +68,16 @@ def main():
             duration_s=CORRIDOR_DURATION_S,
             seed=args.seed,
             verbose=True,
-            save_outputs=True,
-            out_dir=out_dir,
         )
+        # Save outputs manually
+        import numpy as np
+        tag = imu_name.replace("/", "_")
+        np.save(f"{out_dir}/als250_nav_{tag}_{args.seed}_position.npy", result["position"])
+        np.save(f"{out_dir}/als250_nav_{tag}_{args.seed}_drift.npy", result["drift_per_seg"])
+        import json as _json
+        meta = {k: v for k, v in result.items() if k not in ("position", "true_position", "drift_per_seg")}
+        with open(f"{out_dir}/als250_nav_{tag}_{args.seed}_meta.json", "w") as _f:
+            _json.dump(meta, _f, indent=2, default=str)
 
         elapsed = time.time() - t0
         nav01 = result.get("NAV01_pass", False)
