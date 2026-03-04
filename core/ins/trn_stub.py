@@ -317,88 +317,60 @@ class TRNStub:
         return self._drift_m
 
     def update(self,
-               ins:            INSState,
+               ins_north_m:    float,
+               ins_east_m:     float,
                true_north_m:   float,
                true_east_m:    float,
-               dt:             float,
                ground_track_m: float,
-               timestamp_s:    float = 0.0) -> Optional[TRNCorrection]:
+               timestamp_s:    float = 0.0,
+               ) -> Optional[TRNCorrection]:
         """
-        Attempt a TRN position fix and apply Kalman correction to ins.
+        S9-1: Measurement provider only. No internal Kalman. No state mutation.
 
-        A fix attempt is made only when enough ground track has accumulated
-        since the last accepted correction (NAV-01: ≥ 1 correction / 2 km).
+        Performs NCC correlation, applies threshold gate, returns raw offset
+        via TRNCorrection. All corrections applied exclusively through the
+        15-state ESKF in the calling simulation loop.
 
         Args:
-            ins            : INS state (mutated in-place on accepted fix)
-            true_north_m   : ground-truth north position (simulation only)
-            true_east_m    : ground-truth east position  (simulation only)
-            dt             : time step (s)
+            ins_north_m    : INS estimated north position (m)
+            ins_east_m     : INS estimated east  position (m)
+            true_north_m   : ground-truth north (simulation only)
+            true_east_m    : ground-truth east  (simulation only)
             ground_track_m : accumulated ground track from mission start (m)
-            timestamp_s    : simulation clock time
+            timestamp_s    : simulation clock time (s)
 
         Returns:
-            TRNCorrection record, or None if no fix attempted this tick.
+            TRNCorrection if fix attempted, else None.
+            Caller must check .accepted before injecting into ESKF.
         """
-        # Propagate INS covariance with process noise (random walk model)
-        Q = np.diag([
-            (90.0 * dt) ** 2,  # INS position drift 1σ — tuned for tactical-grade
-            (90.0 * dt) ** 2,  # IMU bias accumulation over 1500 m correction interval
-        ])
-        ins.P = ins.P + Q
-
-        # Check if we should attempt a fix
+        # Gate: only attempt a fix at CORRECTION_INTERVAL spacing
         since_last = ground_track_m - self._last_correction_gt
         if since_last < CORRECTION_INTERVAL:
             return None
-
         # Acquire radar strip at TRUE position (what the sensor sees)
         strip = self._radar.acquire_strip(true_north_m, true_east_m)
-
-        # Build DEM search area CENTRED on INS estimate (extends ±SEARCH_PAD in each direction)
+        # Build DEM search area centred on INS estimate
         pad = self._search_pad_px
         search_h = STRIP_LEN_PX + 2 * pad
         search_w = STRIP_WIDTH_PX + 2 * pad
         search_area = self._dem.patch(
-            ins.north_m - pad * DEM_PIXEL_SIZE,
-            ins.east_m  - pad * DEM_PIXEL_SIZE,
+            ins_north_m - pad * DEM_PIXEL_SIZE,
+            ins_east_m  - pad * DEM_PIXEL_SIZE,
             search_h, search_w,
         )
-
         # NCC correlation
         score, dr, dc = _normalised_cross_correlation(strip, search_area)
-
         # Convert pixel offset to metres
-        delta_north_m = dr * DEM_PIXEL_SIZE  # + north means INS estimated too far south
+        delta_north_m = dr * DEM_PIXEL_SIZE
         delta_east_m  = dc * DEM_PIXEL_SIZE
-
         accepted = score >= self._ncc_threshold
-
         if accepted:
-            # Kalman measurement update
-            # Measurement model: z = [north_meas, east_meas]
-            #                    z = ins.position + correction
-            z  = np.array([ins.north_m + delta_north_m,
-                           ins.east_m  + delta_east_m])
-            H  = np.eye(2)
-            R  = np.diag([R_TRN_NORTH, R_TRN_EAST])
-            S  = H @ ins.P @ H.T + R
-            K  = ins.P @ H.T @ np.linalg.inv(S)
-            x  = np.array([ins.north_m, ins.east_m])
-            innov = z - H @ x
-            x_new = x + K @ innov
-            ins.north_m = float(x_new[0])
-            ins.east_m  = float(x_new[1])
-            ins.P = (np.eye(2) - K @ H) @ ins.P
-
             self._last_correction_gt = ground_track_m
-
-        # Record position error vs ground truth
-        self._drift_m = math.hypot(
-            ins.north_m - true_north_m,
-            ins.east_m  - true_east_m
-        )
-
+            # Diagnostic: residual drift after applying this fix
+            self._drift_m = math.hypot(
+                ins_north_m + delta_north_m - true_north_m,
+                ins_east_m  + delta_east_m  - true_east_m,
+            )
         corr = TRNCorrection(
             timestamp_s    = timestamp_s,
             ground_track_m = ground_track_m,

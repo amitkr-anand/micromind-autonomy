@@ -47,8 +47,17 @@ class ErrorStateEKF:
     """
 
     # ── Noise parameters (tune in SIL Sprint S2) ────────────────────────
-    _ACC_BIAS_RW    = 1e-4    # m/s²/√s  — accelerometer bias random walk
-    _GYRO_BIAS_RW   = 1e-5    # rad/s/√s — gyroscope bias random walk
+    # Bias random walk — STIM300 TS1524 rev.31 (S9-4)
+    # q = bias_instability_si / sqrt(3600)  [engineering approximation]
+    # Gyro:  BI=0.5deg/h @600s -> 2.424e-6 rad/s / 60 = 4.04e-8 rad/s/sqrt(s)
+    # Accel: BI=0.006mg @600s  -> 5.884e-5 m/s2   / 60 = 9.81e-7 m/s2/sqrt(s)
+    _ACC_BIAS_RW    = 9.81e-7   # m/s2/sqrt(s) - STIM300 accel bias RW (TS1524 rev.31)
+    _GYRO_BIAS_RW   = 4.04e-8   # rad/s/sqrt(s)- STIM300 gyro  bias RW (TS1524 rev.31)
+    # Position process noise — models uncompensated INS drift between TRN fixes.
+    # STIM300 tactical-grade: ~1.0 m/s position diffusion gives P_pos ≈ 27 m²
+    # over a 1500 m correction interval, matching TRN measurement noise R=25 m²
+    # and producing healthy Kalman gain K ≈ 0.5. (S9-4 addendum)
+    _POS_DRIFT_PSD  = 1.0       # m/sqrt(s)  — position diffusion (tactical INS)
     _ACC_NOISE_PSD  = 0.04    # m/s²/√Hz — velocity noise
     _GYRO_NOISE_PSD = 1e-3    # rad/s/√Hz — attitude noise
 
@@ -68,6 +77,7 @@ class ErrorStateEKF:
     # ── Internal builders ────────────────────────────────────────────────
     def _build_Q(self, dt):
         Q = np.zeros((15, 15))
+        Q[0:3,   0:3]  = np.eye(3) * self._POS_DRIFT_PSD**2  * dt
         Q[3:6,   3:6]  = np.eye(3) * self._ACC_NOISE_PSD**2  * dt
         Q[6:9,   6:9]  = np.eye(3) * self._GYRO_NOISE_PSD**2 * dt
         Q[9:12,  9:12] = np.eye(3) * self._ACC_BIAS_RW**2    * dt
