@@ -1049,6 +1049,16 @@ def run_bcmp1(
     S8-E callers: run_bcmp1(seed=42, kpi_log_path=..., imu_model=..., corridor_km=...)
     S5 callers:   use _run_bcmp1_s5() directly or BCMP1Runner class.
     """
+    # S5 callers pass n_runs > 1 or export_kpi=True — route to the S5 harness.
+    # S8-E callers pass imu_model / corridor_km / kpi_log_path — route to S8.
+    if n_runs > 1 or export_kpi:
+        return _run_bcmp1_s5(
+            n_runs=n_runs,
+            seed=seed,
+            verbose=verbose,
+            export_kpi=export_kpi,
+            output_path=output_path,
+        )
     return run_bcmp1_s8(
         seed=seed,
         kpi_log_path=kpi_log_path,
