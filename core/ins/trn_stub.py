@@ -67,37 +67,68 @@ class DEMProvider:
     Generates deterministic synthetic Digital Elevation Model data.
 
     In production this would wrap a geo-referenced DEM raster (e.g. SRTM).
-    For SIL we create a reproducible terrain surface with rolling hills,
-    ridges, and valley features suitable for NCC correlation.
+    For SIL we use a procedural terrain model — elevation is computed
+    analytically from (north_m, east_m) coordinates using a sum of
+    sinusoids with wavelengths of 3–20 km. This produces unique terrain
+    at every position along corridors up to 500+ km with no tiling,
+    no wrapping, and no aliasing. NCC correlation remains valid at any
+    range because each 2.5 km window is genuinely distinct.
+
+    The pre-allocated grid approach used previously had a 2.5 km × 2.5 km
+    coverage that repeated 60× over a 150 km corridor, causing NCC to
+    return high-scoring but positionally meaningless fixes beyond 2.5 km.
+
+    patch() interface is unchanged — all callers are unaffected.
     """
 
+    # Procedural terrain parameters — wavelengths >> patch size, << corridor
+    # Chosen to produce terrain variability at the 200–5000 m scale that
+    # radar altimeters can discriminate (FR-107 / NAV-01 compliance).
+    _COMPONENTS = [
+        # (amplitude_m, wavelength_N_m, wavelength_E_m, phase_N, phase_E)
+        # Long-wavelength base terrain (macro topography)
+        (60.0,  8_000,  7_000, 0.00, 0.00),
+        (40.0, 12_000,  5_000, 1.10, 2.30),
+        (30.0,  4_000, 15_000, 0.70, 1.80),
+        # Mid-wavelength features (ridges, valleys — NCC discriminability)
+        (20.0,    800,    600, 2.50, 0.40),
+        (15.0,    500,    900, 1.40, 3.10),
+        (12.0,    700,    400, 0.30, 2.70),
+        # Short-wavelength texture (unique within search window)
+        ( 8.0,    200,    300, 3.00, 0.90),
+        ( 6.0,    150,    250, 0.80, 1.50),
+        ( 5.0,    300,    200, 2.10, 0.60),
+    ]
+    _MEAN_ALT_M = 200.0   # mean terrain altitude AGL
+
     def __init__(self, seed: int = 7):
-        self._rng = np.random.default_rng(seed)
-        # Pre-generate a large terrain grid (500 × 500 pixels = 2.5 × 2.5 km)
-        base   = self._rng.uniform(0, 1, (500, 500))
-        # Low-frequency terrain features
-        xx, yy = np.meshgrid(np.linspace(0, 6*math.pi, 500),
-                             np.linspace(0, 4*math.pi, 500))
-        self._dem = (
-            80.0 * np.sin(xx * 0.3) * np.cos(yy * 0.4) +
-            40.0 * np.sin(xx * 0.9 + 1.2) +
-            30.0 * np.cos(yy * 0.7 + 0.5) +
-            15.0 * base +
-            200.0   # mean altitude 200 m AGL
-        ).astype(np.float32)
+        # Seed controls small-scale noise amplitude offsets (±10%)
+        rng = np.random.default_rng(seed)
+        self._amp_jitter = rng.uniform(0.9, 1.1, len(self._COMPONENTS))
+
+    def _elevation(self, north_m: np.ndarray, east_m: np.ndarray) -> np.ndarray:
+        """
+        Compute terrain elevation (m) at arbitrary (north_m, east_m) coordinates.
+        Inputs may be scalars or arrays of any shape (must be broadcastable).
+        Returns float32 array of same shape.
+        """
+        z = np.full_like(north_m, self._MEAN_ALT_M, dtype=np.float64)
+        for i, (amp, wl_n, wl_e, ph_n, ph_e) in enumerate(self._COMPONENTS):
+            a = amp * self._amp_jitter[i]
+            z += a * np.sin(2 * math.pi * north_m / wl_n + ph_n)                    * np.cos(2 * math.pi * east_m  / wl_e + ph_e)
+        return z.astype(np.float32)
 
     def patch(self, north_m: float, east_m: float,
               h_px: int, w_px: int) -> np.ndarray:
         """
-        Return a DEM patch centred on (north_m, east_m) with size (h_px × w_px).
-        Wraps around the synthetic terrain grid.
+        Return a DEM patch of size (h_px × w_px) with its top-left corner
+        at (north_m, east_m). Each pixel covers DEM_PIXEL_SIZE metres.
+        No wrapping — terrain is unique at every coordinate.
         """
-        r0 = int(north_m / DEM_PIXEL_SIZE) % self._dem.shape[0]
-        c0 = int(east_m  / DEM_PIXEL_SIZE) % self._dem.shape[1]
-        # Extract with wrap-around
-        rows = np.arange(r0, r0 + h_px) % self._dem.shape[0]
-        cols = np.arange(c0, c0 + w_px) % self._dem.shape[1]
-        return self._dem[np.ix_(rows, cols)]
+        rows = north_m + np.arange(h_px) * DEM_PIXEL_SIZE   # (h_px,)
+        cols = east_m  + np.arange(w_px) * DEM_PIXEL_SIZE   # (w_px,)
+        nn, ee = np.meshgrid(rows, cols, indexing='ij')      # (h_px, w_px)
+        return self._elevation(nn, ee)
 
 
 # ---------------------------------------------------------------------------
@@ -244,13 +275,15 @@ class TRNStub:
     """
 
     def __init__(self,
-                 dem:   DEMProvider,
-                 radar: RadarAltimeterSim,
-                 ncc_threshold: float = NCC_THRESHOLD):
-        self._dem   = dem
-        self._radar = radar
-        self._ncc_threshold       = ncc_threshold
-        self._last_correction_gt  = 0.0   # ground track at last correction (m)
+                 dem:            DEMProvider,
+                 radar:          RadarAltimeterSim,
+                 ncc_threshold:  float = NCC_THRESHOLD,
+                 search_pad_px:  int   = SEARCH_PAD_PX):
+        self._dem             = dem
+        self._radar           = radar
+        self._ncc_threshold   = ncc_threshold
+        self._search_pad_px       = search_pad_px
+        self._last_correction_gt  = 0.0
         self._corrections: List[TRNCorrection] = []
         self.last_correction: Optional[TRNCorrection] = None
         self._drift_m = 0.0
@@ -309,8 +342,8 @@ class TRNStub:
         """
         # Propagate INS covariance with process noise (random walk model)
         Q = np.diag([
-            (5.0 * dt) ** 2,   # 5 m/s INS north drift 1σ
-            (5.0 * dt) ** 2,
+            (90.0 * dt) ** 2,  # INS position drift 1σ — tuned for tactical-grade
+            (90.0 * dt) ** 2,  # IMU bias accumulation over 1500 m correction interval
         ])
         ins.P = ins.P + Q
 
@@ -323,11 +356,12 @@ class TRNStub:
         strip = self._radar.acquire_strip(true_north_m, true_east_m)
 
         # Build DEM search area CENTRED on INS estimate (extends ±SEARCH_PAD in each direction)
-        search_h = STRIP_LEN_PX + 2 * SEARCH_PAD_PX
-        search_w = STRIP_WIDTH_PX + 2 * SEARCH_PAD_PX
+        pad = self._search_pad_px
+        search_h = STRIP_LEN_PX + 2 * pad
+        search_w = STRIP_WIDTH_PX + 2 * pad
         search_area = self._dem.patch(
-            ins.north_m - SEARCH_PAD_PX * DEM_PIXEL_SIZE,
-            ins.east_m  - SEARCH_PAD_PX * DEM_PIXEL_SIZE,
+            ins.north_m - pad * DEM_PIXEL_SIZE,
+            ins.east_m  - pad * DEM_PIXEL_SIZE,
             search_h, search_w,
         )
 
