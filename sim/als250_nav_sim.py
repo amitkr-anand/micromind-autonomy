@@ -32,6 +32,8 @@ from core.ins.mechanisation import ins_propagate
 from core.ins.state import INSState
 from core.ins.imu_model import get_imu_model, IMUModel, IMU_REGISTRY, generate_imu_noise
 from core.constants import GRAVITY
+from core.ins.trn_stub import DEMProvider, RadarAltimeterSim, TRNStub
+from core.ekf.error_state_ekf import ErrorStateEKF
 
 # ---------------------------------------------------------------------------
 # Scenario constants (ALS-250 normative corridor)
@@ -143,6 +145,7 @@ def _body_inputs_from_truth(
 def run_als250_sim(
     imu_name: Optional[str] = None,
     duration_s: float = CORRIDOR_DURATION_S,
+    corridor_km: Optional[float] = None,
     seed: int = 42,
     verbose: bool = True,
 ) -> dict:
@@ -168,6 +171,8 @@ def run_als250_sim(
         duration_s    — float
         kpi           — dict with NAV-01 compliance and summary statistics
     """
+    if corridor_km is not None:
+        duration_s = (corridor_km * 1000.0) / CRUISE_SPEED_MS
     n_steps = int(duration_s * IMU_RATE_HZ)
     if n_steps < 1:
         raise ValueError(f"duration_s={duration_s} → n_steps={n_steps}, too short")
@@ -199,31 +204,74 @@ def run_als250_sim(
     drift_per_seg = np.empty(len(seg_steps))
     seg_idx = 0
 
+    # ---- TRN + ESKF initialisation (S9-3) ----
+    _dem   = DEMProvider(seed=seed)
+    _radar = RadarAltimeterSim(_dem, seed=seed + 1)
+    trn    = TRNStub(_dem, _radar, search_pad_px=80)
+    eskf   = ErrorStateEKF()
+    ground_track_m = 0.0
+    MAX_TRN_CORRECTION_M = 300.0   # sanity gate (S9 safeguard 3.2)
+
     # ---- Propagation loop ----
     for k in range(n_steps):
         accel_b, gyro_b = _body_inputs_from_truth(
             true_pos, true_vel, k, DT, state.q
         )
 
+        # S9-3: correct propagation order
+        # 1. ESKF propagates covariance (bias-corrected acc, same dt+imu_input)
+        eskf.propagate(state, accel_b - state.ba, DT)
+
+        # 2. INS mechanisation advances nominal state
         state = ins_propagate(
             state, accel_b, gyro_b, DT,
             imu_model=imu_model,
             imu_noise=imu_noise,
             step=k,
         )
+
+        # 3. TRN correction (interval-gated)
+        ground_track_m += CRUISE_SPEED_MS * DT
+        corr = trn.update(
+            ins_north_m    = float(state.p[1]),
+            ins_east_m     = float(state.p[0]),
+            true_north_m   = float(true_pos[k, 1]),
+            true_east_m    = float(true_pos[k, 0]),
+            ground_track_m = ground_track_m,
+            timestamp_s    = k * DT,
+        )
+        if corr is not None and corr.accepted:
+            delta_n = corr.delta_north_m
+            delta_e = corr.delta_east_m
+            # Sanity gate: reject catastrophic NCC mis-correlations (safeguard 3.2)
+            if abs(delta_n) <= MAX_TRN_CORRECTION_M and abs(delta_e) <= MAX_TRN_CORRECTION_M:
+                z = np.array([
+                    state.p[0] + delta_e,   # east
+                    state.p[1] + delta_n,   # north
+                    state.p[2],              # altitude unchanged (TRN horizontal only)
+                ])
+                eskf.update_gnss(state, z, trust_score=1.0)
+                eskf.inject(state)
+                # Covariance PD check (safeguard 3.1)
+                eigvals = np.linalg.eigvals(eskf.P)
+                assert np.all(eigvals > -1e-6), (
+                    f"ESKF covariance not PD at k={k}, gt={ground_track_m:.0f}m. "
+                    f"Min eigenvalue: {eigvals.min():.3e}"
+                )
+
         pos_hist[k] = state.p
 
         # Sample drift at segment boundaries
         if seg_idx < len(seg_steps) and k == seg_steps[seg_idx]:
             drift_per_seg[seg_idx] = np.linalg.norm(
-                state.p - true_pos[k]
+                state.p[:2] - true_pos[k, :2]  # horizontal only — TRN corrects H-pos
             )
             seg_idx += 1
 
     elapsed = time.perf_counter() - t_start
 
     # ---- KPIs ----
-    final_drift_m = float(np.linalg.norm(pos_hist[-1] - true_pos[-1]))
+    final_drift_m = float(np.linalg.norm(pos_hist[-1, :2] - true_pos[-1, :2]))  # horizontal
     max_seg_drift  = float(drift_per_seg.max()) if len(drift_per_seg) > 0 else 0.0
     nav01_pass     = bool(max_seg_drift < DRIFT_LIMIT_M)
     dist_km        = (CRUISE_SPEED_MS * duration_s) / 1_000.0
@@ -237,6 +285,7 @@ def run_als250_sim(
         "max_5km_drift_m": round(max_seg_drift, 3),
         "drift_limit_m":   DRIFT_LIMIT_M,
         "NAV01_pass":      nav01_pass,
+        "trn_corrections":  trn.correction_count,
         "sim_wall_s":      round(elapsed, 2),
         "seed":            seed,
     }
