@@ -6,49 +6,39 @@ __pycache__/
 .DS_Store
 
 # Python cache
-__pycache__/
 *.py[cod]
 *$py.class
 *.so
-
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb_checkpoints
-
 # Test outputs
 s5_test_results.txt
 bcmp1_kpi_log.json
-
 # Dashboard outputs (keep in Git only if for TASL presentation)
-dashboard/*.html
-dashboard/*.png
-
 # Simulation results (too large for Git)
 sim/als250_results/
 sim/bcmp1_results/
 logs/*.csv
-
-
-# Python cache
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb_checkpoints
-
-# Test outputs
-s5_test_results.txt
-bcmp1_kpi_log.json
-
 # Dashboard outputs (temporary)
-dashboard/*.html
-dashboard/*.png
-
 # Simulation results
-sim/als250_results/
-sim/bcmp1_results/
-logs/*.csv
+!dashboard/als250_drift_chart_20260312_1416.png
+!dashboard/als250_drift_chart_20260312_1416.html
 
+# S10 scratch and backup files (not part of deliverables)
+*.s10_backup
+*.s10_perf_backup
+patch_corridor_km.py
+run_als250_parallel_old.py
+run_als250_parallel_v2.py
+sim/run_als250_parallel.py
+sim/run_als250_parallel_mkl.py
+sim/run_als250_parallel_mkl_v2.py
+sim/run_als250_sequential_threaded.py
+sim/run_als250_subprocess.py
+sim/run_single_imu_mkl.py
+sim_profiler.py
+trn_stub_ncc_patch.py
+validate_100km_threading.py
+logs/s10_*.log
+logs/als250_*.log
