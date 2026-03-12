@@ -207,7 +207,7 @@ def run_als250_sim(
     # ---- TRN + ESKF initialisation (S9-3) ----
     _dem   = DEMProvider(seed=seed)
     _radar = RadarAltimeterSim(_dem, seed=seed + 1)
-    trn    = TRNStub(_dem, _radar, search_pad_px=80)
+    trn    = TRNStub(_dem, _radar, search_pad_px=25)
     eskf   = ErrorStateEKF()
     ground_track_m = 0.0
     MAX_TRN_CORRECTION_M = 300.0   # sanity gate (S9 safeguard 3.2)
