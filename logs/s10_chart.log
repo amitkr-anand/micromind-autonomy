@@ -1,0 +1,14 @@
+
+============================================================
+  ALS-250 DRIFT CHART — Sprint S8-D
+============================================================
+  [chart] Running simulation for STIM300 ...
+[ALS-250] IMU=STIM300        dist=   250 km  final_drift=     2.0 m  max_5km=   12.1 m  NAV-01=PASS ✅  wall=105.5s
+  [chart] Running simulation for ADIS16505_3 ...
+[ALS-250] IMU=ADIS16505_3    dist=   250 km  final_drift=     8.2 m  max_5km=   13.9 m  NAV-01=PASS ✅  wall=105.6s
+  [chart] Running simulation for BASELINE ...
+[ALS-250] IMU=BASELINE       dist=   250 km  final_drift=     1.1 m  max_5km=   15.0 m  NAV-01=PASS ✅  wall=105.8s
+  [chart] PNG  → dashboard/als250_drift_chart_20260312_1416.png
+  [chart] HTML → dashboard/als250_drift_chart_20260312_1416.html
+============================================================
+

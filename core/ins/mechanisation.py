@@ -72,9 +72,13 @@ def ins_propagate(
     When imu_model + imu_noise are provided:
       1. Scale factor applied: gyro_eff = gyro_b * (1 + sf_error[step])
       2. Total gyro noise (white noise + Gauss-Markov bias + temp bias)
-         indexed from imu_noise.total_gyro()[step]
+        # S10-perf: cache noise arrays to avoid O(n²) recomputation
+        if not hasattr(imu_noise, '_gyro_cache'):
+            imu_noise._gyro_cache  = imu_noise.total_gyro()
+            imu_noise._accel_cache = imu_noise.total_accel()
+         indexed from imu_noise._gyro_cache[step]
       3. Total accel noise (white noise + VRE + temp bias) indexed from
-         imu_noise.total_accel()[step]
+         imu_noise._accel_cache[step]
       The noised measurements are then fed into the standard mechanisation.
     """
     # ------------------------------------------------------------------ #
@@ -83,10 +87,14 @@ def ins_propagate(
     if imu_model is not None and imu_noise is not None:
         # --- gyro: scale factor first, then additive noise ---
         sf = imu_noise.sf_error_gyro[step] if hasattr(imu_noise, "sf_error_gyro") else 0.0
-        gyro_effective = gyro_b * (1.0 + sf) + imu_noise.total_gyro()[step]
+        # S10-perf: cache noise arrays to avoid O(n²) recomputation
+        if not hasattr(imu_noise, '_gyro_cache'):
+            imu_noise._gyro_cache  = imu_noise.total_gyro()
+            imu_noise._accel_cache = imu_noise.total_accel()
+        gyro_effective = gyro_b * (1.0 + sf) + imu_noise._gyro_cache[step]
 
         # --- accel: additive noise (VRE already embedded in total_accel) ---
-        accel_effective = accel_b + imu_noise.total_accel()[step]
+        accel_effective = accel_b + imu_noise._accel_cache[step]
     else:
         # S0 baseline — no noise, no modification
         gyro_effective = gyro_b

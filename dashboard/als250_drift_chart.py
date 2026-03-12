@@ -250,13 +250,13 @@ def build_drift_chart(
             m = get_imu_model(name)
         except Exception:
             continue
-        vre_mg = m.vre_accel_ms2 / 9.80665 * 1000.0
+        vre_mg = m.vre_bias_si / 9.80665 * 1000.0
         row_data = [
             MODEL_LABELS[name].replace(" ", "\n"),
-            f"{m.arw_deg_rthz:.3f}",
-            f"{m.bias_instability_deg_hr:.2f}",
+            f"{m.gyro_arw_deg_per_sqrth:.3f}",
+            f"{m.gyro_bias_instability_deg_per_hr:.2f}",
             f"{vre_mg:.3f}" if vre_mg > 0 else "0",
-            f"{m.sf_ppm:.0f}",
+            f"{m.gyro_scale_factor_ppm:.0f}",
         ]
         y = row_y_start - (i + 1) * row_dy
         colour = COLOURS[name]

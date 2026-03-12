@@ -74,29 +74,45 @@ class ErrorStateEKF:
         self.P[9:12,  9:12] = np.eye(3) * (0.1)**2     # acc bias  (m/s²)²
         self.P[12:15,12:15] = np.eye(3) * (0.01)**2    # gyro bias (rad/s)²
 
+        # Pre-allocated buffers — eliminates per-step matrix allocation (S10 perf fix)
+        self._F = np.eye(15)
+        self._Q = np.zeros((15, 15))
+        # Q is constant (dt fixed at 1/200 s) — compute once, reuse every step
+        # Caller must call _init_Q(dt) after construction with known dt
+        self._Q_initialised = False
+
     # ── Internal builders ────────────────────────────────────────────────
+    def _init_Q(self, dt):
+        """Pre-compute constant Q matrix. Called once from propagate() on first step."""
+        self._Q[0:3,   0:3]  = np.eye(3) * self._POS_DRIFT_PSD**2  * dt
+        self._Q[3:6,   3:6]  = np.eye(3) * self._ACC_NOISE_PSD**2  * dt
+        self._Q[6:9,   6:9]  = np.eye(3) * self._GYRO_NOISE_PSD**2 * dt
+        self._Q[9:12,  9:12] = np.eye(3) * self._ACC_BIAS_RW**2    * dt
+        self._Q[12:15,12:15] = np.eye(3) * self._GYRO_BIAS_RW**2   * dt
+        self._Q_initialised  = True
+
     def _build_Q(self, dt):
-        Q = np.zeros((15, 15))
-        Q[0:3,   0:3]  = np.eye(3) * self._POS_DRIFT_PSD**2  * dt
-        Q[3:6,   3:6]  = np.eye(3) * self._ACC_NOISE_PSD**2  * dt
-        Q[6:9,   6:9]  = np.eye(3) * self._GYRO_NOISE_PSD**2 * dt
-        Q[9:12,  9:12] = np.eye(3) * self._ACC_BIAS_RW**2    * dt
-        Q[12:15,12:15] = np.eye(3) * self._GYRO_BIAS_RW**2   * dt
-        return Q
+        if not self._Q_initialised:
+            self._init_Q(dt)
+        return self._Q
 
     def _build_F(self, state, acc_body, dt):
         """
         Linearised error-state transition Jacobian.
+        Writes into pre-allocated self._F buffer in-place — no heap allocation.
         acc_body: specific force in body frame (after bias subtraction).
         """
         from core.math.quaternion import quat_rotate
         f_n = quat_rotate(state.q, acc_body)   # specific force in world frame
-        F = np.eye(15)
-        F[0:3,  3:6]  =  np.eye(3) * dt        # δp ← δv
-        F[3:6,  6:9]  = -skew(f_n) * dt        # δv ← δθ (Coriolis-like)
-        F[3:6,  9:12] = -np.eye(3) * dt        # δv ← δba
-        F[6:9, 12:15] = -np.eye(3) * dt        # δθ ← δbg
-        return F
+        # Reset to identity in-place
+        self._F[:] = 0.0
+        np.fill_diagonal(self._F, 1.0)
+        # Fill non-zero off-diagonal blocks
+        self._F[0:3,  3:6]  =  np.eye(3) * dt
+        self._F[3:6,  6:9]  = -skew(f_n) * dt
+        self._F[3:6,  9:12] = -np.eye(3) * dt
+        self._F[6:9, 12:15] = -np.eye(3) * dt
+        return self._F
 
     # ── Public API ───────────────────────────────────────────────────────
     def propagate(self, state, acc_body, dt):
