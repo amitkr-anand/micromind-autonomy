@@ -200,3 +200,35 @@ class ErrorStateEKF:
     @property
     def bias_gyro_est(self):
         return self.x[12:15].copy()
+
+    # ------------------------------------------------------------------
+    # S-NEP-04 Step 04-A — VIO position update
+    # ------------------------------------------------------------------
+
+    def update_vio(self, state, pos_ned, cov_pos_ned):
+        """
+        VIO position measurement update.
+
+        pos_ned     : (3,) position in NED frame (m) — pre-rotated by caller
+        cov_pos_ned : (3,3) position covariance in NED frame — pre-rotated by caller
+
+        Returns: (NIS: float, rejected: bool)
+        """
+        cov_pos_ned = np.asarray(cov_pos_ned, dtype=np.float64).reshape(3, 3)
+        diag = np.diag(cov_pos_ned)
+        if np.any(diag <= 0.0):
+            return 0.0, True
+        H = np.zeros((3, 15))
+        H[0:3, 0:3] = np.eye(3)
+        R = cov_pos_ned
+        z = np.asarray(pos_ned, dtype=np.float64).reshape(3) - state.p
+        S = H @ self.P @ H.T + R
+        try:
+            S_inv = np.linalg.inv(S)
+            nis = float(z @ S_inv @ z)
+        except np.linalg.LinAlgError:
+            return 0.0, True
+        K = self.P @ H.T @ S_inv
+        self.x = self.x + K @ (z - H @ self.x)
+        self.P = (np.eye(15) - K @ H) @ self.P
+        return nis, False
