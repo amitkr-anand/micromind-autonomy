@@ -276,10 +276,10 @@ def run_nav_scenario(
             nav_mode = "VIO_TRN"
             _propagate_ins(ins, DT, noise_std_m=1.5)   # tactical-grade IMU drift
             trn_corr = trn.update(
-                ins           = ins,
+                ins.north_m,
+                ins.east_m,
                 true_north_m  = true_north,
                 true_east_m   = true_east,
-                dt            = DT,
                 ground_track_m= ground_track_m,
                 timestamp_s   = t,
             )

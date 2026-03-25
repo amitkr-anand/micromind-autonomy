@@ -61,7 +61,17 @@ class TestS9A_ESKFQMatrix(unittest.TestCase):
 
     def _get_Q(self):
         from core.ekf.error_state_ekf import ErrorStateEKF
+        from core.ins.state import INSState
+        import numpy as np
         ekf = ErrorStateEKF()
+        # Q is built dynamically during propagate() — call once with dt=0.01
+        # to populate the matrix before reading it.
+        state = INSState(
+            p=np.zeros(3), v=np.zeros(3),
+            q=np.array([1., 0., 0., 0.]),
+            ba=np.zeros(3), bg=np.zeros(3)
+        )
+        ekf.propagate(state, np.zeros(3), 0.01)
         for attr in ("_Q", "Q", "_process_noise", "process_noise_cov"):
             Q = getattr(ekf, attr, None)
             if Q is not None:

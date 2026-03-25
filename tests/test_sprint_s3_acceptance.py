@@ -60,9 +60,9 @@ def test_ncc_score_above_threshold(trn_system):
     """
     dem, radar, trn = trn_system
     ins = INSState(north_m=500.0, east_m=300.0)
-    corr = trn.update(ins,
+    corr = trn.update(ins.north_m, ins.east_m,
                       true_north_m=500.0, true_east_m=300.0,
-                      dt=1.0, ground_track_m=CORRECTION_INTERVAL)
+                      ground_track_m=CORRECTION_INTERVAL)
     assert corr is not None, "Expected a TRN fix attempt"
     assert corr.ncc_score >= NCC_THRESHOLD, (
         f"NCC score {corr.ncc_score:.3f} < threshold {NCC_THRESHOLD}"
@@ -87,11 +87,15 @@ def test_kalman_correction_reduces_error():
 
     initial_error = math.hypot(ins.north_m - true_n, ins.east_m - true_e)
 
-    corr = trn.update(ins, true_north_m=true_n, true_east_m=true_e,
-                      dt=1.0, ground_track_m=CORRECTION_INTERVAL)
+    corr = trn.update(ins.north_m, ins.east_m,
+                      true_north_m=true_n, true_east_m=true_e,
+                      ground_track_m=CORRECTION_INTERVAL)
 
     assert corr is not None and corr.accepted, "TRN fix must be accepted"
-    post_error = math.hypot(ins.north_m - true_n, ins.east_m - true_e)
+    # TRNStub is measurement-only — apply the returned correction manually
+    corrected_north = ins.north_m + corr.delta_north_m
+    corrected_east  = ins.east_m  + corr.delta_east_m
+    post_error = math.hypot(corrected_north - true_n, corrected_east - true_e)
 
     assert post_error < initial_error, "Kalman correction must reduce error"
     assert post_error < 10.0, (
@@ -115,8 +119,9 @@ def test_trn_rejects_low_ncc_score():
     trn   = TRNStub(dem, radar, ncc_threshold=0.999)  # impossible threshold
 
     ins = INSState(north_m=100.0, east_m=100.0)
-    corr = trn.update(ins, true_north_m=100.0, true_east_m=100.0,
-                      dt=1.0, ground_track_m=CORRECTION_INTERVAL)
+    corr = trn.update(ins.north_m, ins.east_m,
+                      true_north_m=100.0, true_east_m=100.0,
+                      ground_track_m=CORRECTION_INTERVAL)
 
     assert corr is not None, "Update should return a correction record"
     assert not corr.accepted, "High threshold must cause rejection"

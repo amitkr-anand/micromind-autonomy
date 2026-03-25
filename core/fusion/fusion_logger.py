@@ -1,287 +1,238 @@
-# core/fusion/fusion_logger.py
-# MicroMind — S-NEP-04 Step 04-A
-#
-# Records all 8 observability signals per integration run.
-# Writes structured JSON on close().
-#
-# Design rule: NO ESKF instrumentation.
-# All logging happens in the fusion layer wrapper — ESKF internals are
-# never modified to emit signals.
+"""
+core/fusion/fusion_logger.py
+============================
+Fusion observability logger — Schema 08.1 (S-NEP-08).
 
+SCHEMA HISTORY:
+    06e.3  S-NEP-06  outage/recovery experiments
+    08.1   S-NEP-08  VIO navigation mode, drift envelope, spike alerting
+                     vel_err_m_s demoted to diagnostic (default off)
+
+BACKWARD COMPATIBILITY:
+    Old runners (run_04b, run_05, run_06_*) produce schema 06e.3.
+    This module produces schema 08.1 when called with the new fields.
+    Old logs are NOT affected.
+
+SEPARATION CONTRACT:
+    fusion_logger reads VIONavigationMode.current_mode as a string only.
+    No import of ESKF internals. No estimator calls.
+
+LOG FIELDS per VIO_UPDATE entry (schema 08.1):
+    t                       float   timestamp (seconds)
+    type                    str     "VIO_UPDATE"
+    nis                     float   NIS scalar
+    innov_mag               float   ‖innovation‖ metres
+    trace_P                 float   trace(P[0:3,0:3])
+    error_m                 float|None  ‖state.p - p_GT‖ if GT available
+    ba_est                  list[float] accelerometer bias estimate
+    vio_mode                str     "NOMINAL" | "OUTAGE" | "RESUMPTION"
+    dt_since_vio            float   seconds since last accepted update
+    drift_envelope_m        float|None  None outside OUTAGE; conservative
+                                    over-estimate only (NOT a hard bound)
+    innovation_spike_alert  bool    True on first post-outage update if
+                                    innov_mag > VIO_INNOVATION_SPIKE_THRESHOLD_M
+    vel_err_diagnostic      float|None  DIAGNOSTIC ONLY. Emitted only when
+                                    emit_vel_diagnostic=True (default False).
+                                    D-05: not a valid operational signal.
+
+LOG FIELDS per PROPAGATE entry (schema 08.1):
+    t               float   timestamp
+    type            str     "PROPAGATE"
+    trace_P         float
+    error_m         float|None
+    dt_since_vio    float   seconds since last accepted VIO update
+    vio_mode        str     current mode at propagation time
+
+SUMMARY FIELDS (schema 08.1 additions):
+    n_outage_events         int     NOMINAL→OUTAGE transition count
+    n_spike_alerts          int     innovation_spike_alert=True count
+    max_dt_since_vio        float   maximum outage duration (seconds)
+    max_drift_envelope_m    float   maximum drift_envelope_m reached
+"""
+
+from __future__ import annotations
 import json
-import time
+import math
 from pathlib import Path
-from typing import Optional
+from typing import Any
 
-import numpy as np
+
+# Schema version string — increment on any breaking change
+SCHEMA_VERSION = "08.1"
 
 
 class FusionLogger:
     """
-    Observability wrapper for the MicroMind VIO fusion layer.
+    Collects per-step log entries and writes a structured JSON log on close.
 
-    Records all 8 observability signals per integration run and writes a
-    structured JSON log on close().  Must be instantiated once per run and
-    closed explicitly when the run ends.
-
-    Signals
-    -------
-    O-01  ESKF update sequence — type (PROPAGATE / VIO_UPDATE / REJECTION),
-          timestamp, and NIS per event.
-    O-02  Fusion-layer NIS time series — (timestamp, NIS) per fused update.
-    O-03  ESKF position covariance trace — (timestamp, trace) per propagation
-          step.  Caller must supply; not read from ESKF internals.
-    O-04  Fused ATE vs ground truth — recorded post-run via log_ate().
-    O-05  R matrix log — trace and minimum eigenvalue per measurement.
-    O-06  /odomimu message rate at fusion node input — Hz.
-    O-07  IFM event log — always present, even if zero events.
-    O-08  Camera-IMU time offset convergence — (timestamp, offset_s) series.
-
-    Usage
-    -----
-    logger = FusionLogger()
-    logger.log_update(t, "VIO_UPDATE", nis=1.23)
-    logger.log_cov_trace(t, trace_value)
-    ...
-    logger.close(run_id="mh01_run1", output_path="/tmp/fusion_log.json")
+    Schema 08.1: VIO navigation mode fields added, vel_err_m_s demoted.
     """
 
-    # Valid update type tokens for O-01
-    _VALID_UPDATE_TYPES = frozenset({"PROPAGATE", "VIO_UPDATE", "REJECTION"})
-
-    def __init__(self):
-        self._o01: list[dict] = []   # update sequence
-        self._o02: list[dict] = []   # NIS time series
-        self._o03: list[dict] = []   # covariance trace
-        self._o04: Optional[dict] = None  # ATE (post-run)
-        self._o05: list[dict] = []   # R matrix log
-        self._o06: list[dict] = []   # message rate
-        self._o07: list[dict] = []   # IFM events
-        self._o08: list[dict] = []   # time offset convergence
-        self._created_at = time.time()
-
-    # ------------------------------------------------------------------
-    # O-01 / O-02: update sequence + NIS
-    # ------------------------------------------------------------------
-
-    def log_update(
+    def __init__(
         self,
-        timestamp: float,
-        update_type: str,
-        nis: Optional[float] = None,
+        log_path: str | Path | None = None,
+        label: str = "",
+        emit_vel_diagnostic: bool = False,
     ) -> None:
         """
-        Record one ESKF update event (O-01).
-
-        If update_type is "VIO_UPDATE" and nis is provided, the NIS value
-        is also appended to the O-02 time series.
-
-        Parameters
-        ----------
-        timestamp   : mission time in seconds
-        update_type : one of "PROPAGATE", "VIO_UPDATE", "REJECTION"
-        nis         : Normalised Innovation Squared (optional; required for
-                      VIO_UPDATE to populate O-02)
+        Args:
+            log_path:            Output path for the JSON log file.
+            label:               Run label (appears in summary).
+            emit_vel_diagnostic: If True, vel_err_diagnostic is included
+                                 in VIO_UPDATE entries. Default False per D-05.
         """
-        if update_type not in self._VALID_UPDATE_TYPES:
-            raise ValueError(
-                f"update_type must be one of {sorted(self._VALID_UPDATE_TYPES)}, "
-                f"got '{update_type}'"
+        import tempfile as _tf
+        self._path = Path(log_path) if log_path is not None else Path(_tf.mktemp(suffix=".json"))
+        self._label  = label
+        self._emit_vel_diag = emit_vel_diagnostic
+        self._entries: list[dict[str, Any]] = []
+
+        # Run-level summary accumulators
+        self._n_vio_updates  = 0
+        self._n_propagations = 0
+        self._n_rejections   = 0
+        self._health_nan     = False
+        self._health_div     = False
+
+        # Mode summary (populated from VIONavigationMode at close)
+        self._n_outage_events      = 0
+        self._n_spike_alerts       = 0
+        self._max_dt_since_vio     = 0.0
+        self._max_drift_envelope_m = 0.0
+
+    # ── Entry logging methods ─────────────────────────────────────────────────
+
+    def log_vio_update(
+        self,
+        *,
+        t: float,
+        nis: float,
+        innov_mag: float,
+        trace_P: float,
+        vio_mode: str,
+        dt_since_vio: float,
+        drift_envelope_m: float | None,
+        innovation_spike_alert: bool,
+        error_m: float | None = None,
+        ba_est: list[float] | None = None,
+        vel_err_diagnostic: float | None = None,
+    ) -> None:
+        """Log one accepted VIO update entry (schema 08.1)."""
+        entry: dict[str, Any] = {
+            "t":                      round(t, 4),
+            "type":                   "VIO_UPDATE",
+            "nis":                    round(nis, 8),
+            "innov_mag":              round(innov_mag, 6),
+            "trace_P":                round(trace_P, 8),
+            "error_m":                round(error_m, 6) if error_m is not None else None,
+            "ba_est":                 [round(v, 6) for v in ba_est] if ba_est else None,
+            "vio_mode":               vio_mode,
+            "dt_since_vio":           round(dt_since_vio, 4),
+            "drift_envelope_m":       round(drift_envelope_m, 4)
+                                      if drift_envelope_m is not None else None,
+            "innovation_spike_alert": bool(innovation_spike_alert),
+        }
+        # D-05: vel_err emitted only when explicitly requested
+        if self._emit_vel_diag:
+            entry["vel_err_diagnostic"] = (
+                round(vel_err_diagnostic, 6)
+                if vel_err_diagnostic is not None else None
             )
+        self._entries.append(entry)
+        self._n_vio_updates += 1
+        if innovation_spike_alert:
+            self._n_spike_alerts += 1
 
-        entry: dict = {"t": float(timestamp), "type": update_type}
-        if nis is not None:
-            entry["nis"] = float(nis)
-        self._o01.append(entry)
-
-        # O-02: NIS time series — only for successful fusions
-        if update_type == "VIO_UPDATE" and nis is not None:
-            self._o02.append({"t": float(timestamp), "nis": float(nis)})
-
-    # ------------------------------------------------------------------
-    # O-03: position covariance trace
-    # ------------------------------------------------------------------
-
-    def log_cov_trace(self, timestamp: float, trace_value: float) -> None:
-        """
-        Record the ESKF position covariance trace at a given timestep (O-03).
-
-        Caller reads trace(P[0:3, 0:3]) from the ESKF after propagate() or
-        inject() and passes it here.  No ESKF instrumentation required.
-        """
-        self._o03.append({"t": float(timestamp), "trace_P_pos": float(trace_value)})
-
-    # ------------------------------------------------------------------
-    # O-04: ATE (post-run)
-    # ------------------------------------------------------------------
-
-    def log_ate(
+    def log_propagate(
         self,
-        ate_rmse_m: float,
-        standalone_ate_rmse_m: Optional[float] = None,
-        n_samples: Optional[int] = None,
+        *,
+        t: float,
+        trace_P: float,
+        vio_mode: str,
+        dt_since_vio: float,
+        error_m: float | None = None,
+    ) -> None:
+        """Log one IMU propagation step (schema 08.1, every N steps)."""
+        self._entries.append({
+            "t":            round(t, 4),
+            "type":         "PROPAGATE",
+            "trace_P":      round(trace_P, 8),
+            "error_m":      round(error_m, 6) if error_m is not None else None,
+            "vio_mode":     vio_mode,
+            "dt_since_vio": round(dt_since_vio, 4),
+        })
+        self._n_propagations += 1
+
+    def log_rejection(self, *, t: float, nis: float, innov_mag: float) -> None:
+        """Log a rejected VIO measurement."""
+        self._entries.append({
+            "t":        round(t, 4),
+            "type":     "REJECTION",
+            "nis":      round(nis, 8),
+            "innov_mag": round(innov_mag, 6),
+        })
+        self._n_rejections += 1
+
+    def flag_nan(self) -> None:
+        """Mark this run as having encountered a NaN in covariance."""
+        self._health_nan = True
+
+    def flag_divergence(self) -> None:
+        """Mark this run as having diverged (trace_P > threshold)."""
+        self._health_div = True
+
+    # ── Close and write ───────────────────────────────────────────────────────
+
+    def close(
+        self,
+        vio_nav_mode=None,  # VIONavigationMode instance or None
+        extra_summary: dict[str, Any] | None = None,
     ) -> None:
         """
-        Record fused ATE vs ground truth after the run completes (O-04).
+        Finalise and write the JSON log.
 
-        Parameters
-        ----------
-        ate_rmse_m            : fused trajectory ATE RMSE (m)
-        standalone_ate_rmse_m : standalone VIO ATE for comparison (optional)
-        n_samples             : number of aligned pose pairs used
+        Args:
+            vio_nav_mode:  VIONavigationMode instance. If provided, its
+                           summary statistics are incorporated. Pass None
+                           for runs that do not use schema 08.1 mode tracking.
+            extra_summary: Additional key-value pairs for the summary block.
         """
-        self._o04 = {
-            "ate_rmse_m": float(ate_rmse_m),
-            "standalone_ate_rmse_m": (
-                float(standalone_ate_rmse_m) if standalone_ate_rmse_m is not None else None
+        if vio_nav_mode is not None:
+            self._n_outage_events      = vio_nav_mode.n_outage_events
+            self._n_spike_alerts       = vio_nav_mode.n_spike_alerts
+            self._max_dt_since_vio     = vio_nav_mode.max_dt_since_vio
+            self._max_drift_envelope_m = vio_nav_mode.max_drift_envelope_m
+
+        summary: dict[str, Any] = {
+            "schema":          SCHEMA_VERSION,
+            "label":           self._label,
+            "health":          {
+                "nan": self._health_nan,
+                "div": self._health_div,
+            },
+            "n_vio_updates":   self._n_vio_updates,
+            "n_propagations":  self._n_propagations,
+            "n_rejections":    self._n_rejections,
+            # Schema 08.1 mode fields
+            "n_outage_events":      self._n_outage_events,
+            "n_spike_alerts":       self._n_spike_alerts,
+            "max_dt_since_vio":     round(self._max_dt_since_vio, 3),
+            "max_drift_envelope_m": round(self._max_drift_envelope_m, 4),
+            # D-05 notice
+            "vel_err_note": (
+                "vel_err_m_s removed per D-05 (S-NEP-07). "
+                "Use emit_vel_diagnostic=True for diagnostic access."
             ),
-            "n_samples": n_samples,
+            # Drift envelope notice
+            "drift_envelope_note": (
+                "drift_envelope_m is a conservative confidence degradation "
+                "signal, NOT a guaranteed position error bound (S-NEP-07 L-05)."
+            ),
         }
+        if extra_summary:
+            summary.update(extra_summary)
 
-    # ------------------------------------------------------------------
-    # O-05: R matrix log
-    # ------------------------------------------------------------------
-
-    def log_r_matrix(self, timestamp: float, r_matrix: np.ndarray) -> None:
-        """
-        Record the VIO measurement noise matrix R used in a fusion update (O-05).
-
-        Parameters
-        ----------
-        timestamp : mission time in seconds
-        r_matrix  : (3, 3) position noise covariance matrix (m²)
-        """
-        r = np.asarray(r_matrix, dtype=np.float64).reshape(3, 3)
-        eigenvalues = np.linalg.eigvalsh(r)
-        self._o05.append(
-            {
-                "t": float(timestamp),
-                "trace_R": float(np.trace(r)),
-                "min_eigenvalue": float(eigenvalues.min()),
-            }
-        )
-
-    # ------------------------------------------------------------------
-    # O-06: message rate
-    # ------------------------------------------------------------------
-
-    def log_message_rate(self, timestamp: float, rate_hz: float) -> None:
-        """
-        Record the /odomimu message rate at the fusion node input (O-06).
-
-        Parameters
-        ----------
-        timestamp : mission time in seconds
-        rate_hz   : measured message rate (Hz)
-        """
-        self._o06.append({"t": float(timestamp), "rate_hz": float(rate_hz)})
-
-    # ------------------------------------------------------------------
-    # O-07: IFM event log
-    # ------------------------------------------------------------------
-
-    def log_ifm_event(
-        self,
-        ifm_id: str,
-        timestamp: float,
-        details: Optional[dict] = None,
-    ) -> None:
-        """
-        Record an Integration Failure Mode event (O-07).
-
-        IFM IDs: IFM-01 through IFM-06 (see NEP_SPRINT_STATUS.md).
-        O-07 is always present in the log, even when no events occurred.
-
-        Parameters
-        ----------
-        ifm_id    : e.g. "IFM-04"
-        timestamp : mission time in seconds
-        details   : arbitrary key-value dict for extra context
-        """
-        self._o07.append(
-            {
-                "ifm_id": ifm_id,
-                "t": float(timestamp),
-                "details": details or {},
-            }
-        )
-
-    # ------------------------------------------------------------------
-    # O-08: camera-IMU time offset convergence
-    # ------------------------------------------------------------------
-
-    def log_time_offset(self, timestamp: float, offset_s: float) -> None:
-        """
-        Record the OpenVINS camera-IMU time offset estimate (O-08).
-
-        OpenVINS online-calibrates the temporal offset between camera and
-        IMU.  Logging the convergence series confirms the offset has
-        stabilised before trusting fusion results.
-
-        Parameters
-        ----------
-        timestamp : mission time in seconds
-        offset_s  : estimated camera-IMU time offset (seconds)
-        """
-        self._o08.append({"t": float(timestamp), "offset_s": float(offset_s)})
-
-    # ------------------------------------------------------------------
-    # close() — write structured JSON
-    # ------------------------------------------------------------------
-
-    def close(self, run_id: str, output_path) -> dict:
-        """
-        Finalise the log and write a structured JSON file.
-
-        Parameters
-        ----------
-        run_id      : human-readable identifier for this run
-        output_path : path to write the JSON log (str or Path)
-
-        Returns
-        -------
-        summary : dict with high-level statistics for immediate inspection
-        """
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # Compute summary statistics
-        nis_values = [e["nis"] for e in self._o02 if "nis" in e]
-        nis_mean = float(np.mean(nis_values)) if nis_values else None
-        nis_std = float(np.std(nis_values)) if len(nis_values) > 1 else None
-
-        n_vio_updates = sum(1 for e in self._o01 if e["type"] == "VIO_UPDATE")
-        n_rejections = sum(1 for e in self._o01 if e["type"] == "REJECTION")
-        n_propagations = sum(1 for e in self._o01 if e["type"] == "PROPAGATE")
-
-        summary = {
-            "run_id": run_id,
-            "created_at_unix": self._created_at,
-            "closed_at_unix": time.time(),
-            "n_propagations": n_propagations,
-            "n_vio_updates": n_vio_updates,
-            "n_rejections": n_rejections,
-            "nis_mean": nis_mean,
-            "nis_std": nis_std,
-            "n_ifm_events": len(self._o07),
-            "ate": self._o04,
-        }
-
-        log_doc = {
-            "schema_version": "04-A.1",
-            "run_id": run_id,
-            "summary": summary,
-            "O-01_update_sequence": self._o01,
-            "O-02_nis_time_series": self._o02,
-            "O-03_cov_trace": self._o03,
-            "O-04_ate": self._o04,
-            "O-05_r_matrix": self._o05,
-            "O-06_message_rate": self._o06,
-            "O-07_ifm_events": self._o07,
-            "O-08_time_offset": self._o08,
-        }
-
-        with open(output_path, "w", encoding="utf-8") as fh:
-            json.dump(log_doc, fh, indent=2)
-
-        return summary
+        log = {"summary": summary, "time_series": self._entries}
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self._path, "w") as f:
+            json.dump(log, f, indent=2)

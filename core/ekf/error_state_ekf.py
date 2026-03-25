@@ -217,18 +217,19 @@ class ErrorStateEKF:
         cov_pos_ned = np.asarray(cov_pos_ned, dtype=np.float64).reshape(3, 3)
         diag = np.diag(cov_pos_ned)
         if np.any(diag <= 0.0):
-            return 0.0, True
+            return 0.0, True, 0.0
         H = np.zeros((3, 15))
         H[0:3, 0:3] = np.eye(3)
         R = cov_pos_ned
         z = np.asarray(pos_ned, dtype=np.float64).reshape(3) - state.p
+        innov_mag = float(np.linalg.norm(z))  # S-NEP-08: magnitude of innovation pre-gate
         S = H @ self.P @ H.T + R
         try:
             S_inv = np.linalg.inv(S)
             nis = float(z @ S_inv @ z)
         except np.linalg.LinAlgError:
-            return 0.0, True
+            return 0.0, True, 0.0
         K = self.P @ H.T @ S_inv
         self.x = self.x + K @ (z - H @ self.x)
         self.P = (np.eye(15) - K @ H) @ self.P
-        return nis, False
+        return nis, False, innov_mag
