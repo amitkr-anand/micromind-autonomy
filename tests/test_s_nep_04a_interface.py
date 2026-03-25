@@ -156,7 +156,7 @@ class TestT01FrameSanity:
         cov_enu = np.diag([sigma**2, sigma**2, sigma**2])
         cov_ned = rotate_cov_enu_to_ned(cov_enu)
 
-        nis, rejected = eskf.update_vio(state, pos_ned, cov_ned)
+        nis, rejected, innov_mag = eskf.update_vio(state, pos_ned, cov_ned)
 
         assert not rejected, "update_vio unexpectedly rejected a valid low-noise measurement"
 
@@ -208,7 +208,7 @@ class TestT01FrameSanity:
         eskf = _make_eskf()
         pos_ned = np.array([0.0, 1.0, 0.0])
         bad_cov = np.diag([0.01, 0.0, 0.01])   # zero on axis 1
-        nis, rejected = eskf.update_vio(state, pos_ned, bad_cov)
+        nis, rejected, innov_mag = eskf.update_vio(state, pos_ned, bad_cov)
         assert rejected is True, "update_vio must reject zero-diagonal covariance"
         assert nis == 0.0, "NIS must be 0.0 on rejection"
 
@@ -414,54 +414,55 @@ class TestFusionLoggerSmoke:
     """
 
     def test_close_writes_valid_json_with_all_signals(self, tmp_path):
-        logger = FusionLogger()
-
-        # Populate all signals
-        for i in range(5):
-            t = float(i) * 0.1
-            logger.log_update(t, "PROPAGATE")
-
-        for i in range(3):
-            t = float(i) * 0.2
-            logger.log_update(t, "VIO_UPDATE", nis=0.8 + i * 0.1)
-            logger.log_cov_trace(t, 0.05 + i * 0.001)
-            logger.log_r_matrix(t, np.diag([0.01, 0.02, 0.015]))
-            logger.log_message_rate(t, 122.5)
-            logger.log_time_offset(t, 0.003 - i * 0.0001)
-
-        logger.log_update(0.5, "REJECTION")
-        logger.log_ate(ate_rmse_m=0.092, standalone_ate_rmse_m=0.087, n_samples=1500)
-
+        """
+        Smoke test updated for schema 08.1 (S-NEP-08).
+        Original O-01..O-08 signals replaced by schema 08.1 fields.
+        """
         out_path = tmp_path / "fusion_test_log.json"
-        summary = logger.close(run_id="test_smoke_01", output_path=out_path)
+        logger = FusionLogger(log_path=out_path, label="smoke_01")
+
+        # Log propagation entries
+        for i in range(5):
+            logger.log_propagate(
+                t=float(i) * 0.1, trace_P=0.05,
+                vio_mode="NOMINAL", dt_since_vio=0.0
+            )
+
+        # Log VIO update entries
+        for i in range(3):
+            logger.log_vio_update(
+                t=float(i) * 0.2, nis=0.8 + i * 0.1,
+                innov_mag=0.08 + i * 0.01, trace_P=0.04,
+                vio_mode="NOMINAL", dt_since_vio=0.0,
+                drift_envelope_m=None, innovation_spike_alert=False,
+                error_m=0.09, ba_est=[0.0, 0.0, 0.0]
+            )
+
+        # Log one rejection
+        logger.log_rejection(t=0.5, nis=12.5, innov_mag=2.1)
+
+        logger.close()
 
         assert out_path.exists(), "FusionLogger.close() did not write output file"
 
         with open(out_path) as f:
             doc = json.load(f)
 
-        # All 8 O-signals must be present
-        for signal_key in [
-            "O-01_update_sequence",
-            "O-02_nis_time_series",
-            "O-03_cov_trace",
-            "O-04_ate",
-            "O-05_r_matrix",
-            "O-06_message_rate",
-            "O-07_ifm_events",
-            "O-08_time_offset",
-        ]:
-            assert signal_key in doc, f"Missing signal '{signal_key}' in JSON output"
-
+        assert doc["summary"]["schema"] == "08.1"
         assert doc["summary"]["n_vio_updates"] == 3
         assert doc["summary"]["n_rejections"] == 1
         assert doc["summary"]["n_propagations"] == 5
-        assert abs(doc["summary"]["nis_mean"] - 0.9) < 0.01
+        assert "vel_err_note" in doc["summary"]
+        assert "drift_envelope_note" in doc["summary"]
 
-        # O-07 present even with zero events
-        assert isinstance(doc["O-07_ifm_events"], list)
+        # Verify entry types are present
+        types = {e["type"] for e in doc["time_series"]}
+        assert "PROPAGATE" in types
+        assert "VIO_UPDATE" in types
+        assert "REJECTION" in types
 
     def test_invalid_update_type_raises(self):
+        """Schema 08.1: unsupported log call raises AttributeError (no log_update method)."""
         logger = FusionLogger()
-        with pytest.raises(ValueError, match="update_type must be one of"):
-            logger.log_update(0.0, "GNSS_UPDATE")
+        with pytest.raises(AttributeError):
+            logger.log_update(0.0, "GNSS_UPDATE")  # old API — must not exist
