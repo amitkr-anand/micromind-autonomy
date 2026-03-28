@@ -140,6 +140,11 @@ class MAVLinkBridge:
         self._t_mon:  Optional[threading.Thread] = None
         self._stop_event = threading.Event()
 
+        # ACK signalling — T-MON sets these, main thread waits
+        self._ack_event = threading.Event()
+        self._last_ack:  dict = {}
+        self._ack_lock   = threading.Lock()
+
         # Mode monitoring
         self._last_hb_t:      float = 0.0
         self._last_custom_mode: int = 0
@@ -421,12 +426,24 @@ class MAVLinkBridge:
                         result_str=str(msg.result),
                         latency_ms=0.0,
                     )
+                    with self._ack_lock:
+                        self._last_ack = {'command': msg.command, 'result': msg.result}
+                    self._ack_event.set()
             except Exception:
                 continue
 
     # ------------------------------------------------------------------
     # OFFBOARD engagement sequence (FM-2, FM-6, FM-7)
     # ------------------------------------------------------------------
+
+    def _wait_for_ack(self, timeout_s: float = 5.0) -> dict:
+        """Wait for COMMAND_ACK signalled by T-MON. Non-blocking main thread wait."""
+        self._ack_event.clear()
+        fired = self._ack_event.wait(timeout=timeout_s)
+        if not fired:
+            return {}
+        with self._ack_lock:
+            return dict(self._last_ack)
 
     def arm_and_offboard(
         self,
