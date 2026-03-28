@@ -1006,3 +1006,112 @@ class TestSimSDRDriver:
         if r.observations:
             result = engine.process_observations(r.observations, r.mission_time_s)
             assert result is not None or result is None   # either is valid
+
+
+# ---------------------------------------------------------------------------
+# Real driver stub conformance — all five stubs follow identical pattern
+# ---------------------------------------------------------------------------
+
+from integration.drivers.base import DriverHealth, DriverReadError
+
+
+class TestRealDriverStubs:
+    """Conformance gates for all five Real driver stubs."""
+
+    def _check_stub(self, driver_cls, stale_s=1.0):
+        """Shared conformance checks for any Real stub."""
+        import pytest
+        d = driver_cls(stale_threshold_s=stale_s)
+        # health() must return FAILED
+        assert d.health() == DriverHealth.FAILED
+        # last_update_time() must return 0.0
+        assert d.last_update_time() == 0.0
+        # is_stale() must return True
+        assert d.is_stale() is True
+        # source_type() must return 'real'
+        assert d.source_type() == 'real'
+        # read() must raise DriverReadError
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        # Error message must contain interface path
+        assert len(str(exc_info.value)) > 20
+        # close() must be idempotent
+        d.close()
+        d.close()
+        return d
+
+    def test_G_REAL_01_real_imu_driver(self):
+        """G-REAL-01: RealIMUDriver stub conforms to contract."""
+        from integration.drivers.real_imu import RealIMUDriver
+        d = self._check_stub(RealIMUDriver)
+        # Error message must mention SPI interface
+        import pytest
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        assert "SPI" in str(exc_info.value) or "spi" in str(exc_info.value).lower()
+
+    def test_G_REAL_02_real_gnss_driver(self):
+        """G-REAL-02: RealGNSSDriver stub conforms to contract."""
+        from integration.drivers.real_gnss import RealGNSSDriver
+        d = self._check_stub(RealGNSSDriver)
+        import pytest
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        assert "ttyUSB" in str(exc_info.value) or "UART" in str(exc_info.value)
+
+    def test_G_REAL_03_real_radalt_driver(self):
+        """G-REAL-03: RealRADALTDriver stub conforms to contract."""
+        from integration.drivers.real_radalt import RealRADALTDriver
+        d = self._check_stub(RealRADALTDriver)
+        import pytest
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        assert "RADALT" in str(exc_info.value)
+
+    def test_G_REAL_04_real_eoir_driver(self):
+        """G-REAL-04: RealEOIRDriver stub conforms to contract."""
+        from integration.drivers.real_eoir import RealEOIRDriver
+        d = self._check_stub(RealEOIRDriver)
+        import pytest
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        assert "MIPI" in str(exc_info.value) or "USB" in str(exc_info.value)
+
+    def test_G_REAL_05_real_sdr_driver(self):
+        """G-REAL-05: RealSDRDriver stub conforms to contract."""
+        from integration.drivers.real_sdr import RealSDRDriver
+        d = self._check_stub(RealSDRDriver)
+        import pytest
+        with pytest.raises(DriverReadError) as exc_info:
+            d.read()
+        assert "SDR" in str(exc_info.value)
+
+    def test_G_REAL_06_real_imu_is_imu_driver_subclass(self):
+        """G-REAL-06: RealIMUDriver is IMUDriver subclass."""
+        from integration.drivers.real_imu import RealIMUDriver
+        from integration.drivers.imu import IMUDriver
+        assert issubclass(RealIMUDriver, IMUDriver)
+
+    def test_G_REAL_07_real_gnss_is_gnss_driver_subclass(self):
+        """G-REAL-07: RealGNSSDriver is GNSSDriver subclass."""
+        from integration.drivers.real_gnss import RealGNSSDriver
+        from integration.drivers.gnss import GNSSDriver
+        assert issubclass(RealGNSSDriver, GNSSDriver)
+
+    def test_G_REAL_08_real_radalt_is_radalt_driver_subclass(self):
+        """G-REAL-08: RealRADALTDriver is RADALTDriver subclass."""
+        from integration.drivers.real_radalt import RealRADALTDriver
+        from integration.drivers.radalt import RADALTDriver
+        assert issubclass(RealRADALTDriver, RADALTDriver)
+
+    def test_G_REAL_09_real_eoir_is_eoir_driver_subclass(self):
+        """G-REAL-09: RealEOIRDriver is EOIRDriver subclass."""
+        from integration.drivers.real_eoir import RealEOIRDriver
+        from integration.drivers.eoir import EOIRDriver
+        assert issubclass(RealEOIRDriver, EOIRDriver)
+
+    def test_G_REAL_10_real_sdr_is_sensor_driver_subclass(self):
+        """G-REAL-10: RealSDRDriver is SensorDriver subclass."""
+        from integration.drivers.real_sdr import RealSDRDriver
+        from integration.drivers.base import SensorDriver
+        assert issubclass(RealSDRDriver, SensorDriver)
