@@ -738,3 +738,85 @@ class TestSimGNSSDriver:
         """G-SGNSS-14: SimGNSSDriver is a GNSSDriver subclass."""
         from integration.drivers.gnss import GNSSDriver
         assert issubclass(SimGNSSDriver, GNSSDriver)
+
+
+# ---------------------------------------------------------------------------
+# SimRADALTDriver conformance
+# ---------------------------------------------------------------------------
+
+import math as _math
+from integration.drivers.sim_radalt import SimRADALTDriver
+from integration.drivers.radalt import RADALTReading
+from integration.drivers.base import DriverHealth, DriverReadError
+from core.ins.trn_stub import DEMProvider as _DEMProvider
+
+
+class TestSimRADALTDriver:
+    def test_G_SRALT_01_instantiates(self):
+        """G-SRALT-01: SimRADALTDriver instantiates with defaults."""
+        assert SimRADALTDriver() is not None
+
+    def test_G_SRALT_02_source_type_is_sim(self):
+        """G-SRALT-02: source_type() returns 'sim'."""
+        assert SimRADALTDriver().source_type() == 'sim'
+
+    def test_G_SRALT_03_read_returns_radalt_reading(self):
+        """G-SRALT-03: read() returns RADALTReading instance."""
+        d = SimRADALTDriver(seed=42)
+        assert isinstance(d.read(), RADALTReading)
+
+    def test_G_SRALT_04_health_ok_after_read(self):
+        """G-SRALT-04: health() returns OK after first read."""
+        d = SimRADALTDriver(seed=42)
+        assert d.health() == DriverHealth.DEGRADED
+        d.read()
+        assert d.health() == DriverHealth.OK
+
+    def test_G_SRALT_05_valid_agl_above_terrain(self):
+        """G-SRALT-05: vehicle well above terrain gives valid positive AGL."""
+        d = SimRADALTDriver(seed=42)
+        r = d.read(north_m=0.0, east_m=0.0, vehicle_alt_amsl_m=500.0)
+        assert r.validity_flag is True
+        assert r.alt_agl_m > 0.0
+        assert _math.isfinite(r.alt_agl_m)
+
+    def test_G_SRALT_06_invalid_below_terrain(self):
+        """G-SRALT-06: vehicle below terrain gives validity_flag=False."""
+        d = SimRADALTDriver(seed=42)
+        r = d.read(north_m=0.0, east_m=0.0, vehicle_alt_amsl_m=0.0)
+        assert r.validity_flag is False
+        assert _math.isnan(r.alt_agl_m)
+
+    def test_G_SRALT_07_agl_decreases_as_altitude_drops(self):
+        """G-SRALT-07: AGL decreases as vehicle altitude decreases."""
+        d = SimRADALTDriver(seed=42)
+        r_high = d.read(north_m=0.0, east_m=0.0, vehicle_alt_amsl_m=500.0)
+        r_low  = d.read(north_m=0.0, east_m=0.0, vehicle_alt_amsl_m=300.0)
+        assert r_high.alt_agl_m > r_low.alt_agl_m
+
+    def test_G_SRALT_08_deterministic_same_seed(self):
+        """G-SRALT-08: same seed and position gives same AGL."""
+        d1 = SimRADALTDriver(seed=7)
+        d2 = SimRADALTDriver(seed=7)
+        r1 = d1.read(north_m=100.0, east_m=200.0, vehicle_alt_amsl_m=400.0)
+        r2 = d2.read(north_m=100.0, east_m=200.0, vehicle_alt_amsl_m=400.0)
+        assert r1.alt_agl_m == r2.alt_agl_m
+
+    def test_G_SRALT_09_read_after_close_raises(self):
+        """G-SRALT-09: read() after close() raises DriverReadError."""
+        import pytest
+        d = SimRADALTDriver(seed=42)
+        d.close()
+        with pytest.raises(DriverReadError):
+            d.read()
+
+    def test_G_SRALT_10_close_is_idempotent(self):
+        """G-SRALT-10: close() can be called multiple times."""
+        d = SimRADALTDriver(seed=42)
+        d.close()
+        d.close()
+
+    def test_G_SRALT_11_is_radalt_driver_subclass(self):
+        """G-SRALT-11: SimRADALTDriver is a RADALTDriver subclass."""
+        from integration.drivers.radalt import RADALTDriver
+        assert issubclass(SimRADALTDriver, RADALTDriver)
