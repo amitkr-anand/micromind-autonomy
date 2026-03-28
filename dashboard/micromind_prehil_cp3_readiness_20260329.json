@@ -1,0 +1,38 @@
+{
+  "programme": "MicroMind Pre-HIL",
+  "date": "2026-03-29",
+  "basis": "micromind-autonomy @ 65ddd2c",
+  "cp3_declared": true,
+  "sil_gates": "332/332",
+  "integration_gates": "228/228",
+  "rc_status": {
+    "RC-1": "PASS",
+    "RC-2": "PASS",
+    "RC-3": "PASS",
+    "RC-4": "PASS",
+    "RC-5": "PASS",
+    "RC-6": "PASS",
+    "RC-7": "PASS",
+    "RC-8": "PASS",
+    "RC-9": "PASS",
+    "RC-10": "PASS",
+    "RC-11": "PASS",
+    "RC-11a": "PASS",
+    "RC-11b": "PASS",
+    "RC-11c": "PASS",
+    "RC-11d": "PASS",
+    "RC-11e": "PASS"
+  },
+  "rc8_jetson_note": "PASS \u2014 drop_rate=0.000% under renice +10",
+  "gazebo_rendering": "PASS \u2014 NVIDIA EGL fix applied to px4-rc.gzsim",
+  "mark_send_native": "PASS \u2014 commit 808c53f",
+  "demo_readiness_ladder": {
+    "DR-1": "PASS",
+    "DR-2": "PASS",
+    "DR-3": "PENDING",
+    "DR-4": "PENDING",
+    "DR-5": "PENDING",
+    "DR-6": "PENDING"
+  },
+  "next_phase": "Phase 4 \u2014 run_demo.sh, overlays, screen recording"
+}
