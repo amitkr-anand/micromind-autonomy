@@ -532,3 +532,101 @@ class TestEOIRDriverABC:
         """G-EOIR-11: EOIRDriver is a SensorDriver subclass."""
         from integration.drivers.base import SensorDriver
         assert issubclass(EOIRDriver, SensorDriver)
+
+
+# ---------------------------------------------------------------------------
+# SimIMUDriver conformance
+# ---------------------------------------------------------------------------
+
+import math as _math
+from integration.drivers.sim_imu import SimIMUDriver
+from integration.drivers.imu import IMUReading
+from integration.drivers.base import DriverHealth, DriverReadError
+
+
+class TestSimIMUDriver:
+    def test_G_SIMU_01_instantiates_stim300(self):
+        """G-SIMU-01: SimIMUDriver instantiates with STIM300."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=1000)
+        assert d is not None
+
+    def test_G_SIMU_02_instantiates_adis16505_3(self):
+        """G-SIMU-02: SimIMUDriver instantiates with ADIS16505_3."""
+        d = SimIMUDriver(imu_type="ADIS16505_3", seed=0, n_steps=1000)
+        assert d is not None
+
+    def test_G_SIMU_03_instantiates_baseline(self):
+        """G-SIMU-03: SimIMUDriver instantiates with BASELINE."""
+        d = SimIMUDriver(imu_type="BASELINE", seed=1, n_steps=1000)
+        assert d is not None
+
+    def test_G_SIMU_04_unknown_type_raises(self):
+        """G-SIMU-04: unknown imu_type raises ValueError at construction."""
+        import pytest
+        with pytest.raises(ValueError, match="unknown imu_type"):
+            SimIMUDriver(imu_type="UNKNOWN_IMU", seed=42)
+
+    def test_G_SIMU_05_source_type_is_sim(self):
+        """G-SIMU-05: source_type() returns 'sim'."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        assert d.source_type() == 'sim'
+
+    def test_G_SIMU_06_read_returns_imu_reading(self):
+        """G-SIMU-06: read() returns IMUReading instance."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        r = d.read()
+        assert isinstance(r, IMUReading)
+
+    def test_G_SIMU_07_health_ok_after_read(self):
+        """G-SIMU-07: health() returns OK after first successful read."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        assert d.health() == DriverHealth.DEGRADED   # before first read
+        d.read()
+        assert d.health() == DriverHealth.OK
+
+    def test_G_SIMU_08_reading_fields_are_finite(self):
+        """G-SIMU-08: accel and gyro values are finite floats."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        r = d.read()
+        assert all(_math.isfinite(v) for v in r.accel_mss)
+        assert all(_math.isfinite(v) for v in r.gyro_rads)
+
+    def test_G_SIMU_09_temp_is_nan(self):
+        """G-SIMU-09: temp_c is NaN (imu_model does not simulate temperature)."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        r = d.read()
+        assert _math.isnan(r.temp_c)
+
+    def test_G_SIMU_10_deterministic_with_same_seed(self):
+        """G-SIMU-10: identical seeds produce identical readings."""
+        d1 = SimIMUDriver(imu_type="STIM300", seed=99, n_steps=100)
+        d2 = SimIMUDriver(imu_type="STIM300", seed=99, n_steps=100)
+        r1, r2 = d1.read(), d2.read()
+        assert r1.accel_mss == r2.accel_mss
+        assert r1.gyro_rads == r2.gyro_rads
+
+    def test_G_SIMU_11_different_seeds_differ(self):
+        """G-SIMU-11: different seeds produce different readings."""
+        d1 = SimIMUDriver(imu_type="STIM300", seed=1, n_steps=100)
+        d2 = SimIMUDriver(imu_type="STIM300", seed=2, n_steps=100)
+        r1, r2 = d1.read(), d2.read()
+        assert r1.accel_mss != r2.accel_mss or r1.gyro_rads != r2.gyro_rads
+
+    def test_G_SIMU_12_read_after_close_raises(self):
+        """G-SIMU-12: read() after close() raises DriverReadError."""
+        import pytest
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        d.close()
+        with pytest.raises(DriverReadError):
+            d.read()
+
+    def test_G_SIMU_13_close_is_idempotent(self):
+        """G-SIMU-13: close() can be called multiple times without raising."""
+        d = SimIMUDriver(imu_type="STIM300", seed=42, n_steps=100)
+        d.close()
+        d.close()
+
+    def test_G_SIMU_14_is_imu_driver_subclass(self):
+        """G-SIMU-14: SimIMUDriver is an IMUDriver subclass."""
+        from integration.drivers.imu import IMUDriver
+        assert issubclass(SimIMUDriver, IMUDriver)
