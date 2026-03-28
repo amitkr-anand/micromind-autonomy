@@ -36,6 +36,7 @@ from sim.gnss_spoof_injector import GNSSMeasurement, NominalGNSSState
 
 from integration.config.mission_config import MissionConfig
 from integration.drivers.factory import DriverFactory
+from integration.pipeline.latency_monitor import LatencyMonitor
 from integration.drivers.base import DriverHealth
 
 
@@ -144,6 +145,9 @@ class LivePipeline:
             bg=np.zeros(3),
         )
 
+        # Latency monitor — attach externally before start()
+        self.latency_monitor: 'LatencyMonitor | None' = None
+
         # Setpoint queue (non-blocking, bounded — ADR-0 v1.1 / ADD-08)
         if setpoint_queue is not None:
             self._setpoint_queue = setpoint_queue
@@ -230,6 +234,12 @@ class LivePipeline:
 
             try:
                 # 1. IMU read
+                if self.latency_monitor:
+                    self.latency_monitor.begin_step(
+                        step=self._loop_count,
+                        imu_stale=self._imu.is_stale(),
+                        vio_mode=self._vio_nav.current_mode.name,
+                    )
                 imu_reading = self._imu.read()
                 accel = np.array(imu_reading.accel_mss)
                 gyro  = np.array(imu_reading.gyro_rads)
@@ -239,6 +249,9 @@ class LivePipeline:
 
                 # 3. ESKF propagation
                 self._eskf.propagate(self._state, accel, self._dt_s)
+
+                if self.latency_monitor:
+                    self.latency_monitor.mark_eskf()
 
                 # 4. VIO navigation mode tick
                 self._vio_nav.tick(self._dt_s)
@@ -256,6 +269,9 @@ class LivePipeline:
                 with self._lock:
                     self._loop_count += 1
                     self._last_loop_t = time.monotonic()
+
+                if self.latency_monitor:
+                    self.latency_monitor.mark_decision()
 
             except Exception:
                 # Never crash T-NAV — log and continue
