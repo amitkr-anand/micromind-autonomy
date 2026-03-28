@@ -83,3 +83,149 @@ class TestTimeReference:
         """G-TREF-09: monotonic_s() starts near zero (within 1s of construction)."""
         ref = TimeReference()
         assert ref.monotonic_s() < 1.0
+
+
+# ---------------------------------------------------------------------------
+# BridgeLogger tests
+# ---------------------------------------------------------------------------
+
+import json, os, time, tempfile, threading
+from integration.bridge.bridge_logger import BridgeLogger, BridgeLogEntry
+
+
+class TestBridgeLogger:
+    def _make_logger(self, tmp_path_str):
+        return BridgeLogger(log_path=tmp_path_str, source_type='sim')
+
+    def test_G_BLOG_01_instantiates(self):
+        """G-BLOG-01: BridgeLogger instantiates."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            assert BridgeLogger(f.name) is not None
+            os.unlink(f.name)
+
+    def test_G_BLOG_02_start_stop(self):
+        """G-BLOG-02: start() and stop() complete without error."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            path = f.name
+        logger = BridgeLogger(path, source_type='sim')
+        logger.start()
+        logger.stop()
+        os.unlink(path)
+
+    def test_G_BLOG_03_t_log_is_daemon(self):
+        """G-BLOG-03: T-LOG thread is a daemon thread."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            path = f.name
+        logger = BridgeLogger(path)
+        logger.start()
+        t_log = next((t for t in threading.enumerate() if t.name == 'T-LOG'), None)
+        assert t_log is not None
+        assert t_log.daemon is True
+        logger.stop()
+        os.unlink(path)
+
+    def test_G_BLOG_04_log_writes_entries(self):
+        """G-BLOG-04: log() entries appear in JSON-lines file."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode='w') as f:
+            path = f.name
+        logger = BridgeLogger(path, source_type='sim')
+        logger.start()
+        logger.log("HEARTBEAT", "RX", seq=1, base_mode=29)
+        logger.log("SET_POSITION_TARGET_LOCAL_NED", "TX", seq=2, x_m=0.)
+        time.sleep(0.2)
+        logger.stop()
+        lines = open(path).readlines()
+        assert len(lines) >= 2
+        first = json.loads(lines[0])
+        assert first['msg_type'] == 'HEARTBEAT'
+        assert first['direction'] == 'RX'
+        assert first['source_type'] == 'sim'
+        assert 't_monotonic' in first
+        os.unlink(path)
+
+    def test_G_BLOG_05_required_fields_present(self):
+        """G-BLOG-05: all five required fields present in every entry."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode='w') as f:
+            path = f.name
+        logger = BridgeLogger(path, source_type='real')
+        logger.start()
+        logger.log("HEARTBEAT", "RX", seq=5)
+        time.sleep(0.2)
+        logger.stop()
+        entry = json.loads(open(path).readline())
+        for field in ['t_monotonic', 'msg_type', 'direction', 'seq', 'source_type']:
+            assert field in entry, f"Missing field: {field}"
+        os.unlink(path)
+
+    def test_G_BLOG_06_heartbeat_rx_fields(self):
+        """G-BLOG-06: log_heartbeat_rx() writes required fields."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode='w') as f:
+            path = f.name
+        logger = BridgeLogger(path)
+        logger.start()
+        logger.log_heartbeat_rx(base_mode=29, custom_mode=393216,
+                                 system_status=4, mavlink_version=3,
+                                 target_system=1, target_component=0, seq=1)
+        time.sleep(0.2)
+        logger.stop()
+        entry = json.loads(open(path).readline())
+        assert entry['msg_type'] == 'HEARTBEAT'
+        assert entry['custom_mode'] == 393216
+        assert entry['derived_target_system'] == 1
+        assert entry['derived_target_component'] == 0
+        os.unlink(path)
+
+    def test_G_BLOG_07_setpoint_tx_fields(self):
+        """G-BLOG-07: log_setpoint_tx() writes NED fields + coordinate_frame."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode='w') as f:
+            path = f.name
+        logger = BridgeLogger(path)
+        logger.start()
+        logger.log_setpoint_tx(x_m=10., y_m=5., z_m=-3., setpoint_hz=20.0)
+        time.sleep(0.2)
+        logger.stop()
+        entry = json.loads(open(path).readline())
+        assert entry['x_m'] == 10.
+        assert entry['z_m'] == -3.
+        assert entry['coordinate_frame'] == 1
+        assert entry['setpoint_hz'] == 20.0
+        os.unlink(path)
+
+    def test_G_BLOG_08_drop_count_increments_when_full(self):
+        """G-BLOG-08: drop_count increments when queue is full."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            path = f.name
+        logger = BridgeLogger(path, queue_maxsize=2)
+        # Do NOT start — queue fills immediately
+        for _ in range(10):
+            logger.log("HEARTBEAT", "RX")
+        assert logger.drop_count > 0
+        os.unlink(path)
+
+    def test_G_BLOG_09_time_ref_used_when_provided(self):
+        """G-BLOG-09: BridgeLogger uses TimeReference.monotonic_s() when provided."""
+        from integration.bridge.time_reference import TimeReference
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False, mode='w') as f:
+            path = f.name
+        ref = TimeReference()
+        logger = BridgeLogger(path, time_ref=ref)
+        logger.start()
+        logger.log("HEARTBEAT", "RX")
+        time.sleep(0.2)
+        logger.stop()
+        entry = json.loads(open(path).readline())
+        assert entry['t_monotonic'] >= 0.0
+        assert entry['t_monotonic'] < 5.0   # within 5s of process start
+        os.unlink(path)
+
+    def test_G_BLOG_10_start_idempotent(self):
+        """G-BLOG-10: start() is idempotent — safe to call twice."""
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            path = f.name
+        logger = BridgeLogger(path)
+        logger.start()
+        logger.start()
+        t_logs = [t for t in threading.enumerate() if t.name == 'T-LOG']
+        assert len(t_logs) == 1
+        logger.stop()
+        os.unlink(path)
