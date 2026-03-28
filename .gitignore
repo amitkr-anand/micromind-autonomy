@@ -42,3 +42,5 @@ trn_stub_ncc_patch.py
 validate_100km_threading.py
 logs/s10_*.log
 logs/als250_*.log
+__pycache__/
+*.pyc
