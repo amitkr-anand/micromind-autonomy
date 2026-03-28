@@ -237,3 +237,106 @@ class TestIMUDriverABC:
         """G-IMU-10: IMUDriver is a SensorDriver subclass."""
         from integration.drivers.base import SensorDriver
         assert issubclass(IMUDriver, SensorDriver)
+
+
+# ---------------------------------------------------------------------------
+# GNSSDriver ABC conformance
+# ---------------------------------------------------------------------------
+
+from integration.drivers.gnss import GNSSDriver, GNSSReading, GNSSFixType
+import math as _math
+
+
+class _ConcreteGNSSDriver(GNSSDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return self._last_update_time
+    def is_stale(self): return self._default_is_stale()
+    def source_type(self): return 'sim'
+    def read(self) -> GNSSReading:
+        self._record_successful_read()
+        return GNSSReading(
+            lat=28.6139, lon=77.2090, alt=216.0,
+            hdop=1.2, fix_type=GNSSFixType.FIX_3D,
+            t=self._last_update_time,
+        )
+    def close(self): pass
+
+
+class _PartialGNSSDriver(GNSSDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return 0.0
+    def is_stale(self): return True
+    def source_type(self): return 'sim'
+
+
+class TestGNSSFixType:
+    def test_G_GNSS_01_fix_type_values(self):
+        """G-GNSS-01: GNSSFixType has expected members and MAVLink-aligned values."""
+        assert GNSSFixType.NO_GPS    == 0
+        assert GNSSFixType.NO_FIX   == 1
+        assert GNSSFixType.FIX_2D   == 2
+        assert GNSSFixType.FIX_3D   == 3
+        assert GNSSFixType.DGPS     == 4
+        assert GNSSFixType.RTK_FLOAT == 5
+        assert GNSSFixType.RTK_FIXED == 6
+
+
+class TestGNSSReading:
+    def test_G_GNSS_02_is_frozen_dataclass(self):
+        """G-GNSS-02: GNSSReading is immutable."""
+        import pytest
+        r = GNSSReading(lat=0., lon=0., alt=0., hdop=1., fix_type=GNSSFixType.FIX_3D, t=0.)
+        with pytest.raises((AttributeError, TypeError)):
+            r.lat = 1.0
+
+    def test_G_GNSS_03_fields_accessible(self):
+        """G-GNSS-03: all six fields accessible by name."""
+        r = GNSSReading(lat=28.6, lon=77.2, alt=216., hdop=1.2,
+                        fix_type=GNSSFixType.FIX_3D, t=5.0)
+        assert r.lat == 28.6
+        assert r.lon == 77.2
+        assert r.alt == 216.0
+        assert r.hdop == 1.2
+        assert r.fix_type == GNSSFixType.FIX_3D
+        assert r.t == 5.0
+
+    def test_G_GNSS_04_nan_hdop_allowed(self):
+        """G-GNSS-04: hdop=nan is valid when HDOP not available."""
+        r = GNSSReading(lat=0., lon=0., alt=0., hdop=float('nan'),
+                        fix_type=GNSSFixType.NO_FIX, t=0.)
+        assert _math.isnan(r.hdop)
+
+
+class TestGNSSDriverABC:
+    def test_G_GNSS_05_cannot_instantiate_directly(self):
+        """G-GNSS-05: GNSSDriver is abstract."""
+        import pytest
+        with pytest.raises(TypeError):
+            GNSSDriver(stale_threshold_s=0.2)
+
+    def test_G_GNSS_06_partial_rejected(self):
+        """G-GNSS-06: partial GNSSDriver implementation rejected."""
+        import pytest
+        with pytest.raises(TypeError):
+            _PartialGNSSDriver(stale_threshold_s=0.2)
+
+    def test_G_GNSS_07_concrete_instantiates(self):
+        """G-GNSS-07: concrete GNSSDriver instantiates cleanly."""
+        assert _ConcreteGNSSDriver(stale_threshold_s=0.2) is not None
+
+    def test_G_GNSS_08_read_returns_gnss_reading(self):
+        """G-GNSS-08: read() returns GNSSReading instance."""
+        d = _ConcreteGNSSDriver(stale_threshold_s=0.2)
+        assert isinstance(d.read(), GNSSReading)
+
+    def test_G_GNSS_09_read_updates_timestamp(self):
+        """G-GNSS-09: read() updates last_update_time."""
+        d = _ConcreteGNSSDriver(stale_threshold_s=0.2)
+        assert d.last_update_time() == 0.0
+        d.read()
+        assert d.last_update_time() > 0.0
+
+    def test_G_GNSS_10_is_sensor_driver_subclass(self):
+        """G-GNSS-10: GNSSDriver is a SensorDriver subclass."""
+        from integration.drivers.base import SensorDriver
+        assert issubclass(GNSSDriver, SensorDriver)
