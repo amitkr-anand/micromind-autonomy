@@ -428,3 +428,107 @@ class TestRADALTDriverABC:
         """G-RADALT-10: RADALTDriver is a SensorDriver subclass."""
         from integration.drivers.base import SensorDriver
         assert issubclass(RADALTDriver, SensorDriver)
+
+
+# ---------------------------------------------------------------------------
+# EOIRDriver ABC conformance
+# ---------------------------------------------------------------------------
+
+import numpy as _np
+from integration.drivers.eoir import EOIRDriver, EOIRFrame
+
+
+class _ConcreteEOIRDriver(EOIRDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return self._last_update_time
+    def is_stale(self): return self._default_is_stale()
+    def source_type(self): return 'sim'
+    def read(self) -> EOIRFrame:
+        self._record_successful_read()
+        frame = _np.zeros((64, 64), dtype=_np.uint16)
+        return EOIRFrame(frame_data=frame, width=64, height=64,
+                         validity_flag=True, t=self._last_update_time)
+    def close(self): pass
+
+
+class _PartialEOIRDriver(EOIRDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return 0.0
+    def is_stale(self): return True
+    def source_type(self): return 'sim'
+
+
+class TestEOIRFrame:
+    def test_G_EOIR_01_valid_frame_fields(self):
+        """G-EOIR-01: all five fields accessible on a valid frame."""
+        frame = _np.zeros((64, 64), dtype=_np.uint16)
+        f = EOIRFrame(frame_data=frame, width=64, height=64,
+                      validity_flag=True, t=1.0)
+        assert f.width == 64
+        assert f.height == 64
+        assert f.validity_flag is True
+        assert f.t == 1.0
+        assert f.frame_data is frame
+
+    def test_G_EOIR_02_invalid_frame_none_data(self):
+        """G-EOIR-02: frame_data=None with validity_flag=False is valid."""
+        f = EOIRFrame(frame_data=None, width=0, height=0,
+                      validity_flag=False, t=0.0)
+        assert f.frame_data is None
+        assert f.validity_flag is False
+
+    def test_G_EOIR_03_validity_flag_is_bool(self):
+        """G-EOIR-03: validity_flag type is bool."""
+        f = EOIRFrame(frame_data=None, width=0, height=0,
+                      validity_flag=False, t=0.0)
+        assert isinstance(f.validity_flag, bool)
+
+    def test_G_EOIR_04_thermal_frame_dtype(self):
+        """G-EOIR-04: thermal frame uses uint16 dtype."""
+        frame = _np.zeros((64, 64), dtype=_np.uint16)
+        f = EOIRFrame(frame_data=frame, width=64, height=64,
+                      validity_flag=True, t=0.0)
+        assert f.frame_data.dtype == _np.uint16
+
+    def test_G_EOIR_05_colour_frame_dtype(self):
+        """G-EOIR-05: colour frame uses uint8 dtype with 3 channels."""
+        frame = _np.zeros((64, 64, 3), dtype=_np.uint8)
+        f = EOIRFrame(frame_data=frame, width=64, height=64,
+                      validity_flag=True, t=0.0)
+        assert f.frame_data.dtype == _np.uint8
+        assert f.frame_data.shape == (64, 64, 3)
+
+
+class TestEOIRDriverABC:
+    def test_G_EOIR_06_cannot_instantiate_directly(self):
+        """G-EOIR-06: EOIRDriver is abstract."""
+        import pytest
+        with pytest.raises(TypeError):
+            EOIRDriver(stale_threshold_s=0.04)
+
+    def test_G_EOIR_07_partial_rejected(self):
+        """G-EOIR-07: partial EOIRDriver implementation rejected."""
+        import pytest
+        with pytest.raises(TypeError):
+            _PartialEOIRDriver(stale_threshold_s=0.04)
+
+    def test_G_EOIR_08_concrete_instantiates(self):
+        """G-EOIR-08: concrete EOIRDriver instantiates cleanly."""
+        assert _ConcreteEOIRDriver(stale_threshold_s=0.04) is not None
+
+    def test_G_EOIR_09_read_returns_eoir_frame(self):
+        """G-EOIR-09: read() returns EOIRFrame instance."""
+        d = _ConcreteEOIRDriver(stale_threshold_s=0.04)
+        assert isinstance(d.read(), EOIRFrame)
+
+    def test_G_EOIR_10_read_updates_timestamp(self):
+        """G-EOIR-10: read() updates last_update_time."""
+        d = _ConcreteEOIRDriver(stale_threshold_s=0.04)
+        assert d.last_update_time() == 0.0
+        d.read()
+        assert d.last_update_time() > 0.0
+
+    def test_G_EOIR_11_is_sensor_driver_subclass(self):
+        """G-EOIR-11: EOIRDriver is a SensorDriver subclass."""
+        from integration.drivers.base import SensorDriver
+        assert issubclass(EOIRDriver, SensorDriver)
