@@ -1115,3 +1115,128 @@ class TestRealDriverStubs:
         from integration.drivers.real_sdr import RealSDRDriver
         from integration.drivers.base import SensorDriver
         assert issubclass(RealSDRDriver, SensorDriver)
+
+
+# ---------------------------------------------------------------------------
+# MissionConfig + DriverFactory conformance
+# ---------------------------------------------------------------------------
+
+from integration.config.mission_config import MissionConfig, StaleThresholds
+from integration.drivers.factory import DriverFactory
+from integration.drivers.imu import IMUDriver
+from integration.drivers.gnss import GNSSDriver
+from integration.drivers.radalt import RADALTDriver
+from integration.drivers.eoir import EOIRDriver
+from integration.drivers.base import SensorDriver
+
+
+class TestMissionConfig:
+    def test_G_CFG_01_default_instantiates(self):
+        """G-CFG-01: MissionConfig instantiates with all-sim defaults."""
+        cfg = MissionConfig()
+        assert cfg.imu_source == 'sim'
+        assert cfg.gnss_source == 'sim'
+        assert cfg.px4_output == 'sim'
+
+    def test_G_CFG_02_validate_passes_all_sim(self):
+        """G-CFG-02: validate() passes for all-sim config."""
+        MissionConfig().validate()   # must not raise
+
+    def test_G_CFG_03_invalid_source_raises(self):
+        """G-CFG-03: invalid source string raises ValueError."""
+        import pytest
+        cfg = MissionConfig(imu_source='hardware')
+        with pytest.raises(ValueError, match="imu_source"):
+            cfg.validate()
+
+    def test_G_CFG_04_invalid_imu_type_raises(self):
+        """G-CFG-04: invalid imu_type raises ValueError."""
+        import pytest
+        cfg = MissionConfig(imu_type='UNKNOWN')
+        with pytest.raises(ValueError, match="imu_type"):
+            cfg.validate()
+
+    def test_G_CFG_05_stale_thresholds_defaults(self):
+        """G-CFG-05: StaleThresholds defaults are positive."""
+        s = StaleThresholds()
+        assert s.imu_s    > 0
+        assert s.gnss_s   > 0
+        assert s.radalt_s > 0
+        assert s.eoir_s   > 0
+        assert s.sdr_s    > 0
+
+    def test_G_CFG_06_real_source_is_valid(self):
+        """G-CFG-06: all-real config passes validate()."""
+        cfg = MissionConfig(
+            imu_source='real', gnss_source='real',
+            radalt_source='real', eoir_source='real',
+            sdr_source='real', px4_output='real'
+        )
+        cfg.validate()   # must not raise
+
+
+class TestDriverFactory:
+    def test_G_FAC_01_instantiates_with_valid_config(self):
+        """G-FAC-01: DriverFactory instantiates with valid MissionConfig."""
+        assert DriverFactory(MissionConfig()) is not None
+
+    def test_G_FAC_02_invalid_config_raises_at_construction(self):
+        """G-FAC-02: DriverFactory raises ValueError on invalid config."""
+        import pytest
+        with pytest.raises(ValueError):
+            DriverFactory(MissionConfig(imu_source='bad'))
+
+    def test_G_FAC_03_make_imu_returns_imu_driver(self):
+        """G-FAC-03: make_imu() returns IMUDriver instance."""
+        f = DriverFactory(MissionConfig())
+        assert isinstance(f.make_imu(), IMUDriver)
+
+    def test_G_FAC_04_make_gnss_returns_gnss_driver(self):
+        """G-FAC-04: make_gnss() returns GNSSDriver instance."""
+        f = DriverFactory(MissionConfig())
+        assert isinstance(f.make_gnss(), GNSSDriver)
+
+    def test_G_FAC_05_make_radalt_returns_radalt_driver(self):
+        """G-FAC-05: make_radalt() returns RADALTDriver instance."""
+        f = DriverFactory(MissionConfig())
+        assert isinstance(f.make_radalt(), RADALTDriver)
+
+    def test_G_FAC_06_make_eoir_returns_eoir_driver(self):
+        """G-FAC-06: make_eoir() returns EOIRDriver instance."""
+        f = DriverFactory(MissionConfig())
+        assert isinstance(f.make_eoir(), EOIRDriver)
+
+    def test_G_FAC_07_make_sdr_returns_sensor_driver(self):
+        """G-FAC-07: make_sdr() returns SensorDriver instance."""
+        f = DriverFactory(MissionConfig())
+        assert isinstance(f.make_sdr(), SensorDriver)
+
+    def test_G_FAC_08_sim_drivers_have_sim_source_type(self):
+        """G-FAC-08: all-sim factory produces drivers with source_type='sim'."""
+        f = DriverFactory(MissionConfig())
+        assert f.make_imu().source_type()    == 'sim'
+        assert f.make_gnss().source_type()   == 'sim'
+        assert f.make_radalt().source_type() == 'sim'
+        assert f.make_eoir().source_type()   == 'sim'
+        assert f.make_sdr().source_type()    == 'sim'
+
+    def test_G_FAC_09_real_drivers_have_real_source_type(self):
+        """G-FAC-09: all-real factory produces drivers with source_type='real'."""
+        cfg = MissionConfig(
+            imu_source='real', gnss_source='real',
+            radalt_source='real', eoir_source='real', sdr_source='real'
+        )
+        f = DriverFactory(cfg)
+        assert f.make_imu().source_type()    == 'real'
+        assert f.make_gnss().source_type()   == 'real'
+        assert f.make_radalt().source_type() == 'real'
+        assert f.make_eoir().source_type()   == 'real'
+        assert f.make_sdr().source_type()    == 'real'
+
+    def test_G_FAC_10_imu_type_propagated(self):
+        """G-FAC-10: imu_type in config propagates to SimIMUDriver."""
+        from integration.drivers.sim_imu import SimIMUDriver
+        f = DriverFactory(MissionConfig(imu_type='BASELINE'))
+        imu = f.make_imu()
+        assert isinstance(imu, SimIMUDriver)
+        assert imu._imu_type == 'BASELINE'
