@@ -141,3 +141,99 @@ class TestClose:
         d = _ConcreteDriver()
         d.close()
         assert isinstance(d.health(), DriverHealth)
+
+
+# ---------------------------------------------------------------------------
+# IMUDriver ABC conformance — appended to test_prehil_drivers.py
+# ---------------------------------------------------------------------------
+
+import math
+from integration.drivers.imu import IMUDriver, IMUReading
+
+
+class _ConcreteIMUDriver(IMUDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return self._last_update_time
+    def is_stale(self): return self._default_is_stale()
+    def source_type(self): return 'sim'
+    def read(self) -> IMUReading:
+        self._record_successful_read()
+        return IMUReading(
+            accel_mss=(0.0, 0.0, -9.81),
+            gyro_rads=(0.0, 0.0, 0.0),
+            temp_c=25.0,
+            t=self._last_update_time,
+        )
+    def close(self): pass
+
+
+class _PartialIMUDriver(IMUDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return 0.0
+    def is_stale(self): return True
+    def source_type(self): return 'sim'
+    # read() and close() not implemented
+
+
+class TestIMUReading:
+    def test_G_IMU_01_is_frozen_dataclass(self):
+        """G-IMU-01: IMUReading is immutable."""
+        r = IMUReading(accel_mss=(0.,0.,-9.81), gyro_rads=(0.,0.,0.), temp_c=25.0, t=1.0)
+        import pytest
+        with pytest.raises((AttributeError, TypeError)):
+            r.temp_c = 30.0
+
+    def test_G_IMU_02_fields_accessible(self):
+        """G-IMU-02: all four fields accessible by name."""
+        r = IMUReading(accel_mss=(1.,2.,3.), gyro_rads=(0.1,0.2,0.3), temp_c=20.0, t=5.0)
+        assert r.accel_mss == (1., 2., 3.)
+        assert r.gyro_rads == (0.1, 0.2, 0.3)
+        assert r.temp_c == 20.0
+        assert r.t == 5.0
+
+    def test_G_IMU_03_nan_temp_allowed(self):
+        """G-IMU-03: temp_c=nan is valid (source does not provide temperature)."""
+        r = IMUReading(accel_mss=(0.,0.,0.), gyro_rads=(0.,0.,0.), temp_c=float('nan'), t=0.0)
+        assert math.isnan(r.temp_c)
+
+
+class TestIMUDriverABC:
+    def test_G_IMU_04_cannot_instantiate_directly(self):
+        """G-IMU-04: IMUDriver is abstract."""
+        import pytest
+        with pytest.raises(TypeError):
+            IMUDriver(stale_threshold_s=0.01)
+
+    def test_G_IMU_05_partial_rejected(self):
+        """G-IMU-05: partial IMUDriver implementation rejected."""
+        import pytest
+        with pytest.raises(TypeError):
+            _PartialIMUDriver(stale_threshold_s=0.01)
+
+    def test_G_IMU_06_concrete_instantiates(self):
+        """G-IMU-06: concrete IMUDriver instantiates cleanly."""
+        assert _ConcreteIMUDriver(stale_threshold_s=0.01) is not None
+
+    def test_G_IMU_07_read_returns_imu_reading(self):
+        """G-IMU-07: read() returns IMUReading instance."""
+        d = _ConcreteIMUDriver(stale_threshold_s=0.01)
+        result = d.read()
+        assert isinstance(result, IMUReading)
+
+    def test_G_IMU_08_read_updates_timestamp(self):
+        """G-IMU-08: read() updates last_update_time."""
+        d = _ConcreteIMUDriver(stale_threshold_s=0.01)
+        assert d.last_update_time() == 0.0
+        d.read()
+        assert d.last_update_time() > 0.0
+
+    def test_G_IMU_09_reading_timestamp_matches_driver(self):
+        """G-IMU-09: IMUReading.t matches driver last_update_time after read."""
+        d = _ConcreteIMUDriver(stale_threshold_s=0.01)
+        r = d.read()
+        assert r.t == d.last_update_time()
+
+    def test_G_IMU_10_is_sensor_driver_subclass(self):
+        """G-IMU-10: IMUDriver is a SensorDriver subclass."""
+        from integration.drivers.base import SensorDriver
+        assert issubclass(IMUDriver, SensorDriver)
