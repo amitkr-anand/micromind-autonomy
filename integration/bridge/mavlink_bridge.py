@@ -142,6 +142,7 @@ class MAVLinkBridge:
 
         # ACK signalling — T-MON sets these, main thread waits
         self._ack_event = threading.Event()
+        self._latency_monitor = None  # attach LatencyMonitor externally before start()
         self._sp_paused = threading.Event()  # set = pause T-SP
         self._last_ack:  dict = {}
         self._ack_lock   = threading.Lock()
@@ -353,6 +354,9 @@ class MAVLinkBridge:
                     0, 0, 0,
                     0, 0,
                 )
+                # CP-2: mark_send native — latency monitor instrumentation
+                if self._latency_monitor is not None:
+                    self._latency_monitor.mark_send()
                 # Rate tracking (rolling 1s window)
                 _sp_times.append(t_now)
                 _sp_times = [t for t in _sp_times if t_now - t <= 1.0]
