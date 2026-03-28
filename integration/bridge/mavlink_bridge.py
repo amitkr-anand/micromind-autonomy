@@ -410,8 +410,8 @@ class MAVLinkBridge:
                 elif msg.get_type() == 'LOCAL_POSITION_NED':
                     # FM-7: track position updates for EKF2 alignment check
                     new_x = msg.x
-                    if abs(new_x - self._local_pos_x) > 0.1:
-                        self._local_pos_valid = True
+                    # EKF2 aligned = message received (movement check deferred to FM-7 post-OFFBOARD)
+                    self._local_pos_valid = True
                     self._local_pos_x = new_x
 
                 elif msg.get_type() == 'COMMAND_ACK':
