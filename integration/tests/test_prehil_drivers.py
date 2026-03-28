@@ -340,3 +340,91 @@ class TestGNSSDriverABC:
         """G-GNSS-10: GNSSDriver is a SensorDriver subclass."""
         from integration.drivers.base import SensorDriver
         assert issubclass(GNSSDriver, SensorDriver)
+
+
+# ---------------------------------------------------------------------------
+# RADALTDriver ABC conformance
+# ---------------------------------------------------------------------------
+
+from integration.drivers.radalt import RADALTDriver, RADALTReading
+import math as _math
+
+
+class _ConcreteRADALTDriver(RADALTDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return self._last_update_time
+    def is_stale(self): return self._default_is_stale()
+    def source_type(self): return 'sim'
+    def read(self) -> RADALTReading:
+        self._record_successful_read()
+        return RADALTReading(alt_agl_m=45.2, validity_flag=True, t=self._last_update_time)
+    def close(self): pass
+
+
+class _PartialRADALTDriver(RADALTDriver):
+    def health(self): return DriverHealth.OK
+    def last_update_time(self): return 0.0
+    def is_stale(self): return True
+    def source_type(self): return 'sim'
+
+
+class TestRADALTReading:
+    def test_G_RADALT_01_is_frozen_dataclass(self):
+        """G-RADALT-01: RADALTReading is immutable."""
+        import pytest
+        r = RADALTReading(alt_agl_m=10.0, validity_flag=True, t=1.0)
+        with pytest.raises((AttributeError, TypeError)):
+            r.alt_agl_m = 20.0
+
+    def test_G_RADALT_02_fields_accessible(self):
+        """G-RADALT-02: all three fields accessible by name."""
+        r = RADALTReading(alt_agl_m=45.2, validity_flag=True, t=3.0)
+        assert r.alt_agl_m == 45.2
+        assert r.validity_flag is True
+        assert r.t == 3.0
+
+    def test_G_RADALT_03_invalid_reading_uses_false_flag(self):
+        """G-RADALT-03: validity_flag=False is valid for unavailable measurement."""
+        r = RADALTReading(alt_agl_m=float('nan'), validity_flag=False, t=0.0)
+        assert r.validity_flag is False
+        assert _math.isnan(r.alt_agl_m)
+
+    def test_G_RADALT_04_validity_flag_is_bool(self):
+        """G-RADALT-04: validity_flag type is bool."""
+        r = RADALTReading(alt_agl_m=10.0, validity_flag=True, t=0.0)
+        assert isinstance(r.validity_flag, bool)
+
+
+class TestRADALTDriverABC:
+    def test_G_RADALT_05_cannot_instantiate_directly(self):
+        """G-RADALT-05: RADALTDriver is abstract."""
+        import pytest
+        with pytest.raises(TypeError):
+            RADALTDriver(stale_threshold_s=0.1)
+
+    def test_G_RADALT_06_partial_rejected(self):
+        """G-RADALT-06: partial RADALTDriver implementation rejected."""
+        import pytest
+        with pytest.raises(TypeError):
+            _PartialRADALTDriver(stale_threshold_s=0.1)
+
+    def test_G_RADALT_07_concrete_instantiates(self):
+        """G-RADALT-07: concrete RADALTDriver instantiates cleanly."""
+        assert _ConcreteRADALTDriver(stale_threshold_s=0.1) is not None
+
+    def test_G_RADALT_08_read_returns_radalt_reading(self):
+        """G-RADALT-08: read() returns RADALTReading instance."""
+        d = _ConcreteRADALTDriver(stale_threshold_s=0.1)
+        assert isinstance(d.read(), RADALTReading)
+
+    def test_G_RADALT_09_read_updates_timestamp(self):
+        """G-RADALT-09: read() updates last_update_time."""
+        d = _ConcreteRADALTDriver(stale_threshold_s=0.1)
+        assert d.last_update_time() == 0.0
+        d.read()
+        assert d.last_update_time() > 0.0
+
+    def test_G_RADALT_10_is_sensor_driver_subclass(self):
+        """G-RADALT-10: RADALTDriver is a SensorDriver subclass."""
+        from integration.drivers.base import SensorDriver
+        assert issubclass(RADALTDriver, SensorDriver)
