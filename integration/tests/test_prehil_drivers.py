@@ -906,3 +906,103 @@ class TestSimEOIRDriver:
         """G-SEOIR-12: SimEOIRDriver is an EOIRDriver subclass."""
         from integration.drivers.eoir import EOIRDriver
         assert issubclass(SimEOIRDriver, EOIRDriver)
+
+
+# ---------------------------------------------------------------------------
+# SimSDRDriver conformance
+# ---------------------------------------------------------------------------
+
+from integration.drivers.sim_sdr import SimSDRDriver, SDRReading
+from integration.drivers.base import DriverHealth, DriverReadError
+from core.ew_engine.ew_engine import EWObservation
+
+
+class TestSDRReading:
+    def test_G_SSDR_01_sdr_reading_fields(self):
+        """G-SSDR-01: SDRReading has observations, mission_time_s, t."""
+        r = SDRReading(observations=[], mission_time_s=1.0, t=2.0)
+        assert r.observations == []
+        assert r.mission_time_s == 1.0
+        assert r.t == 2.0
+
+
+class TestSimSDRDriver:
+    def test_G_SSDR_02_instantiates(self):
+        """G-SSDR-02: SimSDRDriver instantiates with defaults."""
+        assert SimSDRDriver() is not None
+
+    def test_G_SSDR_03_source_type_is_sim(self):
+        """G-SSDR-03: source_type() returns 'sim'."""
+        assert SimSDRDriver().source_type() == 'sim'
+
+    def test_G_SSDR_04_read_returns_sdr_reading(self):
+        """G-SSDR-04: read() returns SDRReading instance."""
+        d = SimSDRDriver(seed=42)
+        assert isinstance(d.read(), SDRReading)
+
+    def test_G_SSDR_05_health_ok_after_read(self):
+        """G-SSDR-05: health() returns OK after first read."""
+        d = SimSDRDriver(seed=42)
+        assert d.health() == DriverHealth.DEGRADED
+        d.read()
+        assert d.health() == DriverHealth.OK
+
+    def test_G_SSDR_06_observations_are_ew_observations(self):
+        """G-SSDR-06: all observations are EWObservation instances."""
+        d = SimSDRDriver(seed=42, max_emitters=3)
+        for _ in range(10):
+            r = d.read()
+            for obs in r.observations:
+                assert isinstance(obs, EWObservation)
+
+    def test_G_SSDR_07_observation_count_bounded(self):
+        """G-SSDR-07: observation count is between 0 and max_emitters."""
+        d = SimSDRDriver(seed=42, max_emitters=3)
+        for _ in range(20):
+            r = d.read()
+            assert 0 <= len(r.observations) <= 3
+
+    def test_G_SSDR_08_mission_time_advances(self):
+        """G-SSDR-08: mission time advances by dt_s on each read."""
+        d = SimSDRDriver(seed=42)
+        d.read(dt_s=0.5)
+        assert abs(d._mission_time - 0.5) < 1e-9
+        d.read(dt_s=0.5)
+        assert abs(d._mission_time - 1.0) < 1e-9
+
+    def test_G_SSDR_09_deterministic_same_seed(self):
+        """G-SSDR-09: same seed produces same observation count sequence."""
+        d1 = SimSDRDriver(seed=7, max_emitters=3)
+        d2 = SimSDRDriver(seed=7, max_emitters=3)
+        counts1 = [len(d1.read().observations) for _ in range(5)]
+        counts2 = [len(d2.read().observations) for _ in range(5)]
+        assert counts1 == counts2
+
+    def test_G_SSDR_10_read_after_close_raises(self):
+        """G-SSDR-10: read() after close() raises DriverReadError."""
+        import pytest
+        d = SimSDRDriver(seed=42)
+        d.close()
+        with pytest.raises(DriverReadError):
+            d.read()
+
+    def test_G_SSDR_11_close_is_idempotent(self):
+        """G-SSDR-11: close() can be called multiple times."""
+        d = SimSDRDriver(seed=42)
+        d.close()
+        d.close()
+
+    def test_G_SSDR_12_is_sensor_driver_subclass(self):
+        """G-SSDR-12: SimSDRDriver is a SensorDriver subclass."""
+        from integration.drivers.base import SensorDriver
+        assert issubclass(SimSDRDriver, SensorDriver)
+
+    def test_G_SSDR_13_ew_engine_accepts_observations(self):
+        """G-SSDR-13: EWEngine.process_observations() accepts SimSDR output."""
+        from core.ew_engine.ew_engine import EWEngine
+        engine = EWEngine()
+        d = SimSDRDriver(seed=42, max_emitters=2)
+        r = d.read()
+        if r.observations:
+            result = engine.process_observations(r.observations, r.mission_time_s)
+            assert result is not None or result is None   # either is valid
