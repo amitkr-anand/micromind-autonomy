@@ -142,6 +142,7 @@ class MAVLinkBridge:
 
         # ACK signalling — T-MON sets these, main thread waits
         self._ack_event = threading.Event()
+        self._sp_paused = threading.Event()  # set = pause T-SP
         self._last_ack:  dict = {}
         self._ack_lock   = threading.Lock()
 
@@ -335,6 +336,10 @@ class MAVLinkBridge:
                 x_m = self._setpoint_x_m
                 y_m = self._setpoint_y_m
                 z_m = self._setpoint_z_m
+
+            if self._sp_paused.is_set():
+                time.sleep(self._SP_INTERVAL_S)
+                continue
 
             try:
                 self._mav.mav.set_position_target_local_ned_send(
