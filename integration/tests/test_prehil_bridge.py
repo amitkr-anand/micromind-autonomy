@@ -229,3 +229,94 @@ class TestBridgeLogger:
         assert len(t_logs) == 1
         logger.stop()
         os.unlink(path)
+
+
+# ---------------------------------------------------------------------------
+# MAVLinkBridge unit tests (no live SITL required)
+# ---------------------------------------------------------------------------
+
+import time, threading, tempfile, os
+import pytest
+from integration.bridge.mavlink_bridge import MAVLinkBridge, BridgeState
+from integration.bridge.time_reference import TimeReference
+from integration.bridge.bridge_logger import BridgeLogger
+
+
+class TestMAVLinkBridgeUnit:
+    def _make_bridge(self):
+        with tempfile.NamedTemporaryFile(suffix='.jsonl', delete=False) as f:
+            path = f.name
+        ref    = TimeReference()
+        logger = BridgeLogger(path, time_ref=ref)
+        logger.start()
+        return MAVLinkBridge(time_ref=ref, logger=logger), path
+
+    def test_G_BRDG_01_instantiates(self):
+        """G-BRDG-01: MAVLinkBridge instantiates without connecting."""
+        bridge, path = self._make_bridge()
+        assert bridge is not None
+        os.unlink(path)
+
+    def test_G_BRDG_02_initial_state_disconnected(self):
+        """G-BRDG-02: initial state is DISCONNECTED."""
+        bridge, path = self._make_bridge()
+        assert bridge.state() == BridgeState.DISCONNECTED
+        os.unlink(path)
+
+    def test_G_BRDG_03_start_heartbeat_without_connect_raises(self):
+        """G-BRDG-03: start_heartbeat() before connect() raises RuntimeError."""
+        bridge, path = self._make_bridge()
+        with pytest.raises(RuntimeError, match="connect()"):
+            bridge.start_heartbeat()
+        os.unlink(path)
+
+    def test_G_BRDG_04_start_setpoints_without_heartbeat_raises(self):
+        """G-BRDG-04: start_setpoints() without T-HB running raises RuntimeError."""
+        bridge, path = self._make_bridge()
+        with pytest.raises(RuntimeError, match="T-HB"):
+            bridge.start_setpoints()
+        os.unlink(path)
+
+    def test_G_BRDG_05_update_setpoint_thread_safe(self):
+        """G-BRDG-05: update_setpoint() is callable from any thread."""
+        bridge, path = self._make_bridge()
+        bridge.update_setpoint(x_m=10., y_m=5., z_m=-3.)
+        assert bridge._setpoint_x_m == 10.
+        assert bridge._setpoint_y_m == 5.
+        assert bridge._setpoint_z_m == -3.
+        os.unlink(path)
+
+    def test_G_BRDG_06_offboard_custom_mode_value(self):
+        """G-BRDG-06: OFFBOARD custom_mode constant is 393216 (confirmed V-7)."""
+        assert MAVLinkBridge._OFFBOARD_CUSTOM_MODE == 393216
+
+    def test_G_BRDG_07_coordinate_frame_is_ned(self):
+        """G-BRDG-07: MAV_FRAME_LOCAL_NED value is 1."""
+        assert MAVLinkBridge._MAV_FRAME_LOCAL_NED == 1
+
+    def test_G_BRDG_08_stop_safe_before_connect(self):
+        """G-BRDG-08: stop() is safe before connect()."""
+        bridge, path = self._make_bridge()
+        bridge.stop()   # must not raise
+        os.unlink(path)
+
+    def test_G_BRDG_09_bridge_state_enum_members(self):
+        """G-BRDG-09: BridgeState has all expected members."""
+        names = {m.name for m in BridgeState}
+        assert 'DISCONNECTED' in names
+        assert 'CONNECTED' in names
+        assert 'PRESTREAMING' in names
+        assert 'OFFBOARD' in names
+        assert 'FAULT' in names
+
+    def test_G_BRDG_10_hb_interval(self):
+        """G-BRDG-10: T-HB interval is 0.5s (2 Hz)."""
+        assert MAVLinkBridge._HB_INTERVAL_S == 0.5
+
+    def test_G_BRDG_11_sp_interval(self):
+        """G-BRDG-11: T-SP interval is 0.05s (20 Hz)."""
+        assert MAVLinkBridge._SP_INTERVAL_S == 0.05
+
+    def test_G_BRDG_12_prestream_duration(self):
+        """G-BRDG-12: pre-stream duration is 2.0s (FM-2)."""
+        assert MAVLinkBridge._PRESTREAM_S == 2.0
