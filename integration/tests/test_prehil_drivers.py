@@ -820,3 +820,89 @@ class TestSimRADALTDriver:
         """G-SRALT-11: SimRADALTDriver is a RADALTDriver subclass."""
         from integration.drivers.radalt import RADALTDriver
         assert issubclass(SimRADALTDriver, RADALTDriver)
+
+
+# ---------------------------------------------------------------------------
+# SimEOIRDriver conformance
+# ---------------------------------------------------------------------------
+
+import numpy as _np
+from integration.drivers.sim_eoir import SimEOIRDriver
+from integration.drivers.eoir import EOIRFrame
+from integration.drivers.base import DriverHealth, DriverReadError
+
+
+class TestSimEOIRDriver:
+    def test_G_SEOIR_01_instantiates(self):
+        """G-SEOIR-01: SimEOIRDriver instantiates with defaults."""
+        assert SimEOIRDriver() is not None
+
+    def test_G_SEOIR_02_source_type_is_sim(self):
+        """G-SEOIR-02: source_type() returns 'sim'."""
+        assert SimEOIRDriver().source_type() == 'sim'
+
+    def test_G_SEOIR_03_read_returns_eoir_frame(self):
+        """G-SEOIR-03: read() returns EOIRFrame instance."""
+        d = SimEOIRDriver(seed=42)
+        assert isinstance(d.read(), EOIRFrame)
+
+    def test_G_SEOIR_04_health_ok_after_read(self):
+        """G-SEOIR-04: health() returns OK after first read."""
+        d = SimEOIRDriver(seed=42)
+        assert d.health() == DriverHealth.DEGRADED
+        d.read()
+        assert d.health() == DriverHealth.OK
+
+    def test_G_SEOIR_05_frame_is_uint16(self):
+        """G-SEOIR-05: frame_data is uint16 numpy array."""
+        d = SimEOIRDriver(seed=42)
+        r = d.read()
+        assert r.frame_data.dtype == _np.uint16
+
+    def test_G_SEOIR_06_frame_shape_matches_config(self):
+        """G-SEOIR-06: frame shape matches configured width and height."""
+        d = SimEOIRDriver(width=160, height=128, seed=42)
+        r = d.read()
+        assert r.frame_data.shape == (128, 160)
+        assert r.width == 160
+        assert r.height == 128
+
+    def test_G_SEOIR_07_validity_flag_true(self):
+        """G-SEOIR-07: validity_flag is True for synthetic frames."""
+        d = SimEOIRDriver(seed=42)
+        r = d.read()
+        assert r.validity_flag is True
+
+    def test_G_SEOIR_08_frame_not_all_zeros(self):
+        """G-SEOIR-08: frame contains non-zero values (targets rendered)."""
+        d = SimEOIRDriver(seed=42)
+        r = d.read()
+        assert r.frame_data.max() > 0
+
+    def test_G_SEOIR_09_frame_count_advances(self):
+        """G-SEOIR-09: _frame_count increments on each read."""
+        d = SimEOIRDriver(seed=42)
+        assert d._frame_count == 0
+        d.read()
+        assert d._frame_count == 1
+        d.read()
+        assert d._frame_count == 2
+
+    def test_G_SEOIR_10_read_after_close_raises(self):
+        """G-SEOIR-10: read() after close() raises DriverReadError."""
+        import pytest
+        d = SimEOIRDriver(seed=42)
+        d.close()
+        with pytest.raises(DriverReadError):
+            d.read()
+
+    def test_G_SEOIR_11_close_is_idempotent(self):
+        """G-SEOIR-11: close() can be called multiple times."""
+        d = SimEOIRDriver(seed=42)
+        d.close()
+        d.close()
+
+    def test_G_SEOIR_12_is_eoir_driver_subclass(self):
+        """G-SEOIR-12: SimEOIRDriver is an EOIRDriver subclass."""
+        from integration.drivers.eoir import EOIRDriver
+        assert issubclass(SimEOIRDriver, EOIRDriver)
