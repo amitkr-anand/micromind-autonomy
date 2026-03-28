@@ -630,3 +630,111 @@ class TestSimIMUDriver:
         """G-SIMU-14: SimIMUDriver is an IMUDriver subclass."""
         from integration.drivers.imu import IMUDriver
         assert issubclass(SimIMUDriver, IMUDriver)
+
+
+# ---------------------------------------------------------------------------
+# SimGNSSDriver conformance
+# ---------------------------------------------------------------------------
+
+import math as _math
+from integration.drivers.sim_gnss import SimGNSSDriver, _enu_to_geodetic
+from integration.drivers.gnss import GNSSReading, GNSSFixType
+from integration.drivers.base import DriverHealth, DriverReadError
+import numpy as _np
+
+
+class TestEnuToGeodetic:
+    def test_G_SGNSS_01_north_offset(self):
+        """G-SGNSS-01: 1km north offset increases latitude."""
+        lat, lon, alt = _enu_to_geodetic(
+            _np.array([0., 1000., 0.]), 26.9157, 70.9083, 225.0
+        )
+        assert lat > 26.9157
+        assert abs(lon - 70.9083) < 1e-6
+        assert abs(alt - 225.0) < 1e-6
+
+    def test_G_SGNSS_02_east_offset(self):
+        """G-SGNSS-02: 1km east offset increases longitude."""
+        lat, lon, alt = _enu_to_geodetic(
+            _np.array([1000., 0., 0.]), 26.9157, 70.9083, 225.0
+        )
+        assert lon > 70.9083
+        assert abs(lat - 26.9157) < 1e-6
+
+    def test_G_SGNSS_03_up_offset(self):
+        """G-SGNSS-03: 100m up offset increases altitude."""
+        lat, lon, alt = _enu_to_geodetic(
+            _np.array([0., 0., 100.]), 26.9157, 70.9083, 225.0
+        )
+        assert abs(alt - 325.0) < 1e-6
+
+
+class TestSimGNSSDriver:
+    def test_G_SGNSS_04_instantiates(self):
+        """G-SGNSS-04: SimGNSSDriver instantiates with defaults."""
+        d = SimGNSSDriver()
+        assert d is not None
+
+    def test_G_SGNSS_05_source_type_is_sim(self):
+        """G-SGNSS-05: source_type() returns 'sim'."""
+        assert SimGNSSDriver().source_type() == 'sim'
+
+    def test_G_SGNSS_06_read_returns_gnss_reading(self):
+        """G-SGNSS-06: read() returns GNSSReading instance."""
+        d = SimGNSSDriver()
+        r = d.read()
+        assert isinstance(r, GNSSReading)
+
+    def test_G_SGNSS_07_health_ok_after_read(self):
+        """G-SGNSS-07: health() returns OK after first successful read."""
+        d = SimGNSSDriver()
+        assert d.health() == DriverHealth.DEGRADED
+        d.read()
+        assert d.health() == DriverHealth.OK
+
+    def test_G_SGNSS_08_lat_lon_are_finite(self):
+        """G-SGNSS-08: lat and lon are finite after read."""
+        d = SimGNSSDriver()
+        r = d.read()
+        assert _math.isfinite(r.lat)
+        assert _math.isfinite(r.lon)
+
+    def test_G_SGNSS_09_fix_type_is_gnss_fix_type(self):
+        """G-SGNSS-09: fix_type is a GNSSFixType enum member."""
+        d = SimGNSSDriver()
+        r = d.read()
+        assert isinstance(r.fix_type, GNSSFixType)
+
+    def test_G_SGNSS_10_mission_time_advances(self):
+        """G-SGNSS-10: mission time advances by dt_s on each read."""
+        d = SimGNSSDriver()
+        assert d._mission_time_s == 0.0
+        d.read(dt_s=0.2)
+        assert abs(d._mission_time_s - 0.2) < 1e-9
+        d.read(dt_s=0.2)
+        assert abs(d._mission_time_s - 0.4) < 1e-9
+
+    def test_G_SGNSS_11_read_after_close_raises(self):
+        """G-SGNSS-11: read() after close() raises DriverReadError."""
+        import pytest
+        d = SimGNSSDriver()
+        d.close()
+        with pytest.raises(DriverReadError):
+            d.read()
+
+    def test_G_SGNSS_12_close_is_idempotent(self):
+        """G-SGNSS-12: close() can be called multiple times."""
+        d = SimGNSSDriver()
+        d.close()
+        d.close()
+
+    def test_G_SGNSS_13_injector_accessible(self):
+        """G-SGNSS-13: injector property exposes GNSSSpoofInjector."""
+        from sim.gnss_spoof_injector import GNSSSpoofInjector
+        d = SimGNSSDriver()
+        assert isinstance(d.injector, GNSSSpoofInjector)
+
+    def test_G_SGNSS_14_is_gnss_driver_subclass(self):
+        """G-SGNSS-14: SimGNSSDriver is a GNSSDriver subclass."""
+        from integration.drivers.gnss import GNSSDriver
+        assert issubclass(SimGNSSDriver, GNSSDriver)
