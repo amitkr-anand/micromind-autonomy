@@ -1,0 +1,23 @@
+{
+  "n_steps": 13410,
+  "run_duration_s": 67.05064866900011,
+  "eskf_p50_ms": 0.05533,
+  "eskf_p95_ms": 0.08549,
+  "eskf_p99_ms": 0.10773,
+  "eskf_max_ms": 0.28259,
+  "e2e_p50_ms": 0.345661,
+  "e2e_p95_ms": 0.36297,
+  "e2e_p99_ms": 0.38016,
+  "e2e_max_ms": 955.342471,
+  "setpoint_rate_hz": 20.015214688872124,
+  "setpoint_min_hz": 19.99990424445976,
+  "setpoint_drops": 0,
+  "cpu_mean_pct": 3.2308823529411765,
+  "cpu_peak_pct": 6.3,
+  "memory_peak_mb": 114.91796875,
+  "eskf_gate_pass": true,
+  "e2e_gate_pass": true,
+  "rate_gate_pass": true,
+  "cpu_gate_pass": true,
+  "memory_gate_pass": true
+}
