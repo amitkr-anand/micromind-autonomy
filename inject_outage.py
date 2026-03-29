@@ -396,6 +396,15 @@ def run_demo(output_dir='dashboard'):
     print("=" * 60)
     print()
 
+    # Signal overlay to show demo ended
+    try:
+        import json as _j
+        _j.dump({'running': False, 'vio_mode': 'COMPLETE',
+                 'events': _events[-8:]},
+                open('/tmp/micromind_overlay.json', 'w'))
+    except Exception:
+        pass
+
     return 0 if (not _nan_detected and outage_recovered
                  and summary.e2e_p95_ms < 50.0) else 1
 
