@@ -115,3 +115,10 @@
 ---
 *All timestamps in IST (UTC+0530). System clock on micromind-node01 runs UTC.*
 *This journal constitutes timestamped evidence of independent development.*
+
+### 1310 — DR-5: clean scoped recording confirmed
+- run_demo_record.sh: recording starts with command, stops after DEMO PASS
+- File: micromind_demo_recording_20260329_131028.mp4 (11MB, 1:52 duration)
+- VLC playback confirmed: all 3 windows visible (Gazebo + overlay + terminal)
+- Key frames: takeoff, VIO OUTAGE red with drift 5.97m, DEMO COMPLETE
+- DR-5: PASS — formal close
