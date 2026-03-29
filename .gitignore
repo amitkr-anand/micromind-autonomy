@@ -44,3 +44,6 @@ logs/s10_*.log
 logs/als250_*.log
 __pycache__/
 *.pyc
+dashboard/*.jsonl
+dashboard/demo_latency_*.json
+dashboard/micromind_demo_recording_*.mp4

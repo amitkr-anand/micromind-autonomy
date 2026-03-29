@@ -7,7 +7,8 @@ OVERLAY_FILE = '/tmp/micromind_overlay.json'
 _FLIGHT_MODES = {
     0: 'MANUAL', 65536: 'ALTCTL', 131072: 'POSCTL',
     393216: 'OFFBOARD', 327680: 'AUTO.LOITER',
-    262144: 'AUTO.RTL',
+    262144: 'AUTO.RTL', 50593792: 'STABILIZE',
+    84934656: 'AUTO.TAKEOFF', 17629184: 'AUTO.LAND',
 }
 
 def _mode_str(m): return _FLIGHT_MODES.get(m, f'MODE({m})')
