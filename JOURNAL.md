@@ -122,3 +122,9 @@
 - VLC playback confirmed: all 3 windows visible (Gazebo + overlay + terminal)
 - Key frames: takeoff, VIO OUTAGE red with drift 5.97m, DEMO COMPLETE
 - DR-5: PASS — formal close
+
+### 1320 — DR-6: OEM-ready declared
+- DR-1 through DR-5 all closed
+- run_demo.sh tested multiple times on 29 March 2026
+- All evidence traceable to tagged commits
+- Programme state: OEM-ready for TASL demonstration
