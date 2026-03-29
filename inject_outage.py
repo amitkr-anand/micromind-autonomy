@@ -66,6 +66,32 @@ def log_event(kind, **data):
 
 
 # ---------------------------------------------------------------------------
+# Overlay file writer — read by demo_overlay.py
+# ---------------------------------------------------------------------------
+
+def _write_overlay(pipeline, bridge, monitor, elapsed_s, events, vio_nav):
+    """Write current state to /tmp/micromind_overlay.json for demo_overlay.py."""
+    try:
+        import json as _json
+        h = pipeline.health()
+        data = {
+            'vio_mode':    vio_nav.current_mode.name,
+            'drift_m':     round(vio_nav.drift_envelope_m or 0.0, 3),
+            'sp_x':        round(bridge._setpoint_x_m, 2),
+            'sp_y':        round(bridge._setpoint_y_m, 2),
+            'sp_z':        round(bridge._setpoint_z_m, 2),
+            'sp_hz':       round(monitor.current_setpoint_hz, 1),
+            'running':     h.running,
+            'elapsed_s':   round(elapsed_s, 1),
+            'events':      events[-8:],
+        }
+        with open('/tmp/micromind_overlay.json', 'w') as _f:
+            _json.dump(data, _f)
+    except Exception:
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Main demo sequence
 # ---------------------------------------------------------------------------
 
@@ -296,6 +322,10 @@ def run_demo(output_dir='dashboard'):
         if elapsed >= 62.0:
             bridge.update_setpoint(x_m=0.0, y_m=0.0, z_m=-2.0)
             break
+
+        # Write overlay state
+        _write_overlay(pipeline, bridge, monitor, elapsed, _events,
+                       pipeline._vio_nav)
 
         # Log mode transitions
         if msg and msg.get_type() == 'LOCAL_POSITION_NED':
