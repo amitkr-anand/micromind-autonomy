@@ -73,6 +73,12 @@ PYEOF
 echo "[run_demo] Starting demonstration flight..."
 echo ""
 
+# Step 3b: Launch overlay in separate terminal window
+echo "[run_demo] Launching overlay panel..."
+gnome-terminal --title="MicroMind Overlay" -- bash -c "cd $REPO_DIR && python3 demo_overlay.py; exec bash" &
+OVERLAY_TERM_PID=$!
+sleep 2
+
 # Step 4: Run the demo flight
 cd "$REPO_DIR"
 python3 inject_outage.py
