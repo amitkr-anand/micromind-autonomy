@@ -47,3 +47,8 @@ __pycache__/
 dashboard/*.jsonl
 dashboard/demo_latency_*.json
 dashboard/micromind_demo_recording_*.mp4
+
+# BCMP-2 / Pre-HIL runtime outputs (not source)
+dashboard/demo_events_*.json
+dashboard/demo_report_*.html
+bcmp2_sb1_files.zip
