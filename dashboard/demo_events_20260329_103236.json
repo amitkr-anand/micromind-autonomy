@@ -1,0 +1,132 @@
+{
+  "ts": "20260329_103236",
+  "events": [
+    {
+      "t": 0.0,
+      "event": "DEMO_START",
+      "version": "Pre-HIL v1.2",
+      "basis": "5a32c8e"
+    },
+    {
+      "t": 4.91,
+      "event": "CONNECTED",
+      "sysid": 1,
+      "compid": 0,
+      "time_synced": false
+    },
+    {
+      "t": 5.911,
+      "event": "EKF2_VALID",
+      "x_m": -0.021
+    },
+    {
+      "t": 7.911,
+      "event": "PRESTREAM_COMPLETE",
+      "sp_hz": 8.0
+    },
+    {
+      "t": 7.922,
+      "event": "ARMED"
+    },
+    {
+      "t": 7.926,
+      "event": "OFFBOARD_ENGAGED"
+    },
+    {
+      "t": 13.67,
+      "event": "ALTITUDE_REACHED",
+      "alt_m": 4.0
+    },
+    {
+      "t": 13.69,
+      "event": "TELEMETRY",
+      "elapsed_s": 0.0,
+      "north_m": -0.0,
+      "alt_m": 4.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.2,
+      "drift_m": 0.0
+    },
+    {
+      "t": 23.73,
+      "event": "TELEMETRY",
+      "elapsed_s": 10.0,
+      "north_m": 49.8,
+      "alt_m": 5.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.0,
+      "drift_m": 0.0
+    },
+    {
+      "t": 33.81,
+      "event": "TELEMETRY",
+      "elapsed_s": 20.1,
+      "north_m": 49.9,
+      "alt_m": 5.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.0,
+      "drift_m": 0.0
+    },
+    {
+      "t": 43.79,
+      "event": "VIO_OUTAGE_START",
+      "vio_mode": "NOMINAL",
+      "drift_envelope_m": 0.0
+    },
+    {
+      "t": 43.79,
+      "event": "TELEMETRY",
+      "elapsed_s": 30.0,
+      "north_m": 50.0,
+      "alt_m": 5.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.0,
+      "drift_m": 0.0
+    },
+    {
+      "t": 53.71,
+      "event": "VIO_OUTAGE_END",
+      "vio_mode": "OUTAGE",
+      "nan_detected": false,
+      "drift_envelope_m": 7.94
+    },
+    {
+      "t": 53.71,
+      "event": "TELEMETRY",
+      "elapsed_s": 40.0,
+      "north_m": 50.0,
+      "alt_m": 5.0,
+      "vio_mode": "OUTAGE",
+      "sp_hz": 20.2,
+      "drift_m": 7.94
+    },
+    {
+      "t": 63.71,
+      "event": "TELEMETRY",
+      "elapsed_s": 50.0,
+      "north_m": 50.0,
+      "alt_m": 5.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.0,
+      "drift_m": 0.0
+    },
+    {
+      "t": 73.77,
+      "event": "TELEMETRY",
+      "elapsed_s": 60.0,
+      "north_m": 0.2,
+      "alt_m": 5.0,
+      "vio_mode": "NOMINAL",
+      "sp_hz": 20.2,
+      "drift_m": 0.0
+    },
+    {
+      "t": 82.421,
+      "event": "DEMO_COMPLETE",
+      "nan_detected": false,
+      "e2e_p95_ms": 0.337,
+      "sp_min_hz": 20.0,
+      "cpu_mean_pct": 11.9
+    }
+  ]
+}
