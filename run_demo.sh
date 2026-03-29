@@ -45,7 +45,7 @@ sleep 3
 
 # Step 2: Start PX4 SITL + Gazebo in background
 echo "[run_demo] Starting PX4 SITL + Gazebo..."
-make -C "$PX4_DIR" px4_sitl gz_x500 > /tmp/px4_sitl_demo.log 2>&1 &
+make -C "$PX4_DIR" px4_sitl gz_x500 PX4_GZ_WORLD=baylands > /tmp/px4_sitl_demo.log 2>&1 &
 PX4_PID=$!
 
 # Step 3: Wait for MAVLink to be available (EKF2 alignment)
@@ -55,13 +55,13 @@ import sys, time
 sys.path.insert(0, '.')
 import pymavlink.mavutil as mavutil
 m = mavutil.mavlink_connection('udp:127.0.0.1:14550')
-hb = m.wait_heartbeat(timeout=15)
+hb = m.wait_heartbeat(timeout=30)
 if hb is None:
     print("[run_demo] ERROR: No heartbeat from PX4")
     sys.exit(1)
 
 t_wait = time.monotonic()
-while time.monotonic() - t_wait < 20.0:
+while time.monotonic() - t_wait < 30.0:
     msg = m.recv_match(type='LOCAL_POSITION_NED', blocking=True, timeout=1.0)
     if msg:
         print(f"[run_demo] EKF2 aligned: x={msg.x:.3f}m")
