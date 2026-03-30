@@ -210,3 +210,139 @@ System Python 3.12.3 with numpy 1.26.4. All BCMP-2 tests run with `python3` dire
 ---
 
 *Journal maintained for IP traceability. All development conducted outside TASL premises on micromind-node01.*
+
+---
+
+## 30 March 2026 — SB-2: Fault Injection Infrastructure
+
+**Session type:** Implementation sprint  
+**Duration:** Single session (continued from SB-1 thread)  
+**Location:** Development outside TASL premises (micromind-node01)  
+**Preceding state:** SB-1 closed. Tag `sb1-dual-track-foundation` at commit `36dc37c`. 42-gate BCMP-2 runner operational on micromind-node01.
+
+---
+
+### 1000 IST — Session open
+
+State confirmed from BCMP2_STATUS.md. SB-2 scope reviewed: fault_manager, sensor_fault_proxy, nav_source_proxy, scripted validation tests. Proxy contract established before any code written: frozen core modules are never imported by proxy files; proxies sit between runner and frozen stack.
+
+**Proxy contract (standing):**
+- No frozen core module (ESKF, BIM, VIOMode, TRNStub, bcmp1_runner) is imported or modified by any proxy
+- Proxies are transparent pass-throughs when no fault is active
+- Proxies intercept the call/result without frozen module awareness
+- Vehicle A does not pass through any proxy — only Vehicle B
+
+---
+
+### 1030 IST — Step 1 committed: `fault_manager.py`
+
+Commit: `8e05a59`
+
+Thread-safe singleton with `threading.Lock` on all reads/writes. Follows Pre-HIL B-2/B-3 threading fix pattern from `mavlink_bridge.py`.
+
+FI constants: FI_GNSS_LOSS, FI_VIO_LOSS, FI_RADALT_LOSS, FI_EO_FREEZE, FI_IMU_JITTER, FI_MAVLINK_DROP, FI_TERRAIN_CONF_DROP, FI_CPU_LOAD, FI_MEMORY_PRESSURE, FI_TIME_SKEW (FI-01..FI-13).
+
+Two presets: PRESET_VIO_GNSS (FI-09), PRESET_VIO_RADALT_TERM (FI-10).
+
+FaultState: active, start_time, duration_s, severity, source, metadata. Auto-expiry on `update_mission_km()` call. FaultEvent log: timestamped activation/clear/expiry records.
+
+Self-verification (7/7 PASS): activate/query/clear, auto-expiry (0.05s), preset+clear_all, event log, thread safety (8 simultaneous threads), singleton identity.
+
+---
+
+### 1100 IST — VIOMode and BIM interfaces confirmed
+
+Before writing sensor_fault_proxy, confirmed interfaces via inspection:
+- `VIONavigationMode.on_vio_update(accepted: bool, innov_mag: float)` — proxy intercepts inputs
+- `VIOMode.OUTAGE` — confirmed reachable after sustained `accepted=False` input
+- `BIM.evaluate(GNSSMeasurement)` — confirmed BIM reaches RED after 10 denied evaluations
+- `GNSSMeasurement` field set confirmed — denied measurement uses pdop=99.9, cn0_db=0.0, tracked_satellites=0, ew_jammer_confidence=1.0
+
+---
+
+### 1130 IST — Step 2 committed: `sensor_fault_proxy.py`
+
+Commit: `64fc1b7`
+
+Four intercept points: GNSS measurement, VIO update inputs, TRNStub return value, EO frame cache.
+
+EO freeze design decision: proxy caches the last received frame. When FI_EO_FREEZE is active, returns stale cached frame rather than None. If freeze activates before any frame received, returns None — DMRL stale-frame detection handles both cases. EO availability flag is NOT affected by freeze (feed is present but stale, not absent).
+
+Self-verification (8/8 PASS): all intercepts verified both pass-through and fault-active paths.
+
+---
+
+### 1200 IST — Step 3 committed: `nav_source_proxy.py`
+
+Commit: `615a2c8`
+
+Three intercept points: TRN correction (wraps TRNStub.update() call entirely to avoid calling it when terrain confidence dropped), VIO nav source availability, IMU dt jitter.
+
+IMU jitter design: perturbation drawn from `uniform(-max_jitter*severity, +max_jitter*severity)`. Clamped to minimum 1e-6 — dt is never negative or zero. In full SITL mode, large jitter triggers IFM-01 (timestamp monotonicity guard) in the integration layer.
+
+`effective_nav_sources()` convenience method: returns (gnss_ok, vio_ok, trn_ok) after applying all active nav faults in one call. Simplifies runner loop.
+
+Self-verification (7/7 PASS).
+
+---
+
+### 1300 IST — Step 4: `test_bcmp2_sb2.py` — first run 24/25
+
+Single failure: `test_no_frozen_core_module_modified` imported `_ACC_BIAS_RW` and `_GYRO_BIAS_RW` as module-level names from `error_state_ekf`. These are class-level attributes (`self._ACC_BIAS_RW`), not module exports. Fixed by accessing via instance: `eskf = ErrorStateEKF(); eskf._ACC_BIAS_RW`. One fix, correct on first attempt.
+
+Final: 25/25 PASS in 0.67s.
+
+---
+
+### 1400 IST — `run_bcmp2_tests.py` updated
+
+SB-2 suite added: `("SB-2 Fault Injection Proxies", "tests/test_bcmp2_sb2.py")`. Total gates: 42 (17 AT-1 + 25 SB-2).
+
+---
+
+### 2010 IST — SB-2 gate run and push (micromind-node01)
+
+```
+run_bcmp2_tests.py:  42/42 PASS (4.7s)
+  AT-1 Boot & Regression:       17/17 PASS
+  SB-2 Fault Injection Proxies: 25/25 PASS
+run_s5_tests.py:    111/111 PASS
+```
+
+Commit: `45e3d79`  
+Tag: `sb2-fault-injection-foundation` — pushed to origin.
+
+**SB-2 formally closed. All gates green on hardware.**
+
+---
+
+### 2010 IST — Session close
+
+Working tree clean after push. BCMP2_STATUS.md and BCMP2_JOURNAL.md updated.
+
+**Open items for SB-3:**
+- Wire fault injection into `bcmp2_runner.py` — fault schedule passed at run config level
+- `bcmp2_report.py` — JSON + HTML comparative report, business comparison block first
+- `tests/test_bcmp2_at2.py` — AT-2: 150 km nominal dual-track, Vehicle A exceeds corridor by P4, Vehicle B maintains corridor
+- `tests/test_bcmp2_at3_5.py` — AT-3 (single failure), AT-4 (multi-failure), AT-5 (terminal integrity)
+- All three canonical seeds (42/101/303) must pass AT-2 before AT-3 is attempted
+
+---
+
+## Lessons and Standing Rules (additions from SB-2)
+
+### L-6 — Class-level frozen constants are not module exports
+`ErrorStateEKF._ACC_BIAS_RW` and `_GYRO_BIAS_RW` are class-level attributes. Import `ErrorStateEKF` and access via instance. Do not attempt to import as module-level names.
+
+### L-7 — Proxy files must not import frozen core at module scope
+Importing frozen modules inside proxy methods (deferred import) rather than at module level keeps the proxy layer lightweight and avoids circular dependency risk if the runner is reorganised.
+
+### L-8 — EO freeze returns stale frame, not None
+Hardware camera freeze leaves the last frame in the buffer — it doesn't remove the feed. Proxy must cache and return the last real frame, not None. DMRL stale-frame detection (consecutive duplicate frame_id) handles the freeze signature correctly.
+
+### L-9 — Thread safety pattern for BCMP-2 proxies
+All FaultManager reads/writes use `threading.Lock()`. Proxies call `fm.is_active()` on every invocation — no caching of fault state in the proxy. This ensures operator panel changes take effect on the very next proxy call without any race window.
+
+---
+
+*Journal maintained for IP traceability. All development conducted outside TASL premises on micromind-node01.*
