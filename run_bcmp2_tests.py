@@ -17,7 +17,8 @@ import time
 
 def main():
     suites = [
-        ("AT-1 Boot & Regression", "tests/test_bcmp2_at1.py"),
+        ("AT-1 Boot & Regression",       "tests/test_bcmp2_at1.py"),
+        ("SB-2 Fault Injection Proxies", "tests/test_bcmp2_sb2.py"),
     ]
 
     print("=" * 60)
