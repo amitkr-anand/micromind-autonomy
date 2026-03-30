@@ -19,6 +19,8 @@ def main():
     suites = [
         ("AT-1 Boot & Regression",       "tests/test_bcmp2_at1.py"),
         ("SB-2 Fault Injection Proxies", "tests/test_bcmp2_sb2.py"),
+        ("AT-2 Nominal 150 km",          "tests/test_bcmp2_at2.py"),
+        ("AT-3/4/5 Failure Missions",    "tests/test_bcmp2_at3_5.py"),
     ]
 
     print("=" * 60)
