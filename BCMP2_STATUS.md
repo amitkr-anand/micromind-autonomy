@@ -4,7 +4,7 @@
 **Phase:** BCMP-2 — Extended Mission Acceptance Regime  
 **Repository:** amitkr-anand/micromind-autonomy (branch: main)  
 **Document:** BCMP2_STATUS.md  
-**Last updated:** 29 March 2026 2000 IST
+**Last updated:** 30 March 2026 2010 IST
 
 ---
 
@@ -19,8 +19,8 @@ Central question every scenario answers:
 
 ## Current State
 
-**SB-1 CLOSED** — Dual-track foundation complete.  
-**Tag:** `sb1-dual-track-foundation`  
+**SB-2 CLOSED** — Fault injection infrastructure complete.  
+**Tag:** `sb2-fault-injection-foundation`  
 **Validated on:** micromind-node01 (Python 3.12.3, numpy 1.26.4, system python — no conda)
 
 ---
@@ -42,8 +42,7 @@ Central question every scenario answers:
 | km 100 — end P3 | 12 m | 96 m | 350 m | P5 / P50 / P99 |
 | km 120 — end P4 | 15 m | 155 m | 650 m | P5 / P50 / P99 |
 
-Analytical derivation (STIM300 TS1524 rev.31): nominal 1σ = 44 / 211 / 338 m.  
-Monte Carlo floors lower because individual seeds draw gyro bias from normal(0, 0.5 deg/h σ).
+Analytical derivation (STIM300 TS1524 rev.31): nominal 1σ = 44 / 211 / 338 m.
 
 ---
 
@@ -63,70 +62,96 @@ Monte Carlo floors lower because individual seeds draw gyro bias from normal(0, 
 ### SB-1 — Dual-Track Foundation ✅ CLOSED
 
 **Closed:** 29 March 2026  
-**Tag:** `sb1-dual-track-foundation`
+**Tag:** `sb1-dual-track-foundation`  
+**Commit:** `6c37697` → `c23696e` (documentation) → `36dc37c` (gitignore)
 
-| Step | Commit | File | Gate |
-|---|---|---|---|
-| 1 | `7e29aad` | `scenarios/bcmp2/bcmp2_drift_envelopes.py` | Derived from STIM300 TS1524 rev.31 + S9 ESKF constants. Self-prints clean. |
-| 2 | `0ad99c5` | `scenarios/bcmp2/bcmp2_terrain_gen.py` | 5 phases all OK. Determinism PASS. DEM patch (64×64) float64. |
-| 3 | `c9012fa` | `scenarios/bcmp2/bcmp2_scenario.py` | Route, phase attribution, disturbance schedule, C-4 determinism PASS. |
-| 4 | `62a386b` | `scenarios/bcmp2/baseline_nav_sim.py` + envelope update | C-2 gates: seeds 42/101/303 all PASS. 2.6 s per full 150 km run. |
-| 5+6 | `6c37697` | `scenarios/bcmp2/bcmp2_runner.py` + `tests/test_bcmp2_at1.py` + `run_bcmp2_tests.py` | 17/17 AT-1 PASS. 111/111 S5 PASS. 68/68 S8 PASS. |
+| Step | Commit | File |
+|---|---|---|
+| 1 | `7e29aad` | `scenarios/bcmp2/bcmp2_drift_envelopes.py` |
+| 2 | `0ad99c5` | `scenarios/bcmp2/bcmp2_terrain_gen.py` |
+| 3 | `c9012fa` | `scenarios/bcmp2/bcmp2_scenario.py` |
+| 4 | `62a386b` | `scenarios/bcmp2/baseline_nav_sim.py` + envelope update |
+| 5+6 | `6c37697` | `scenarios/bcmp2/bcmp2_runner.py` + `tests/test_bcmp2_at1.py` + `run_bcmp2_tests.py` |
+| docs | `c23696e` | `BCMP2_STATUS.md` + `BCMP2_JOURNAL.md` |
+| gitignore | `36dc37c` | `.gitignore` — dashboard runtime outputs excluded |
 
-**AT-1 Gate Results (on micromind-node01):**
+**Gate results (micromind-node01):** 17/17 AT-1 PASS · 111/111 S5 PASS · 68/68 S8 PASS
 
-```
-17/17 AT-1 PASS  (3.98s)
-111/111 S5 PASS
-68/68 S8 PASS
-0 failures
-```
+**C-2 canonical seed validation:**
 
-**C-2 Gate Results (SB-1 validation runs):**
-
-| Seed | km 60 | km 100 | km 120 | Corridor breach |
+| Seed | km 60 | km 100 | km 120 | Breach |
 |---|---|---|---|---|
 | 42 | 17 m ✅ | 91 m ✅ | 126 m ✅ | None |
 | 101 | 57 m ✅ | 299 m ✅ | 471 m ✅ | km 123.4 |
 | 303 | 24 m ✅ | 145 m ✅ | 249 m ✅ | km 149.2 |
 
-**Key engineering decision made in SB-1:**  
-Full 3D INS mechanisation feeds IMU noise terms only — without true specific force (gravity + vehicle acceleration) this causes unphysical vertical channel contamination that corrupts heading. Resolution: cross-track error propagation model, which directly matches the C-2 analytical derivation. Documented in JOURNAL.md.
-
 ---
 
-### SB-2 — Fault Injection Infrastructure ⏳ PENDING
+### SB-2 — Fault Injection Infrastructure ✅ CLOSED
 
-**Entry gate:** SB-1 closed ✅
+**Closed:** 30 March 2026 2010 IST  
+**Tag:** `sb2-fault-injection-foundation`  
+**Commit:** `45e3d79`
 
-**Deliverables:**
+| Step | Commit | File | Self-checks |
+|---|---|---|---|
+| 1 | `8e05a59` | `fault_injection/fault_manager.py` | 7/7 PASS |
+| 2 | `64fc1b7` | `fault_injection/sensor_fault_proxy.py` | 8/8 PASS |
+| 3 | `615a2c8` | `fault_injection/nav_source_proxy.py` | 7/7 PASS |
+| 4 | `45e3d79` | `tests/test_bcmp2_sb2.py` + `run_bcmp2_tests.py` | 25/25 PASS |
 
-| File | Responsibility |
-|---|---|
-| `fault_injection/fault_manager.py` | Thread-safe fault state registry (threading.Lock on all reads/writes) |
-| `fault_injection/sensor_fault_proxy.py` | Wraps GNSS, VIO, RADALT, EO outputs. Transparent when no fault active. |
-| `fault_injection/nav_source_proxy.py` | TRN suppression, VIO suppression, IMU jitter |
-| `tests/test_bcmp2_sb2.py` | Three scripted fault injection runs: FI-01, FI-02, FI-05 |
+**Gate results (micromind-node01):**
 
-**Exit condition:** Three scripted fault runs produce correct Vehicle B mode transitions. Fault event log populated. No proxy call modifies any frozen core file.
+```
+run_bcmp2_tests.py:  42/42 PASS  (4.7s)
+  AT-1 Boot & Regression:       17/17 PASS
+  SB-2 Fault Injection Proxies: 25/25 PASS
+run_s5_tests.py:    111/111 PASS
+```
 
-**Thread safety note:** Follow Pre-HIL B-2 and B-3 threading fix pattern (threading.Event / threading.Lock). Design lock pattern before writing any proxy code.
+**SB-2 exit conditions confirmed:**
+- FI-01: BIM moves toward RED on denied GNSS measurement ✅
+- FI-02: VIOMode transitions NOMINAL → OUTAGE after 3s suppression ✅
+- FI-05: EO stale frame returned, resumes correctly after clear ✅
+- Multi-fault: PRESET_VIO_GNSS activates both simultaneously ✅
+- Frozen core: ESKF `_ACC_BIAS_RW=9.81e-7`, `_GYRO_BIAS_RW=4.04e-8` unchanged ✅
+
+**Proxy architecture:**
+
+| Proxy | Intercepts | Transparent when |
+|---|---|---|
+| `SensorFaultProxy.gnss()` | Returns denied GNSSMeasurement | FI_GNSS_LOSS not active |
+| `SensorFaultProxy.vio_update()` | Returns (False, 0.0) | FI_VIO_LOSS not active |
+| `SensorFaultProxy.trn_correction()` | Returns None | FI_RADALT_LOSS not active |
+| `SensorFaultProxy.eo_frame()` | Returns stale cached frame | FI_EO_FREEZE not active |
+| `NavSourceProxy.trn_update()` | Returns None (skips TRNStub call) | FI_TERRAIN_CONF_DROP not active |
+| `NavSourceProxy.vio_source_available()` | Returns False | FI_VIO_LOSS not active |
+| `NavSourceProxy.dt_ticked()` | Adds ±2ms jitter to dt | FI_IMU_JITTER not active |
 
 ---
 
 ### SB-3 — Full Mission and Reports ⏳ PENDING
 
-**Deliverables:** Full five-phase terrain, FI-01..FI-15 scripted, `test_bcmp2_at2.py` + `test_bcmp2_at3_5.py`, `bcmp2_report.py` (JSON + HTML, business comparison block first).
+**Entry gate:** SB-2 closed ✅
+
+**Deliverables:**
+
+| File | Responsibility |
+|---|---|
+| Full five-phase terrain scripted | FI-01..FI-15 wired into bcmp2_runner |
+| `tests/test_bcmp2_at2.py` | AT-2: 150 km nominal dual-track run |
+| `tests/test_bcmp2_at3_5.py` | AT-3 through AT-5: single/multi/terminal failure |
+| `scenarios/bcmp2/bcmp2_report.py` | JSON + HTML comparative report (business block first) |
 
 **Exit condition:** AT-2 nominal run produces expected comparative outcome. Vehicle A exceeds corridor by P4. Vehicle B corridor maintained. HTML report business comparison block correct.
 
 ---
 
-### SB-4 — Dash GUI and Replay ⏳ PENDING
+### SB-4 — Dashboard and Replay ⏳ PENDING
 
-**Deliverables:** `dashboard/bcmp2_dashboard.py` (7-panel Plotly Dash), `dashboard/bcmp2_replay.py` (4 replay modes: executive 2–3 min / technical 8–10 min / high-fidelity / overnight).
+**Deliverables:** `dashboard/bcmp2_dashboard.py` (7-panel Plotly Dash), `dashboard/bcmp2_replay.py` (4 replay modes).
 
-**Exit condition:** Executive replay runs 2–3 min correctly. Panel 7 outcome summary updates live. Operator-triggered fault produces identical Vehicle B behaviour to scripted fault.
+**Exit condition:** Executive replay runs 2–3 min correctly. Operator-triggered fault produces identical Vehicle B behaviour to scripted fault.
 
 ---
 
@@ -142,64 +167,66 @@ Full 3D INS mechanisation feeds IMU noise terms only — without true specific f
 
 ```
 scenarios/bcmp2/
-    bcmp2_drift_envelopes.py     ✅ SB-1  C-2 envelope constants (STIM300 derived + Monte Carlo)
-    bcmp2_terrain_gen.py         ✅ SB-1  C-3 terrain generator (7 documented parameters)
-    bcmp2_scenario.py            ✅ SB-1  5-phase mission + C-4 disturbance schedule
-    baseline_nav_sim.py          ✅ SB-1  Vehicle A cross-track dead-reckoning
-    bcmp2_runner.py              ✅ SB-1  Dual-track orchestrator
-    bcmp2_report.py              ⏳ SB-3  JSON + HTML comparative report
-    __init__.py                  ✅ SB-1
+    bcmp2_drift_envelopes.py     ✅ SB-1
+    bcmp2_terrain_gen.py         ✅ SB-1
+    bcmp2_scenario.py            ✅ SB-1
+    baseline_nav_sim.py          ✅ SB-1
+    bcmp2_runner.py              ✅ SB-1
+    bcmp2_report.py              ⏳ SB-3
 
 fault_injection/
-    __init__.py                  ✅ SB-1  (stub)
-    fault_manager.py             ⏳ SB-2  Thread-safe fault state registry
-    sensor_fault_proxy.py        ⏳ SB-2  GNSS / VIO / RADALT / EO intercept
-    nav_source_proxy.py          ⏳ SB-2  TRN / VIO / IMU jitter suppression
+    __init__.py                  ✅ SB-1 (stub)
+    fault_manager.py             ✅ SB-2  Thread-safe singleton, FI-01..FI-13
+    sensor_fault_proxy.py        ✅ SB-2  GNSS / VIO / RADALT / EO intercept
+    nav_source_proxy.py          ✅ SB-2  TRN / VIO nav source / IMU jitter
 
 dashboard/
-    bcmp2_dashboard.py           ⏳ SB-4  Plotly Dash 7-panel GUI
-    bcmp2_replay.py              ⏳ SB-4  Replay driver (4 modes)
+    bcmp2_dashboard.py           ⏳ SB-4
+    bcmp2_replay.py              ⏳ SB-4
 
 tests/
-    test_bcmp2_at1.py            ✅ SB-1  17 AT-1 gates (boot + regression)
-    test_bcmp2_sb2.py            ⏳ SB-2  Fault injection scripted gates
-    test_bcmp2_at2.py            ⏳ SB-3  AT-2: 150 km nominal dual-track
-    test_bcmp2_at3_5.py          ⏳ SB-3  AT-3 through AT-5: failure missions
-    test_bcmp2_at6.py            ⏳ SB-5  AT-6: 3× repeatability
+    test_bcmp2_at1.py            ✅ SB-1  17 AT-1 gates
+    test_bcmp2_sb2.py            ✅ SB-2  25 fault injection gates
+    test_bcmp2_at2.py            ⏳ SB-3
+    test_bcmp2_at3_5.py          ⏳ SB-3
+    test_bcmp2_at6.py            ⏳ SB-5
 
-run_bcmp2_tests.py               ✅ SB-1  Root runner (mirrors run_s5_tests.py)
+BCMP2_STATUS.md                  ✅ (this file)
+BCMP2_JOURNAL.md                 ✅
+run_bcmp2_tests.py               ✅ SB-1+SB-2  42 gates total
 ```
 
 ---
 
 ## Acceptance Test Summary
 
-| AT | Purpose | Mode | Status |
+| AT | Purpose | Gates | Status |
 |---|---|---|---|
-| AT-1 | Boot + regression, 5 km | SITL | ✅ 17/17 PASS |
-| AT-2 | Nominal 150 km dual-track | SITL | ⏳ SB-3 |
-| AT-3 | Single-failure mission | SITL | ⏳ SB-3 |
-| AT-4 | Multi-failure mission | SITL | ⏳ SB-3 |
-| AT-5 | Terminal integrity | SITL | ⏳ SB-3 |
-| AT-6 | 3× repeatability / endurance | SIL | ⏳ SB-5 |
+| AT-1 | Boot + regression, 5 km | 17 | ✅ PASS |
+| SB-2 | Fault injection proxies | 25 | ✅ PASS |
+| AT-2 | Nominal 150 km dual-track | TBD | ⏳ SB-3 |
+| AT-3 | Single-failure mission | TBD | ⏳ SB-3 |
+| AT-4 | Multi-failure mission | TBD | ⏳ SB-3 |
+| AT-5 | Terminal integrity | TBD | ⏳ SB-3 |
+| AT-6 | 3× repeatability / endurance | TBD | ⏳ SB-5 |
+
+**Total gates active: 42/42 ✅**
 
 ---
 
 ## Regression Baseline
 
-Must remain green after every sprint:
-
 | Suite | Runner | Gates | Last checked |
 |---|---|---|---|
-| S5 acceptance | `run_s5_tests.py` | 111/111 | 29 March 2026 — SB-1 close |
+| S5 acceptance | `run_s5_tests.py` | 111/111 | 30 March 2026 — SB-2 close |
 | S8 IMU / ALS-250 | `run_s8_tests.py` | 68/68 | 29 March 2026 — SB-1 close |
-| BCMP-2 AT-1 | `run_bcmp2_tests.py` | 17/17 | 29 March 2026 — validated on micromind-node01 |
+| BCMP-2 combined | `run_bcmp2_tests.py` | 42/42 | 30 March 2026 — SB-2 close |
 
 ---
 
-## Do Not Start SB-2 Without
+## Do Not Start SB-3 Without
 
-- [ ] BCMP2_STATUS.md and JOURNAL.md committed to repo
+- [ ] BCMP2_STATUS.md and BCMP2_JOURNAL.md updated and committed
 - [ ] Session goal confirmed with Amit
-- [ ] `run_bcmp2_tests.py` green on micromind-node01 (confirmed ✅)
-- [ ] `run_s5_tests.py` green on micromind-node01 (confirmed ✅)
+- [ ] `run_bcmp2_tests.py` green on micromind-node01 (42/42 ✅)
+- [ ] `run_s5_tests.py` green on micromind-node01 (111/111 ✅)
