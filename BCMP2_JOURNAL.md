@@ -346,3 +346,148 @@ All FaultManager reads/writes use `threading.Lock()`. Proxies call `fm.is_active
 ---
 
 *Journal maintained for IP traceability. All development conducted outside TASL premises on micromind-node01.*
+
+---
+
+## 30 March 2026 — SB-3: Full Mission and Reports
+
+**Session type:** Implementation sprint (continued from SB-2 thread)  
+**Location:** Development outside TASL premises (micromind-node01 sandbox)  
+**Preceding state:** SB-2 closed. Tag `sb2-fault-injection-foundation`. 42/42 gates. S5 111/111.
+
+---
+
+### 2100 IST — SB-3 scope confirmed
+
+Three deliverables in sequence:
+1. `bcmp2_report.py` — JSON + HTML (business block first per §8.3)
+2. `tests/test_bcmp2_at2.py` — AT-2: 150 km nominal dual-track
+3. `tests/test_bcmp2_at3_5.py` — AT-3 through AT-5: failure mission gates
+
+Runner output structure inspected before writing report. Key fields confirmed: `comparison`, `vehicle_a.c2_gates`, `disturbance_schedule` at top level, `vehicle_b` KPI dict.
+
+---
+
+### 2110 IST — Step 1 committed: `bcmp2_report.py`
+
+Commit: `23b665f`
+
+HTML structure (in order): business comparison block → drift chart → VB KPIs → event log → technical tables. Business block position enforced by assertion: `html.index("Mission Outcome") < html.index("Technical Evidence")`.
+
+SVG drift chart uses only Python stdlib — no external JS or CDN dependencies. Inline SVG embedded in HTML so file is fully self-contained. Bar chart shows Vehicle A observed drift vs C-2 envelope floor/ceiling for each phase boundary.
+
+Self-checks (4/4 PASS): JSON valid, business block first, all sections present, files written.
+
+---
+
+### 2130 IST — AT-2 full 150 km runs to ground gate values
+
+Ran seeds 42 and 101 at 150 km before writing AT-2 gates. Results used to set concrete assertions:
+
+- Seed 42: km60=17m, km100=91m, km120=126m, no corridor breach
+- Seed 101: km60=57m, km100=299m, km120=471m, breach at km 123.4
+- Both seeds C-2 gates PASS
+- `imu_model` key contains `"Safran STIM300"` not `"STIM300"` — noted, test uses `in` check
+
+Seed 303 excluded from AT-2: runtime >60s in sandbox environment. Included in AT-6 (SB-5) repeatability where longer runtime is acceptable.
+
+One fix in AT-2: `imu_model` assertion — used `"STIM300" in value` instead of exact match `== "STIM300"`. Single fix, first attempt.
+
+---
+
+### 2200 IST — Steps 2+3 committed: AT-2 + AT-3/4/5
+
+Commit: `e3b1696`
+
+AT-2 (29 gates): structural completeness, C-2 compliance, drift monotonicity, seed 101 corridor breach demonstration, report generation with business-first ordering.
+
+AT-3/4/5 (19 gates):
+- AT-3: FI-01/02/05 single-fault — proxy intercepts confirmed, Vehicle A unaffected
+- AT-4: PRESET_VIO_GNSS multi-fault — C-2 gates unaffected by proxy chain
+- AT-5: frozen core unchanged after full proxy chain driven, business block first
+
+`run_bcmp2_tests.py` updated: 4 suites, 90 total gates.
+
+---
+
+### 2230 IST — SB-3 gate run
+
+```
+run_bcmp2_tests.py:  90/90 PASS (73.4s)
+  AT-1 Boot & Regression:       17/17 PASS
+  SB-2 Fault Injection Proxies: 25/25 PASS
+  AT-2 Nominal 150 km:          29/29 PASS  (~55s — two 150km runs)
+  AT-3/4/5 Failure Missions:    19/19 PASS
+```
+
+**SB-3 formally closed.**
+
+---
+
+### 2230 IST — SB-4 entry note
+
+Architecture doc calls for Plotly Dash for dashboard. Plotly/Dash are not installed on micromind-node01. Existing programme uses matplotlib (bcmp1_dashboard.py). Architectural direction needed before SB-4 begins: install Plotly/Dash, or implement in matplotlib matching existing programme pattern.
+
+---
+
+## Lessons and Standing Rules (additions from SB-3)
+
+### L-10 — IMU model name is "Safran STIM300" not "STIM300"
+The `imu_model` field in runner output contains the full display name `"Safran STIM300"`. Tests that assert on this field must use `in` substring check or the full name, not the abbreviated form.
+
+### L-11 — Seed 303 runtime on sandbox exceeds 60s
+Full 150 km run for seed 303 takes >60s in the sandbox environment. It runs fine on micromind-node01 (RTX 5060 Ti, 16GB RAM). Exclude from time-limited sandbox test suites; include in AT-6 repeatability where longer runtime is expected.
+
+### L-12 — SVG charts require no external dependencies
+The drift chart in `bcmp2_report.py` uses inline SVG with no external JS, CDN, or Plotly dependency. This keeps the HTML fully self-contained — correct for a programme that may operate in air-gapped environments.
+
+### L-13 — AT test fixtures should be module-scoped for 150 km runs
+`@pytest.fixture(scope="module")` prevents re-running 27-second full-mission runs for each test within the same class. 5km fixtures remain function-scoped (fast enough).
+
+---
+
+*Journal maintained for IP traceability. All development conducted outside TASL premises.*
+
+---
+
+## 30 March 2026 — SB-3 Hardware Validation
+
+**Time:** ~2300 IST (exact commit time not recorded on workstation)  
+**Workstation:** micromind-node01  
+**Commit:** `2352382` · **Tag:** `sb3-full-mission-reports`
+
+```
+run_bcmp2_tests.py:  90/90 PASS  (31.3s total)
+  AT-1 Boot & Regression:       17/17 PASS  (3.95s)
+  SB-2 Fault Injection Proxies: 25/25 PASS  (0.16s)
+  AT-2 Nominal 150 km:          29/29 PASS  (24.28s)
+  AT-3/4/5 Failure Missions:    19/19 PASS  (2.31s)
+run_s5_tests.py:    111/111 PASS
+```
+
+**Performance note:** AT-2 ran in 24.28s on micromind-node01 vs 55s in sandbox. RTX 5060 Ti 16GB + Ryzen 7 9700X — full 150 km dual-track (seeds 42 and 101) completes comfortably within a single run.
+
+**Warning analysis:**  
+Two warning types observed, neither a correctness issue:
+
+1. `datetime.utcnow() deprecated` — Python 3.12 prefers `datetime.now(datetime.UTC)`. Source: `bcmp2_report.py` line 420 (HTML footer timestamp). Non-functional. Will fix when file is next touched.
+
+2. pytest-7.4.4 on micromind-node01 formats deprecation notices as `Warning:` vs pytest-9.0.2 in sandbox which uses `DeprecationWarning:`. Same content, different prefix.
+
+No action required. SB-3 formally closed.
+
+---
+
+## SB-4 Entry Note — 30 March 2026
+
+Architecture direction confirmed: implement SB-4 in **matplotlib**, matching the existing `dashboard/bcmp1_dashboard.py` pattern. Rationale:
+- Plotly/Dash not installed on micromind-node01 and not in system python
+- Existing programme uses matplotlib for all dashboards (bcmp1, mission, ALS-250)
+- matplotlib output is self-contained HTML (image embedded as base64) — air-gap safe
+- No external dependencies — correct for a programme that may operate in denied environments
+
+SB-4 deliverables:
+- `dashboard/bcmp2_dashboard.py` — 7-panel matplotlib figure + self-contained HTML
+- `dashboard/bcmp2_replay.py` — 4 replay modes via CLI `--mode executive|technical|hifi|overnight`
+
+Panel 7 (outcome summary) must always be visible — implement as the bottom-right panel with colour-coded verdict text, mirroring the business comparison block from `bcmp2_report.py`.
