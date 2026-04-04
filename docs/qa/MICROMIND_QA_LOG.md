@@ -4,6 +4,29 @@
 
 ---
 
+## Entry QA-003 — 04 April 2026
+**Session Type:** Documentation
+**Focus:** SRS v1.3 production — 12 amendments applied
+
+**Actions completed:**
+1. MicroMind_SRS_v1_3.docx produced from MicroMind_SRS_v1_2_1.docx (original MD5 e3272feb preserved unchanged).
+2. Amendments 0–11 applied: version history updated; §1.1 AVP-01 deferred; §1.3 taxonomy extended with AVP_ALT_REDUCED and AVP_SPD_REDUCED; §1.4 AVP-01 row removed; §2.1 NAV-01 calibration caveat row added; §2.2 NAV-02 fully rewritten for L2 Absolute Reset / Orthophoto Matching, SIL status note appended; §5.2 MM-02 AVP constraint enforcement row added; §10.2 Mission Envelope Schema extended with 6 AVP fields; §10.16 logging schema extended with 6 AVP/OM events; unit test Entry Criteria updated with AVP scope notes (7 tests); §14 traceability NAV-02 status revised, FR-107 and FR-110a added; §15 GAP-10/11/12 and AMB-06 added; §17 EC-13 added.
+3. All 11 string checks PASS. Source MD5 unchanged.
+4. Test suites green: 111/111 (S5), 68/68 (S8), 90/90 (BCMP-2).
+5. MICROMIND_PROJECT_CONTEXT.md Section 10 updated: SRS reference changed from v1.2.1 to v1.3.
+6. Commit: 2600977.
+
+**Findings:**
+- [HIGH — OI-05 CONFIRMED] NAV-02 replacement required to document that TRN stub still implements RADALT-NCC; UT-NAV-02-A/B now explicitly marked rewrite-required in SRS.
+- [HIGH — GAP-10 NEW] Zero SIL tests for orthophoto matching. Captured in §15 Critical Gaps and §17 EC-13.
+- [HIGH — GAP-11 NEW] C-2 drift envelopes not characterised beyond km 120 for AVP-04.
+- [MEDIUM — GAP-12 NEW] BIM adaptive spoof resistance test (UT-BIM-03) not yet written.
+- [MEDIUM — AMB-06 NEW] FR-108 (satellite avoidance) has no test ID or KPI in SRS.
+
+**Next Session:** Sprint 0 Step 3 of 3 (pending).
+
+---
+
 ## Entry QA-002 — 04 April 2026
 **Session Type:** Documentation
 **Focus:** Architecture decisions register completion; context file maintenance
