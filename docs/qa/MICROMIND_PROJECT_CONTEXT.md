@@ -76,6 +76,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-3 | ✅ CLOSED | 29/29 AT-2 + 19/19 AT-3/4/5 | `sb3-full-mission-reports` |
 | BCMP-2 SB-4 | ✅ CLOSED | Dashboard + Replay | `c183b9c` |
 | BCMP-2 SB-5 | ⏳ PENDING | Repeatability + Closure | After SB-4 |
+| Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -119,12 +120,12 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-02 | `bcmp2_report.py` line 420: `datetime.utcnow()` → `datetime.now(UTC)` (Python 3.12) | Code | LOW — cosmetic |
 | OI-03 | ALS-250 overnight run results → `als250_drift_chart.py` (S8-D deferred) | Code | HIGH — TASL chart |
 | OI-04 | OpenVINS → ESKF interface spec not documented | Architecture | HIGH — before S-NEP-04 |
-| OI-05 | TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision | Architecture | HIGH — before fusion integration |
+| OI-05 | TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision. NAV-02 v1.3 rewritten to match (SRS 2600977). SIL tests still required — see GAP-10. | Architecture | HIGH — before fusion integration |
 | OI-06 | DMRL stub is rule-based; all BCMP-1 terminal guidance results are stub-based, not CNN-based | QA Caveat | MEDIUM — document in all external reports |
 | OI-07 | Outdoor / km-scale OpenVINS validation pending (L1, L3 from Stage-2 report) | Testing | HIGH — before operating envelope declared |
 | OI-08 | Route planner terrain-texture cost term not yet implemented | Code | MEDIUM — needed for featureless terrain robustness |
-| OI-09 | SRS §10.2 Mission Envelope Schema missing AVP speed/altitude fields | Spec | MEDIUM — before SRS next revision |
-| OI-10 | BCMP-1 pass criteria ↔ SRS test ID traceability table missing | Documentation | MEDIUM — before TASL |
+| OI-09 | ~~SRS §10.2 Mission Envelope Schema missing AVP speed/altitude fields~~ **CLOSED: AVP fields added in SRS v1.3 §10.2, Amendment 7 (2600977).** | Spec | MEDIUM — before SRS next revision |
+| OI-10 | ~~BCMP-1 pass criteria ↔ SRS test ID traceability table missing~~ **CLOSED: Traceability table added in Part Two V7.2 §5.3.3, Amendment 11 (b2bae3d).** | Documentation | MEDIUM — before TASL |
 | OI-11 | Synthetic DEM always textured — featureless terrain failure mode never exercised in any test | Testing | HIGH | 
 | OI-12 | fusion_node.py not in main autonomy repo — must migrate before S-NEP-04 | Architecture | HIGH | 
 | OI-13 | Environment drift: pyyaml, lark absent from conda env — add to requirements.txt | Code | LOW |
@@ -163,8 +164,8 @@ Claude is acting as QA agent on this programme. Standing rules:
 
 | Document | When to Load |
 |---|---|
-| `MicroMind_SRS_v1_3.docx` | Reviewing any test case, requirement traceability, or acceptance criteria (v1.2.1 preserved as baseline in docs/qa/) |
-| `MicroMind_PartTwo_V7_2.docx (V7.1 preserved as baseline in docs/qa/)` | Reviewing FR boundary conditions, algorithm parameters, NFRs |
+| `MicroMind_PartTwo_V7_2.docx` | Reviewing FR boundary conditions, algorithm parameters, NFRs. (V7.1 preserved as baseline in docs/qa/) |
+| `MicroMind_SRS_v1_3.docx` | Reviewing any test case, requirement traceability, or acceptance criteria. (v1.2.1 preserved as baseline in docs/qa/) |
 | `MicroMind_V6_PART_ONE.pdf` | Checking whether implementation matches operational intent |
 | `BCMP2_STATUS.md` | BCMP-2 sprint work |
 | `NEP_SPRINT_STATUS.md` | VIO integration work |
