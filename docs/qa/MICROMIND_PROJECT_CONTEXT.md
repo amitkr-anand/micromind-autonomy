@@ -77,6 +77,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-4 | ✅ CLOSED | Dashboard + Replay | `c183b9c` |
 | BCMP-2 SB-5 | ⏳ PENDING | Repeatability + Closure | After SB-4 |
 | Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
+| Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -142,7 +143,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-23 | System rule 1.8 (no velocity-dependent control logic) not enforced in BCMP runners | Code | MEDIUM |
 | OI-24 | Drift envelope metric over-conserves 3.3–9.8× on diverging trajectories; must be documented in external reports | Documentation | MEDIUM |
 | OI-25 | Jetson Orin latency margins unknown — all timing evidence from Ryzen 7 9700X | Testing | MEDIUM — before HIL |
-| OI-26 | L10s-SE adversarial EO condition tests absent — QA standing rule #2 currently violated by all test results | Testing | HIGH — SIL completeness |
+| OI-26 | ~~L10s-SE adversarial EO condition tests absent — QA standing rule #2 currently violated by all test results~~ **CLOSED: 6 adversarial integration tests ADV-01 through ADV-06 committed at 41238ae. Gate 3 civilian detection now exercised through full DMRL pipeline for first time. QA standing rule #2 satisfied for terminal guidance.** | Testing | HIGH — SIL completeness |
 | OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
 | OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
 ---

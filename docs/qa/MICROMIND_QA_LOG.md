@@ -4,6 +4,31 @@
 
 ---
 
+## Entry QA-004 — 04 April 2026
+**Session Type:** Sprint
+**Focus:** Sprint B — L10s-SE and DMRL adversarial SIL (OI-26)
+
+**Actions completed:**
+1. Code reading (88c077e): established that inputs_from_dmrl() always defaulted civilian_confidence=0.0; Gate 3 had never been reached through DMRL integration path in any prior test.
+2. Scenario specification (88c077e): 6 adversarial scenarios ADV-01 through ADV-06 defined, reviewed by QA agent, approved before any code written.
+3. Test implementation (41238ae): tests/test_s5_l10s_se_adversarial.py — 6/6 pass. Full regression: 111/111 + 68/68 + 90/90 green.
+
+**Deviations from spec (both approved):**
+- ADV-04: scene-level architecture required — decoy-only DMRL call structurally cannot acquire lock (cap < 0.84). Fix: process real target for lock + decoy target for is_decoy flag. More realistic than spec.
+- ADV-06: thermal_signature raised 0.75 → 0.88. Spec value structurally below 0.85 gate. Prerequisite guard caught this correctly.
+
+**Known follow-on item (not blocking):**
+  DMRL lock confidence formula stochastic term makes boundary thermal_signature values unreliable for test design. Document formula before S-NEP-04 integration.
+
+**Findings:**
+- [HIGH — OI-26 CLOSED] Gate 3 civilian detection was unreachable through integration path. Now covered by ADV-01, ADV-03, ADV-06.
+- [MEDIUM] ADV-07 (corridor violation integration path) deferred — noted in test file as known gap.
+- [LOW] DMRL lock confidence formula needs documentation before S-NEP-04.
+
+**Next sprint:** Sprint C — Orthophoto Matching stub + route planner texture cost (OI-05, OI-08, OI-11). Largest sprint. Re-grounds the navigation claim on correct evidence.
+
+---
+
 ## Entry QA-003 — 04 April 2026
 **Session Type:** Documentation
 **Focus:** Sprint 0 — governing document conflict resolution complete
