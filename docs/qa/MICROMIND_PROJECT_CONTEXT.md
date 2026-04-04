@@ -163,7 +163,7 @@ Claude is acting as QA agent on this programme. Standing rules:
 
 | Document | When to Load |
 |---|---|
-| `MicroMind_SRS_v1.2.1` | Reviewing any test case, requirement traceability, or acceptance criteria |
+| `MicroMind_SRS_v1_3.docx` | Reviewing any test case, requirement traceability, or acceptance criteria (v1.2.1 preserved as baseline in docs/qa/) |
 | `MicroMind_PartTwo_V7_2.docx (V7.1 preserved as baseline in docs/qa/)` | Reviewing FR boundary conditions, algorithm parameters, NFRs |
 | `MicroMind_V6_PART_ONE.pdf` | Checking whether implementation matches operational intent |
 | `BCMP2_STATUS.md` | BCMP-2 sprint work |
