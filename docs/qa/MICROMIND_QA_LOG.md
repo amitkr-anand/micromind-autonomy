@@ -4,6 +4,25 @@
 
 ---
 
+## Entry QA-002 — 04 April 2026
+**Session Type:** Documentation
+**Focus:** Architecture decisions register completion; context file maintenance
+
+**Actions completed:**
+1. AD-03 through AD-21 drafted by QA agent and reviewed by Programme Director before commit. All 19 previously undocumented decisions now in MICROMIND_DECISIONS.md.
+2. Three decisions revised before commit based on Programme Director corrections: AD-10 (Ubuntu 24.04 platform rationale confirmed against ROS2 official docs — 24.04 is correct tier-1 Jazzy platform, not a compromise), AD-11 (clock ownership scoped to SITL only; HIL/production requires shared hardware clock source), AD-15 (Vehicle A reframed as illustrative drift model, not precision mechanisation).
+3. SB-4 confirmed CLOSED (tag c183b9c, 31 March 2026) — context file corrected.
+4. OI-14 and OI-15 closed. OI-19 (AT-6 acceptance criteria) remains open — next session.
+
+**Findings:**
+- [HIGH — OI-15 CLOSED] 19 of 21 architecture decisions were undocumented. Now resolved.
+- [LOW — OI-14 CLOSED] Context file showed SB-4 pending; git history confirmed closed 31 March.
+- [MEDIUM — OI-19 OPEN] AT-6 gate count and acceptance criteria still undefined. Must be specified before SB-5 sprint begins.
+
+**Next Session:** Define AT-6 acceptance criteria (OI-19). Then proceed to Sprint A completion.
+
+---
+
 ## Entry QA-001 — 03 April 2026
 **Session Type:** Onboarding / Architecture Review  
 **Focus:** Programme context establishment, navigation architecture decision, project folder setup

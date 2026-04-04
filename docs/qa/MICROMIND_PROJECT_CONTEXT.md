@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 03 April 2026  
+**Last Updated:** 04 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -74,7 +74,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-1 | ✅ CLOSED | 17/17 AT-1 | `sb1-dual-track-foundation` |
 | BCMP-2 SB-2 | ✅ CLOSED | 25/25 | `sb2-fault-injection-foundation` |
 | BCMP-2 SB-3 | ✅ CLOSED | 29/29 AT-2 + 19/19 AT-3/4/5 | `sb3-full-mission-reports` |
-| BCMP-2 SB-4 | ⏳ PENDING | Dashboard + Replay | Entry gate: SB-3 ✅ |
+| BCMP-2 SB-4 | ✅ CLOSED | Dashboard + Replay | `c183b9c` |
 | BCMP-2 SB-5 | ⏳ PENDING | Repeatability + Closure | After SB-4 |
 
 ### nep-vio-sandbox
@@ -125,7 +125,25 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-08 | Route planner terrain-texture cost term not yet implemented | Code | MEDIUM — needed for featureless terrain robustness |
 | OI-09 | SRS §10.2 Mission Envelope Schema missing AVP speed/altitude fields | Spec | MEDIUM — before SRS next revision |
 | OI-10 | BCMP-1 pass criteria ↔ SRS test ID traceability table missing | Documentation | MEDIUM — before TASL |
+| OI-11 | Synthetic DEM always textured — featureless terrain failure mode never exercised in any test | Testing | HIGH | 
+| OI-12 | fusion_node.py not in main autonomy repo — must migrate before S-NEP-04 | Architecture | HIGH | 
+| OI-13 | Environment drift: pyyaml, lark absent from conda env — add to requirements.txt | Code | LOW |
 
+| OI-14 | ~~SB-4 CLOSED — context file shows PENDING; update Section 6~~ **CLOSED: Resolved this session — Section 6 updated.** | Documentation | LOW — immediate |
+| OI-15 | ~~19 of 21 architecture decisions undocumented in DECISIONS.md~~ **CLOSED: Resolved this session — AD-03 through AD-21 committed.** | Documentation | HIGH — before TASL |
+| OI-16 | RC-11 (VIO OUTAGE + setpoint continuity) — 5 sub-criteria all pending; RC-11b highest risk | Architecture | HIGH — before CP-3 |
+| OI-17 | RC-7 (timestamp monotonicity injection under live timing) — pending Phase 3 | Architecture | HIGH — before CP-3 |
+| OI-18 | RC-8 (logger non-blocking 200 Hz, 60 s formal test) — pending Phase 3 | Code | HIGH — before CP-3 |
+| OI-19 | AT-6 gate count and exact acceptance criteria undefined — must be specified before SB-5 | Testing | MEDIUM — before SB-5 |
+| OI-20 | Gazebo GUI blank on micromind-node01 (X11/OGRE2) — blocks OEM demo and run_demo.sh | Code | HIGH — before any OEM meeting |
+| OI-21 | mark_send not natively integrated into mavlink_bridge setpoint loop — CP-2 latency result has asterisk | Code | MEDIUM — before CP-3 |
+| OI-22 | ESKF position PSD (1.0 m/√s) empirically set; needs derivation from STIM300 data before HIL | Architecture | MEDIUM — before HIL |
+| OI-23 | System rule 1.8 (no velocity-dependent control logic) not enforced in BCMP runners | Code | MEDIUM |
+| OI-24 | Drift envelope metric over-conserves 3.3–9.8× on diverging trajectories; must be documented in external reports | Documentation | MEDIUM |
+| OI-25 | Jetson Orin latency margins unknown — all timing evidence from Ryzen 7 9700X | Testing | MEDIUM — before HIL |
+| OI-26 | L10s-SE adversarial EO condition tests absent — QA standing rule #2 currently violated by all test results | Testing | HIGH — SIL completeness |
+| OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
+| OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
 ---
 
 ## 9. QA Agent Standing Instructions
