@@ -43,6 +43,9 @@ from tests.test_s5_bcmp1_runner import (TestBCMP1IndividualCriteria,
                                           TestBCMP1RunnerKPIExport,
                                           TestBCMP1Determinism,
                                           TestBCMP1EventLog)
+from tests.test_sprint_c_om_stub import (TestOMStubCore,
+                                          TestOMRoutePlanner,
+                                          TestOMFeaturelessIntegration)
 
 
 BANNER = "=" * 70
@@ -85,6 +88,11 @@ if __name__ == "__main__":
     for cls in [TestBCMP1IndividualCriteria, TestBCMP1AcceptanceGate,
                 TestBCMP1RunnerKPIExport, TestBCMP1Determinism,
                 TestBCMP1EventLog]:
+        suite.addTests(loader.loadTestsFromTestCase(cls))
+
+    # ── Suite 4: Sprint C — OrthophotoMatchingStub + Terrain Texture Cost ────
+    section("Suite 4/4 — Sprint C: OM Stub (OI-05), Terrain Cost (OI-08), Featureless (OI-11)")
+    for cls in [TestOMStubCore, TestOMRoutePlanner, TestOMFeaturelessIntegration]:
         suite.addTests(loader.loadTestsFromTestCase(cls))
 
     # ── Run ───────────────────────────────────────────────────────────────────
