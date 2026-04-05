@@ -273,6 +273,9 @@ def run_bcmp2(
         "vehicle_a":  kpi_a,
         "vehicle_b":  kpi_b,
         "comparison": comparison,
+
+        # AT-6 G-10/G-11/G-12: FSM phase chain for cross-seed consistency check
+        "vehicle_b_phase_sequence": kpi_b.get("phase_sequence", []),
     }
 
     # ── 5. Write KPI log ──────────────────────────────────────────────────
@@ -305,6 +308,21 @@ def _extract_bcmp1_kpis(result) -> dict:
     # ------------------------------------------------------------------
     # S8-E result: result.kpi is a dict
     # ------------------------------------------------------------------
+    # Extract FSM phase sequence — used for AT-6 G-10/G-11/G-12 chain gates.
+    # fsm_history is list[dict] on BCMP1RunResult; each entry has a "state" key.
+    def _phase_seq(res) -> list:
+        history = None
+        if hasattr(res, "fsm_history") and res.fsm_history:
+            history = res.fsm_history
+        elif isinstance(res, dict) and res.get("fsm_history"):
+            history = res["fsm_history"]
+        if not history:
+            return []
+        # Two formats: list[dict] with "state" key, or list[str] (state name)
+        if isinstance(history[0], dict):
+            return [e["state"] for e in history]
+        return list(history)  # already a list of state name strings
+
     if hasattr(result, "kpi"):
         kpi = result.kpi
 
@@ -327,6 +345,7 @@ def _extract_bcmp1_kpis(result) -> dict:
                 "ew_replan_count": kpi.get("ew_replan_count"),
                 "l10s_decision": kpi.get("l10s_decision"),
                 "criteria": criteria,
+                "phase_sequence": _phase_seq(result),
             }
 
         # ------------------------------------------------------------------
@@ -342,10 +361,12 @@ def _extract_bcmp1_kpis(result) -> dict:
             "l10s_decision_ms":   getattr(kpi, "l10s_decision_ms", None),
             "ew_cost_map_ms":     getattr(kpi, "ew_cost_map_ms", None),
             "route_replan_ms":    getattr(kpi, "route_replan_ms", None),
+            "phase_sequence":     _phase_seq(result),
         }
 
     # Plain dict fallback
     if isinstance(result, dict):
+        result.setdefault("phase_sequence", _phase_seq(result))
         return result
 
     # Generic attribute fallback
@@ -361,7 +382,8 @@ def _extract_bcmp1_kpis(result) -> dict:
         if val is not None:
             out[attr] = val
 
-    return out if out else {"raw": str(result)}
+    out["phase_sequence"] = _phase_seq(result)
+    return out if out else {"raw": str(result), "phase_sequence": []}
 
 
 # ---------------------------------------------------------------------------
