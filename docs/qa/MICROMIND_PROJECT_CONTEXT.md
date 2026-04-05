@@ -60,7 +60,9 @@ All test scenarios must be designed against these profiles. No other baseline is
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
-**Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)
+**Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
+**Integration RC tests:** 7 additional (4 RC-11 + 2 RC-7 + 1 RC-8)  
+**Total regression baseline:** 290 tests
 
 ---
 

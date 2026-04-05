@@ -292,38 +292,75 @@ def run_bcmp2(
 
 def _extract_bcmp1_kpis(result) -> dict:
     """
-    Extract a flat KPI dict from a BCMP-1 BCMPResult or BCMPResult-like object.
-    Handles both S5 and S8-E result formats gracefully.
+    Extract a flat KPI dict from BCMP-1 outputs.
+
+    Supports:
+      - S5 BCMP1RunResult / BCMP1KPI dataclass style
+      - S8-E BCMPResult with kpi dict
+      - plain dict fallback
     """
     if result is None:
         return {"error": "Vehicle B run returned None"}
 
-    # S8-E result: has .kpi attribute
+    # ------------------------------------------------------------------
+    # S8-E result: result.kpi is a dict
+    # ------------------------------------------------------------------
     if hasattr(result, "kpi"):
         kpi = result.kpi
+
+        if isinstance(kpi, dict):
+            criteria = kpi.get("criteria", {})
+
+            return {
+                "nav01_pass": criteria.get("C-03-NAV-DRIFT"),
+                "max_5km_drift_m": kpi.get("max_5km_drift_m"),
+                "trn_corrections": None,
+                "all_criteria_met": kpi.get("passed"),
+                "spoof_detection_ms": (
+                    kpi.get("spoof_latency_s") * 1000.0
+                    if kpi.get("spoof_latency_s") is not None else None
+                ),
+                "dmrl_lock_conf": kpi.get("dmrl_confidence"),
+                "l10s_decision_ms": None,
+                "ew_cost_map_ms": None,
+                "route_replan_ms": None,
+                "ew_replan_count": kpi.get("ew_replan_count"),
+                "l10s_decision": kpi.get("l10s_decision"),
+                "criteria": criteria,
+            }
+
+        # ------------------------------------------------------------------
+        # Older S5-style dataclass/object KPI
+        # ------------------------------------------------------------------
         return {
-            "nav01_pass":         getattr(kpi, "nav01_pass",         None),
-            "max_5km_drift_m":    getattr(kpi, "max_5km_drift_m",    None),
-            "trn_corrections":    getattr(kpi, "trn_corrections",     None),
-            "all_criteria_met":   getattr(kpi, "all_criteria_met",    None),
-            "spoof_detection_ms": getattr(kpi, "spoof_detection_ms",  None),
-            "dmrl_lock_conf":     getattr(kpi, "dmrl_lock_confidence",None),
-            "l10s_decision_ms":   getattr(kpi, "l10s_decision_ms",   None),
-            "ew_cost_map_ms":     getattr(kpi, "ew_cost_map_ms",      None),
-            "route_replan_ms":    getattr(kpi, "route_replan_ms",     None),
+            "nav01_pass":         getattr(kpi, "nav01_pass", None),
+            "max_5km_drift_m":    getattr(kpi, "max_5km_drift_m", None),
+            "trn_corrections":    getattr(kpi, "trn_corrections", None),
+            "all_criteria_met":   getattr(kpi, "all_criteria_met", None),
+            "spoof_detection_ms": getattr(kpi, "spoof_detection_ms", None),
+            "dmrl_lock_conf":     getattr(kpi, "dmrl_lock_confidence", None),
+            "l10s_decision_ms":   getattr(kpi, "l10s_decision_ms", None),
+            "ew_cost_map_ms":     getattr(kpi, "ew_cost_map_ms", None),
+            "route_replan_ms":    getattr(kpi, "route_replan_ms", None),
         }
 
-    # S5 result: dict-like or has pass_rate
+    # Plain dict fallback
     if isinstance(result, dict):
         return result
 
-    # Fallback: extract whatever attributes exist
+    # Generic attribute fallback
     out = {}
-    for attr in ["nav01_pass", "all_criteria_met", "max_5km_drift_m",
-                 "trn_corrections", "pass_rate"]:
+    for attr in [
+        "nav01_pass",
+        "all_criteria_met",
+        "max_5km_drift_m",
+        "trn_corrections",
+        "pass_rate",
+    ]:
         val = getattr(result, attr, None)
         if val is not None:
             out[attr] = val
+
     return out if out else {"raw": str(result)}
 
 
