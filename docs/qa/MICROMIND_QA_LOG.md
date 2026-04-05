@@ -4,6 +4,50 @@
 
 ---
 
+## Entry QA-006 — 05 April 2026
+**Session Type:** Sprint
+**Focus:** Sprint D — Pre-HIL completion. RC-11, RC-7, RC-8 (OI-16, OI-17, OI-18). SetpointCoordinator implementation.
+
+**Actions completed:**
+1. Code reading session (4972110): vio_mode.py had zero logs; ESKF had no isfinite guards; mark_send confirmed natively integrated at mavlink_bridge.py lines 358-359 (OI-21 stale); LivePipeline.setpoint_queue and MAVLinkBridge.update_setpoint() were unconnected.
+2. Specification (2625050): Sprint D spec written first — 4 deliverables, 9 SD gates, RC-11a–d + RC-7 + RC-8 specifications, including Jetson caveats.
+3. vio_mode.py logging (308016b): PD-authorised frozen file modification. Three log insertions: VIO_OUTAGE_DETECTED (WARNING), VIO_RESUMPTION_STARTED (INFO), VIO_NOMINAL_RESTORED (INFO). Backup created at vio_mode_FROZEN_BASELINE.py.
+4. SetpointCoordinator (7bebc8c): External wiring pattern — drains LivePipeline.setpoint_queue at 50 Hz, keeps most-recent setpoint, calls bridge.update_setpoint(). Does not modify LivePipeline or MAVLinkBridge.
+5. test_prehil_rc11.py (7bebc8c): RC-11a (OUTAGE detection), RC-11b (6000-step ESKF NaN stability), RC-11c (setpoint continuity), RC-11d (RESUMPTION→NOMINAL correctness). All 4 pass.
+6. test_prehil_rc7.py (7bebc8c): IFM-01 monotonicity injection — violation_count==1 after one bad timestamp, subsequent frames accepted. SD-06 PASS.
+7. test_prehil_rc8.py (7bebc8c): FusionLogger 12000 entries at 200 Hz — completeness=1.0, worst_call=0.173 ms. SD-07 PASS.
+
+**Key engineering finding:**
+- LivePipeline not importable in SIL (psutil absent, OI-13 pre-existing). All RC-11 tests drive VIONavigationMode and ErrorStateEKF directly. SetpointCoordinator tested with _MockPipeline + _MockBridge.
+- FusionLogger is fully synchronous (in-memory list append) — no async queue, no T-LOG thread. RC-8 "drop_count" is computed as submitted − written.
+- RC-11a outage_threshold_s=0.2 used in test (not 2.0) — tests the detection mechanism, not the production threshold value.
+
+**Nine SD gates status:**
+- SD-01 RC-11a OUTAGE detected within 500 ms, log present: PASS
+- SD-02 RC-11b zero NaN across 6000 steps: PASS
+- SD-03 RC-11c setpoints forwarded, finite, non-frozen, rate >= 20 Hz: PASS
+- SD-04 RC-11d NOMINAL restored within 2 s, no jump > 50 m: PASS
+- SD-05 RC-11e 119/119 + 68/68 + 90/90 + 6/6 = 283: PASS
+- SD-06 RC-7 IFM-01 violation_count==1: PASS
+- SD-07 RC-8 completeness=1.0, worst_call=0.173 ms: PASS
+- SD-08 SetpointCoordinator frozen files untouched: PASS
+- SD-09 Jetson caveat in RC-11b and RC-8 output: PASS
+
+**OI closures:**
+- [HIGH — OI-16 CLOSED] RC-11 all criteria met. SetpointCoordinator wired. vio_mode.py logging present.
+- [HIGH — OI-17 CLOSED] RC-7 IFM-01 guard directly tested. violation_count and event_id confirmed.
+- [HIGH — OI-18 CLOSED] RC-8 completeness >= 0.99, no blocking call > 5 ms.
+- [MEDIUM — OI-21 CLOSED] mark_send confirmed natively integrated at mavlink_bridge.py:358-359. CP-2 asterisk withdrawn.
+
+**Regression baseline:** 283 tests green
+  (119 S5 + 68 S8 + 90 BCMP-2 + 6 ADV)
+
+**CP-3 status:** OI-16, OI-17, OI-18 now closed. CP-3 Pre-HIL declaration prerequisites met (pending programme director review).
+
+**Next sprint:** CP-3 declaration review, then SB-5 (BCMP-2 repeatability + closure) per AT-6 acceptance criteria (17 gates, defined at docs/qa/AT6_Acceptance_Criteria.md).
+
+---
+
 ## Entry QA-005 — 05 April 2026
 **Session Type:** Sprint
 **Focus:** Sprint C — OrthophotoMatchingStub, terrain texture cost, featureless terrain test (OI-05, OI-08, OI-11)

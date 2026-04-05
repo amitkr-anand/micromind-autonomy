@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 04 April 2026  
+**Last Updated:** 05 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -79,6 +79,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
 | Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
 | Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
+| Sprint D Pre-HIL RC-11 / RC-7 / RC-8 | ✅ CLOSED | 9/9 SD gates | `7bebc8c` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -134,12 +135,12 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 
 | OI-14 | ~~SB-4 CLOSED — context file shows PENDING; update Section 6~~ **CLOSED: Resolved this session — Section 6 updated.** | Documentation | LOW — immediate |
 | OI-15 | ~~19 of 21 architecture decisions undocumented in DECISIONS.md~~ **CLOSED: Resolved this session — AD-03 through AD-21 committed.** | Documentation | HIGH — before TASL |
-| OI-16 | RC-11 (VIO OUTAGE + setpoint continuity) — 5 sub-criteria all pending; RC-11b highest risk | Architecture | HIGH — before CP-3 |
-| OI-17 | RC-7 (timestamp monotonicity injection under live timing) — pending Phase 3 | Architecture | HIGH — before CP-3 |
-| OI-18 | RC-8 (logger non-blocking 200 Hz, 60 s formal test) — pending Phase 3 | Code | HIGH — before CP-3 |
+| OI-16 | ~~RC-11 (VIO OUTAGE + setpoint continuity) — 5 sub-criteria all pending; RC-11b highest risk~~ **CLOSED: RC-11a–d tests committed at 7bebc8c. SetpointCoordinator committed at 7bebc8c. All 9 SD gates PASS. vio_mode.py logging added at 308016b (PD authorised). Zero NaN across 6000 ESKF steps.** | Architecture | HIGH — before CP-3 |
+| OI-17 | ~~RC-7 (timestamp monotonicity injection under live timing) — pending Phase 3~~ **CLOSED: test_prehil_rc7.py committed at 7bebc8c. IFM-01 rejects non-monotonic, violation_count==1, subsequent frames accepted. SD-06 PASS.** | Architecture | HIGH — before CP-3 |
+| OI-18 | ~~RC-8 (logger non-blocking 200 Hz, 60 s formal test) — pending Phase 3~~ **CLOSED: test_prehil_rc8.py committed at 7bebc8c. 12000 entries, completeness=1.0, worst_call=0.173 ms. SD-07 PASS.** | Code | HIGH — before CP-3 |
 | OI-19 | ~~AT-6 gate count and exact acceptance criteria undefined — must be specified before SB-5~~ **CLOSED: Resolved this session — AT6_Acceptance_Criteria.md committed. 17 gates defined across 4 groups.** | Testing | MEDIUM — before SB-5 |
 | OI-20 | Gazebo GUI blank on micromind-node01 (X11/OGRE2) — blocks OEM demo and run_demo.sh | Code | HIGH — before any OEM meeting |
-| OI-21 | mark_send not natively integrated into mavlink_bridge setpoint loop — CP-2 latency result has asterisk | Code | MEDIUM — before CP-3 |
+| OI-21 | ~~mark_send not natively integrated into mavlink_bridge setpoint loop — CP-2 latency result has asterisk~~ **CLOSED: Sprint D code review (4972110) confirmed mark_send IS natively integrated at mavlink_bridge.py lines 358-359. CP-2 asterisk withdrawn.** | Code | MEDIUM — before CP-3 |
 | OI-22 | ESKF position PSD (1.0 m/√s) empirically set; needs derivation from STIM300 data before HIL | Architecture | MEDIUM — before HIL |
 | OI-23 | System rule 1.8 (no velocity-dependent control logic) not enforced in BCMP runners | Code | MEDIUM |
 | OI-24 | Drift envelope metric over-conserves 3.3–9.8× on diverging trajectories; must be documented in external reports | Documentation | MEDIUM |
