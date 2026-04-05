@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 05 April 2026  
+**Last Updated:** 06 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -66,7 +66,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ---
 
-## 6. Current Programme State (03 April 2026)
+## 6. Current Programme State (06 April 2026)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -77,7 +77,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-2 | ✅ CLOSED | 25/25 | `sb2-fault-injection-foundation` |
 | BCMP-2 SB-3 | ✅ CLOSED | 29/29 AT-2 + 19/19 AT-3/4/5 | `sb3-full-mission-reports` |
 | BCMP-2 SB-4 | ✅ CLOSED | Dashboard + Replay | `c183b9c` |
-| BCMP-2 SB-5 | ⏳ PENDING | Repeatability + Closure | After SB-4 |
+| BCMP-2 SB-5 | ⏳ IN PROGRESS | 16/17 AT-6 gates PASS — overnight endurance running, G-17 closure report pending | `67ebe5d` |
 | Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
 | Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
 | Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
@@ -150,6 +150,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-26 | ~~L10s-SE adversarial EO condition tests absent — QA standing rule #2 currently violated by all test results~~ **CLOSED: 6 adversarial integration tests ADV-01 through ADV-06 committed at 41238ae. Gate 3 civilian detection now exercised through full DMRL pipeline for first time. QA standing rule #2 satisfied for terminal guidance.** | Testing | HIGH — SIL completeness |
 | OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
 | OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
+| OI-29 | `pytest.ini` missing `endurance` marker registration — pytest warns "Unknown pytest.mark.endurance" on every AT-6 endurance run | Code | LOW — cosmetic; add `endurance` to `markers` in pytest.ini |
 ---
 
 ## 9. QA Agent Standing Instructions
