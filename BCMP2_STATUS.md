@@ -106,11 +106,12 @@ run_s5_tests.py:    111/111 PASS
 
 ---
 
-### SB-4 — Dashboard and Replay ⏳ PENDING
+### SB-4 — Dashboard and Replay ✅ CLOSED
 
+**Tag:** `c183b9c`  
 **Entry gate:** SB-3 closed ✅  
 
-**Architecture note:** Plotly/Dash not installed on micromind-node01. Existing programme pattern uses matplotlib (see `dashboard/bcmp1_dashboard.py`). Implement SB-4 in matplotlib — self-contained HTML output, no external dependencies, air-gap safe. Matches existing programme convention.
+**Architecture note:** Plotly/Dash not installed on micromind-node01. Existing programme pattern uses matplotlib (see `dashboard/bcmp1_dashboard.py`). Implemented in matplotlib — self-contained HTML output, no external dependencies, air-gap safe.
 
 **Deliverables:**
 
@@ -120,6 +121,33 @@ run_s5_tests.py:    111/111 PASS
 | `dashboard/bcmp2_replay.py` | 4 replay modes: executive (2–3 min) / technical / high-fidelity / overnight. CLI `--mode` argument. |
 
 **Exit condition:** Executive replay generates correctly. Panel 7 outcome summary correct. Operator fault injection CLI produces same Vehicle B behaviour as scripted fault.
+
+---
+
+## CP-3 — Pre-HIL Declaration ✅ PASS
+
+**Date:** 05 April 2026  
+**Declared by:** QA Agent + Programme Director
+
+All Pre-HIL gate criteria met:
+
+| Gate | Result |
+|---|---|
+| RC-7 timestamp monotonicity injection | ✅ PASS |
+| RC-8 logger non-blocking 200 Hz 60 s | ✅ PASS |
+| RC-11a OUTAGE detection ≤ 500 ms | ✅ PASS |
+| RC-11b ESKF zero NaN 30 s × 200 Hz | ✅ PASS |
+| RC-11c Setpoint continuity during OUTAGE | ✅ PASS |
+| RC-11d RESUMPTION ≤ 2 s, Δpos ≤ 50 m | ✅ PASS |
+| RC-11e 283 regression tests unchanged | ✅ PASS |
+
+**Mandatory caveats (must appear in any external Pre-HIL report):**
+
+1. RC-11b and RC-8 validated on Ryzen 7 9700X. Jetson Orin timing margins not characterised (OI-25). These results do not constitute Jetson clearance.
+
+2. SetpointCoordinator exercised under SIL conditions only. Live PX4 SITL with real hardware timing not yet validated.
+
+3. vio_mode.py modified under PD authorisation (frozen file exception, commit 308016b). Baseline preserved at `vio_mode_FROZEN_BASELINE.py` (67f9591).
 
 ---
 
@@ -147,8 +175,8 @@ fault_injection/
     nav_source_proxy.py          ✅ SB-2
 
 dashboard/
-    bcmp2_dashboard.py           ⏳ SB-4  matplotlib, 7 panels
-    bcmp2_replay.py              ⏳ SB-4  4 replay modes, CLI
+    bcmp2_dashboard.py           ✅ SB-4  matplotlib, 7 panels
+    bcmp2_replay.py              ✅ SB-4  4 replay modes, CLI
 
 tests/
     test_bcmp2_at1.py            ✅ SB-1  17 gates
