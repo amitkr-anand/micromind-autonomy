@@ -47,6 +47,8 @@ CONSTANTS:
 """
 
 from enum import Enum, auto
+import logging as _logging
+_log = _logging.getLogger(__name__)
 
 
 # ── Module-level configurable constants ──────────────────────────────────────
@@ -161,6 +163,8 @@ class VIONavigationMode:
             self._mode = VIOMode.OUTAGE
             self._in_outage = True
             self._n_outage_events += 1
+            _log.warning("VIO_OUTAGE_DETECTED: dt_since_vio=%.3fs outage_event=%d",
+                         self._dt_since_vio, self._n_outage_events)
 
         # Update drift envelope peak tracker (OUTAGE only)
         if self._mode is VIOMode.OUTAGE:
@@ -207,6 +211,8 @@ class VIONavigationMode:
                 self._n_spike_alerts += 1
 
             self._mode = VIOMode.RESUMPTION
+            _log.info("VIO_RESUMPTION_STARTED: outage_events=%d",
+                      self._n_outage_events)
             self._resumption_count = 1
             self._dt_since_vio = 0.0
             mode_changed = True
@@ -218,6 +224,8 @@ class VIONavigationMode:
             # RESUMPTION → NOMINAL after required cycles
             if self._resumption_count >= self._resumption_cycles:
                 self._mode = VIOMode.NOMINAL
+                _log.info("VIO_NOMINAL_RESTORED: resumption_cycles=%d",
+                          self._resumption_count)
                 self._resumption_count = 0
                 self._in_outage = False
                 mode_changed = True
