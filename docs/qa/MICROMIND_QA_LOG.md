@@ -4,6 +4,40 @@
 
 ---
 
+## Entry QA-007 — 06 April 2026
+**Session Type:** Sprint
+**Focus:** BCMP-2 SB-5 — AT-6 repeatability and endurance (16/17 gates)
+
+**Actions completed:**
+1. Entry check: 290/290 tests green, HEAD e703486, all 9 SB-5 entry criteria satisfied including EC-5 tag `sb4-dashboard-replay` confirmed present.
+2. Runner extension (67ebe5d): `_extract_bcmp1_kpis()` extended to surface `fsm_history` as `phase_sequence`. Handles both list-of-dicts (S5) and list-of-strings (S8-E) formats. `vehicle_b_phase_sequence` added to `run_bcmp2()` top-level result dict. No frozen files touched. 90/90 bcmp2 tests held green throughout.
+3. `test_bcmp2_at6.py` written (67ebe5d): 17 gates, 4 groups. pytest `scope="module"` fixtures for seeds 42/101/303. Endurance gates marked `@pytest.mark.endurance`, configurable via `AT6_ENDURANCE_HOURS` env var.
+4. G-14 RSS warmup fix: initial sampling position caused startup module-load spike to distort linear regression. Fix: sample RSS post-mission (not pre), excluding cold-start import overhead from slope. Post-fix slope confirmed −23.8 MB/hr (stable) on 5-minute CI run.
+5. 5-minute CI endurance run confirmed green: G-13 zero crashes, G-14 slope=−23.8 MB/hr, G-15 completeness=1.0.
+6. Overnight 4-hour run launched in tmux session `at6_overnight`. Log at `logs/at6_endurance_overnight_*.log`.
+7. Context file and OI register updated (f9ee7d4). OI-29 added for pytest.ini endurance marker warning.
+
+**Key QA findings:**
+- [MEDIUM — pre-code] G-10/11/12 phase chain had no implementation in runner — `fsm_history` existed in `bcmp1_runner` but was silently dropped by `_extract_bcmp1_kpis()`. Surfaced without touching frozen files.
+- [MEDIUM — pre-code] Seed 303 is virgin (not used in AT-1 through AT-5). G-10/11/12 for seed 303 are verified against canonical chain reference, not self-comparison. On record.
+- [HIGH — resolved] G-14 RSS slope inconsistent between runs — diagnosed as startup allocation artefact, not leak. Process stable at 231 MB across 31 missions. Warmup filter fix correct and verified.
+- [LOW — OI-29] pytest.ini missing endurance marker registration. Cosmetic warning only.
+
+**Gate summary:**
+- G-01–G-09 (drift envelope, 3 seeds): ✅ PASS
+- G-10–G-12 (phase chain, 3 seeds): ✅ PASS
+- G-13–G-15 (endurance, 5-min CI): ✅ PASS — 4-hour overnight pending
+- G-16 (HTML reports, 3 seeds): ✅ PASS
+- G-17 (closure report): ❌ PENDING — `artifacts/BCMP2_ClosureReport.md` not yet authored
+
+**Regression baseline:** 290 tests green + 16/17 AT-6 gates (G-17 pending closure report)
+
+**OI status:** OI-29 opened (LOW). All prior OIs unchanged.
+
+**Next session:** Review overnight log (`logs/at6_endurance_overnight_*.log`). If G-13/G-14/G-15 pass at 4 hours, author `artifacts/BCMP2_ClosureReport.md` with 5 mandatory SIL caveats → G-17 passes → SB-5 closes.
+
+---
+
 ## Entry QA-006 — 05 April 2026
 **Session Type:** Sprint
 **Focus:** Sprint D — Pre-HIL completion. RC-11, RC-7, RC-8 (OI-16, OI-17, OI-18). SetpointCoordinator implementation.
