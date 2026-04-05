@@ -60,7 +60,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
-**Test runners:** `run_s5_tests.py` (111), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)
+**Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)
 
 ---
 
@@ -78,6 +78,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-5 | ⏳ PENDING | Repeatability + Closure | After SB-4 |
 | Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
 | Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
+| Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -121,13 +122,13 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-02 | `bcmp2_report.py` line 420: `datetime.utcnow()` → `datetime.now(UTC)` (Python 3.12) | Code | LOW — cosmetic |
 | OI-03 | ALS-250 overnight run results → `als250_drift_chart.py` (S8-D deferred) | Code | HIGH — TASL chart |
 | OI-04 | OpenVINS → ESKF interface spec not documented | Architecture | HIGH — before S-NEP-04 |
-| OI-05 | TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision. NAV-02 v1.3 rewritten to match (SRS 2600977). SIL tests still required — see GAP-10. | Architecture | HIGH — before fusion integration |
+| OI-05 | ~~TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision.~~ **CLOSED: orthophoto_matching_stub.py committed at 96bf98a. Measurement-provider-only pattern (AD-03). OM_R_NORTH = OM_R_EAST = 81.0 m². trn_stub.py preserved as frozen historical artefact.** | Architecture | HIGH — before fusion integration |
 | OI-06 | DMRL stub is rule-based; all BCMP-1 terminal guidance results are stub-based, not CNN-based | QA Caveat | MEDIUM — document in all external reports |
 | OI-07 | Outdoor / km-scale OpenVINS validation pending (L1, L3 from Stage-2 report) | Testing | HIGH — before operating envelope declared |
-| OI-08 | Route planner terrain-texture cost term not yet implemented | Code | MEDIUM — needed for featureless terrain robustness |
+| OI-08 | ~~Route planner terrain-texture cost term not yet implemented~~ **CLOSED: terrain_texture_cost() added to hybrid_astar.py at 96bf98a. Default sigma_terrain=30.0 preserves all existing test behaviour.** | Code | MEDIUM — needed for featureless terrain robustness |
 | OI-09 | ~~SRS §10.2 Mission Envelope Schema missing AVP speed/altitude fields~~ **CLOSED: AVP fields added in SRS v1.3 §10.2, Amendment 7 (2600977).** | Spec | MEDIUM — before SRS next revision |
 | OI-10 | ~~BCMP-1 pass criteria ↔ SRS test ID traceability table missing~~ **CLOSED: Traceability table added in Part Two V7.2 §5.3.3, Amendment 11 (b2bae3d).** | Documentation | MEDIUM — before TASL |
-| OI-11 | Synthetic DEM always textured — featureless terrain failure mode never exercised in any test | Testing | HIGH | 
+| OI-11 | ~~Synthetic DEM always textured — featureless terrain failure mode never exercised in any test~~ **CLOSED: OM-08 test in test_sprint_c_om_stub.py committed at 96bf98a. First test to exercise featureless terrain failure mode through full OM pipeline. 14 km featureless zone, zero corrections applied.** | Testing | HIGH |
 | OI-12 | fusion_node.py not in main autonomy repo — must migrate before S-NEP-04 | Architecture | HIGH | 
 | OI-13 | Environment drift: pyyaml, lark absent from conda env — add to requirements.txt | Code | LOW |
 

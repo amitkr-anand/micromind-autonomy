@@ -4,6 +4,31 @@
 
 ---
 
+## Entry QA-005 — 05 April 2026
+**Session Type:** Sprint
+**Focus:** Sprint C — OrthophotoMatchingStub, terrain texture cost, featureless terrain test (OI-05, OI-08, OI-11)
+
+**Actions completed:**
+1. Architecture specification produced by QA agent, committed at c5ac91a before any code written.
+2. Implementation (96bf98a): orthophoto_matching_stub.py (326 lines), hybrid_astar.py texture cost term, test_sprint_c_om_stub.py (8 tests). All 8 SC gates PASS.
+3. SC-06 conflict resolved: grep narrowed to implementation artifacts (RadarAltimeterSim, DEMProvider, elevation strip) — header provenance text retained. Claude Code correctly stopped and reported the contradiction rather than deciding.
+4. Tests integrated into run_s5_tests.py runner (6af0e4b): 111 → 119 tests. Converted from pytest to unittest.TestCase to match existing pattern.
+
+**Key QA findings:**
+- [HIGH — OI-05 CLOSED] OM stub correctly implements measurement-provider-only pattern (AD-03). R matrix confirmed 81.0 m² not old 225 m².
+- [HIGH — OI-08 CLOSED] Texture cost default=30.0 preserves all existing test behaviour. Zero existing tests affected.
+- [HIGH — OI-11 CLOSED] Featureless terrain failure mode (sigma=5, 14 km, zero corrections) exercised for first time. Was structurally untestable with synthetic DEM.
+- [MEDIUM] ADV-07 (corridor violation integration path) still deferred — noted in adversarial test file.
+
+**Regression baseline:** 283 tests green
+  (119 S5 + 68 S8 + 90 BCMP-2 + 6 ADV)
+
+**Next sprint:** Sprint D — Pre-HIL completion.
+  RC-7 (timestamp monotonicity), RC-8 (logger non-blocking 200 Hz), RC-11 (VIO OUTAGE + setpoint continuity). Closes OI-16, OI-17, OI-18.
+  Requires CP-3 before Pre-HIL can be declared.
+
+---
+
 ## Entry QA-004 — 04 April 2026
 **Session Type:** Sprint
 **Focus:** Sprint B — L10s-SE and DMRL adversarial SIL (OI-26)
