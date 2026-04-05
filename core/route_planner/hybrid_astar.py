@@ -55,6 +55,12 @@ EW_WEIGHT       = 50_000.0   # metres-equivalent cost for crossing cost=1 cell
 MAX_EAST_OFFSET =  8_000.0   # max eastward deviation allowed (m) — corridor constraint
 SMOOTH_WINDOW   = 5          # moving-average smoothing window for output waypoints
 
+# Terrain texture cost — OI-08
+# Must match OM_FEATURELESS_SIGMA_THRESHOLD / OM_PREFERRED_SIGMA_THRESHOLD in orthophoto_matching_stub.py
+TEXTURE_COST_WEIGHT          = 2.0    # multiplier for featureless terrain penalty
+FEATURELESS_SIGMA_THRESHOLD  = 10.0  # m — below this: featureless, match suppressed
+PREFERRED_SIGMA_THRESHOLD    = 30.0  # m — above this: high confidence match
+
 # 8-connected grid moves: (Δrow, Δcol)
 MOVES = [
     (-1,  0), ( 1,  0), ( 0, -1), ( 0,  1),   # cardinal
@@ -64,6 +70,39 @@ MOVE_COSTS = [
     1.0, 1.0, 1.0, 1.0,
     math.sqrt(2), math.sqrt(2), math.sqrt(2), math.sqrt(2),
 ]
+
+
+# ---------------------------------------------------------------------------
+# Terrain texture cost function — OI-08
+# ---------------------------------------------------------------------------
+
+def terrain_texture_cost(sigma_terrain: float) -> float:
+    """
+    Returns a cost penalty for featureless terrain.
+
+    Featureless terrain (sigma < FEATURELESS_SIGMA_THRESHOLD) reduces
+    orthophoto match frequency, increasing drift accumulation between
+    L2 Absolute Reset corrections. The route planner penalises these
+    zones to prefer textured terrain corridors.
+
+    Parameters
+    ----------
+    sigma_terrain : float
+        Terrain texture standard deviation (m) at the candidate cell.
+
+    Returns
+    -------
+    float
+        0.0  for high-texture terrain (sigma >= PREFERRED_SIGMA_THRESHOLD)
+        0.5  for medium-texture terrain (FEATURELESS_SIGMA_THRESHOLD <= sigma < PREFERRED_SIGMA_THRESHOLD)
+        1.0  for featureless terrain (sigma < FEATURELESS_SIGMA_THRESHOLD)
+    """
+    if sigma_terrain >= PREFERRED_SIGMA_THRESHOLD:
+        return 0.0
+    elif sigma_terrain >= FEATURELESS_SIGMA_THRESHOLD:
+        return 0.5
+    else:
+        return 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +153,39 @@ class HybridAstar:
     @property
     def replans(self) -> List[ReplanResult]:
         return list(self._replans)
+
+    # ------------------------------------------------------------------
+    # Public: compute_cost — terrain texture cost integration (OI-08)
+    # ------------------------------------------------------------------
+
+    def compute_cost(
+        self,
+        node,
+        ew_cost: float,
+        sigma_terrain: float = 30.0,
+    ) -> float:
+        """
+        Compute total route cost for a candidate node.
+
+        Parameters
+        ----------
+        node : object with .row / .col attributes
+            Candidate grid cell.
+        ew_cost : float
+            EW threat penalty for this cell (metres-equivalent).
+        sigma_terrain : float, optional
+            Terrain texture standard deviation (m).
+            Default 30.0 (high texture) preserves all existing test behaviour —
+            terrain_texture_cost(30.0) == 0.0 so zero texture penalty is added.
+
+        Returns
+        -------
+        float
+            ew_cost + TEXTURE_COST_WEIGHT * terrain_texture_cost(sigma_terrain)
+        """
+        existing_cost = ew_cost
+        texture_penalty = TEXTURE_COST_WEIGHT * terrain_texture_cost(sigma_terrain)
+        return existing_cost + texture_penalty
 
     # ------------------------------------------------------------------
     # Public: replan
