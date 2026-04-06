@@ -73,7 +73,7 @@ The OpenVINS VIO component (Stage-2 GO verdict, 21 March 2026) was validated on 
 
 **Total BCMP-2 gates:** 107/107  
 **Regression baseline at closure:** 290 tests green (119 S5 + 68 S8 + 90 BCMP-2 + 7 RC + 6 ADV)  
-**HEAD at closure:** to be filled by commit
+**HEAD at closure:** `e9e8cb0` (tag: `sb5-bcmp2-closure`)
 
 ---
 
