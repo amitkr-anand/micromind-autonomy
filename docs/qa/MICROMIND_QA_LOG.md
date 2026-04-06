@@ -23,18 +23,27 @@
 - [HIGH — resolved] G-14 RSS slope inconsistent between runs — diagnosed as startup allocation artefact, not leak. Process stable at 231 MB across 31 missions. Warmup filter fix correct and verified.
 - [LOW — OI-29] pytest.ini missing endurance marker registration. Cosmetic warning only.
 
-**Gate summary:**
+**Gate summary — all 17 PASS:**
 - G-01–G-09 (drift envelope, 3 seeds): ✅ PASS
 - G-10–G-12 (phase chain, 3 seeds): ✅ PASS
-- G-13–G-15 (endurance, 5-min CI): ✅ PASS — 4-hour overnight pending
+- G-13–G-15 (endurance, 4-hour overnight): ✅ PASS — 1483 missions, 0 crashes, slope 1.135 MB/hr, completeness 1.0000
 - G-16 (HTML reports, 3 seeds): ✅ PASS
-- G-17 (closure report): ❌ PENDING — `artifacts/BCMP2_ClosureReport.md` not yet authored
+- G-17 (closure report): ✅ PASS — `artifacts/BCMP2_ClosureReport.md` committed
 
-**Regression baseline:** 290 tests green + 16/17 AT-6 gates (G-17 pending closure report)
+**Overnight endurance evidence (micromind-node01, tmux at6_overnight):**
+- Duration: 14407 s (4.000 h)
+- G-13: missions=1483, crashes=0
+- G-14: RSS slope=1.135 MB/hr over 213 samples
+- G-15: log_completeness=1.0000 (1483/1483)
+- Log: `logs/at6_endurance_overnight_*.log`
+
+**Regression baseline:** 290 tests green + 17/17 AT-6 gates = **307 total gates PASS**
 
 **OI status:** OI-29 opened (LOW). All prior OIs unchanged.
 
-**Next session:** Review overnight log (`logs/at6_endurance_overnight_*.log`). If G-13/G-14/G-15 pass at 4 hours, author `artifacts/BCMP2_ClosureReport.md` with 5 mandatory SIL caveats → G-17 passes → SB-5 closes.
+**SB-5 declared CLOSED. Tag: `sb5-bcmp2-closure`. BCMP-2 fully closed: 107/107 gates.**
+
+**Next milestone:** S-NEP-03 (EuRoC end-to-end with real MetricSet).
 
 ---
 

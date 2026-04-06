@@ -56,7 +56,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | S0–S8 complete, 215/215 tests, BCMP-2 SB-3 closed (90/90 gates) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | S0–S8 complete, 215/215 tests, BCMP-2 CLOSED (107/107 gates, tag sb5-bcmp2-closure) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
@@ -77,7 +77,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | BCMP-2 SB-2 | ✅ CLOSED | 25/25 | `sb2-fault-injection-foundation` |
 | BCMP-2 SB-3 | ✅ CLOSED | 29/29 AT-2 + 19/19 AT-3/4/5 | `sb3-full-mission-reports` |
 | BCMP-2 SB-4 | ✅ CLOSED | Dashboard + Replay | `c183b9c` |
-| BCMP-2 SB-5 | ⏳ IN PROGRESS | 16/17 AT-6 gates PASS — overnight endurance running, G-17 closure report pending | `67ebe5d` |
+| BCMP-2 SB-5 | ✅ CLOSED | 17/17 AT-6 gates PASS — 1483 missions, 0 crashes, slope 1.135 MB/hr | `sb5-bcmp2-closure` |
 | Sprint 0 Documentation | ✅ CLOSED | Part Two V7.2 + SRS v1.3 | `b2bae3d`, `605a747`, `2600977` |
 | Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
 | Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
