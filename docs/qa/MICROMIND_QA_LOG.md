@@ -58,8 +58,14 @@
 4. Tag sb5-bcmp2-closure applied. Full sprint tag chain SB-1 through SB-5 intact.
 5. Context file updated: SB-5 row changed to CLOSED.
 
-**Key QA note — G-14 fix clarification:**
-The warmup filter fix applied two mechanisms: (1) post-mission RSS sampling (excludes pre-load baseline) and (2) _WARMUP_S=60 cutoff in the polyfit regression (excludes first-mission allocation ramp). Both are required. QA-007 entry understated this — post-mission sampling alone is insufficient; the warmup cutoff in the regression is the decisive mechanism. Steady-state evidence: 1.135 MB/hr across 213 post-warmup samples over 4 hours.
+**Key QA note — G-14 fix clarification (verified against committed code):**
+The G-14 fix moves RSS sampling to post-mission position (after run_bcmp2()
+returns) rather than pre-mission. This single change excludes the one-time
+Python module-load allocation from the linear regression. _WARMUP_S and
+warm_trace were designed in session but not committed — post-mission sampling
+alone was sufficient. Confirmed: grep of test_bcmp2_at6.py shows no _WARMUP_S
+or warm_trace. Overnight evidence: 1.135 MB/hr across 213 samples over 4 hours
+on post-mission sampling only.
 
 **Gate summary — final:**
 - G-01–G-09 (drift envelope, 3 seeds): ✅ PASS
