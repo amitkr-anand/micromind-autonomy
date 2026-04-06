@@ -89,11 +89,12 @@ All test scenarios must be designed against these profiles. No other baseline is
 | S-NEP-01 | ✅ CLOSED | 413/413 |
 | S-NEP-02 | ✅ CLOSED | 424/424 |
 | S-NEP-03R | ✅ CLOSED | 21/21 — metrics_engine remediation, pipeline end-to-end PASS | `0a93567` |
-| S-NEP-04 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `c875356` |
-| S-NEP-05 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `4dd3a76` |
-| S-NEP-06 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `d090851` |
-| S-NEP-08 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `30c2d56` |
-| S-NEP-09 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `4fcf231` |
+| S-NEP-04 | ✅ CLOSED | 10/10 pytest gates | `c875356` |
+| S-NEP-05 | ✅ CLOSED | 5/5 pytest gates | `4dd3a76` |
+| S-NEP-06 | ✅ CLOSED | 10/10 pytest gates | `d090851` |
+| S-NEP-08 | ✅ CLOSED | 7/7 pytest gates | `30c2d56` |
+| S-NEP-09 | ✅ CLOSED | 10/10 pytest gates | `4fcf231` |
+| S-NEP-10 | 🔲 READY | OpenVINS → ESKF full integration |
 
 ### OpenVINS Validation
 Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) across EuRoC MH_03 + V1_01. Zero FM events. **Outdoor and km-scale validation PENDING (L1, L3 limitations).**
@@ -128,7 +129,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-01 | V7 spec: update IMU ARW floor from ≤ 0.1 to ≤ 0.2 °/√hr (STIM300 finding, S8) | Spec | HIGH — before TASL |
 | OI-02 | `bcmp2_report.py` line 420: `datetime.utcnow()` → `datetime.now(UTC)` (Python 3.12) | Code | LOW — cosmetic |
 | OI-03 | ALS-250 overnight run results → `als250_drift_chart.py` (S8-D deferred) | Code | HIGH — TASL chart |
-| OI-04 | OpenVINS → ESKF interface spec not documented | Architecture | HIGH — before S-NEP-04 |
+| ~~OI-04~~ **CLOSED** a014997 — OpenVINS_ESKF_Interface_Spec.md committed in nep-vio-sandbox/docs/ | Architecture | HIGH — before S-NEP-04 |
 | OI-05 | ~~TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision.~~ **CLOSED: orthophoto_matching_stub.py committed at 96bf98a. Measurement-provider-only pattern (AD-03). OM_R_NORTH = OM_R_EAST = 81.0 m². trn_stub.py preserved as frozen historical artefact.** | Architecture | HIGH — before fusion integration |
 | OI-06 | DMRL stub is rule-based; all BCMP-1 terminal guidance results are stub-based, not CNN-based | QA Caveat | MEDIUM — document in all external reports |
 | OI-07 | Outdoor / km-scale OpenVINS validation pending (L1, L3 from Stage-2 report) | Testing | HIGH — before operating envelope declared |
@@ -155,9 +156,10 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
 | OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
 | OI-29 | `pytest.ini` missing `endurance` marker registration — pytest warns "Unknown pytest.mark.endurance" on every AT-6 endurance run | Code | LOW — cosmetic; add `endurance` to `markers` in pytest.ini |
-| OI-NEW-01 | S-NEP-04 through S-NEP-09 gates are print-only (no pytest enforcement) — all committed but not gated by a test file equivalent to test_snep03r_e2e.py | QA Caveat | HIGH — before any sprint is declared formally closed |
+| ~~OI-NEW-01~~ **CLOSED** fix committed — docstring corrected | QA Caveat | HIGH — before any sprint is declared formally closed |
 | OI-NEW-02 | nep-vio-sandbox sprint table header is missing a `Commit` column — added ad hoc for S-NEP-03R onwards; table schema should be formalised | Documentation | LOW — cosmetic |
 | OI-NEW-03 | G-03R-08 SIL regression must exclude test_snep03r_e2e.py itself (--ignore flag) to avoid recursive subprocess timeout — pattern must be applied to any future e2e gate files that include a SIL regression test | Architecture | MEDIUM — apply to future gate files |
+| S-NEP-10-PRE | S-NEP-10 entry criteria: OI-04 CLOSED ✅, 531/531 gates green ✅, F-04 TD decision pending (NIS EC-02) | QA | HIGH — confirm before sprint start |
 ---
 
 ## 9. QA Agent Standing Instructions
