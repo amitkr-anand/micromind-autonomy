@@ -151,9 +151,26 @@ All Pre-HIL gate criteria met:
 
 ---
 
-### SB-5 — Repeatability and Closure ⏳ PENDING
+### SB-5 — Repeatability and Closure ✅ CLOSED
 
-**Deliverables:** `tests/test_bcmp2_at6.py` (seeds 42/101/303), overnight stress, final HTML report, BCMP-2 Closure Report.
+**Tag:** `sb5-bcmp2-closure`  
+**Date:** 06 April 2026
+
+**AT-6 gate results (17/17 PASS):**
+
+| Group | Gates | Result |
+|---|---|---|
+| Group 1 — C-2 drift envelope (3 seeds × 3 boundaries) | G-01–G-09 | ✅ PASS |
+| Group 2 — FSM phase chain consistency (3 seeds) | G-10–G-12 | ✅ PASS |
+| Group 3 — Endurance 4-hour (1483 missions) | G-13–G-15 | ✅ PASS |
+| Group 4 — Reports + closure document | G-16–G-17 | ✅ PASS |
+
+**Endurance evidence (overnight run, micromind-node01):**
+- G-13: 1483 missions, 0 crashes, duration 14407 s (4.000 h)
+- G-14: RSS slope 1.135 MB/hr over 213 samples
+- G-15: log completeness 1.0000 (1483/1483 missions)
+
+**Artefacts committed:** `artifacts/BCMP2_ClosureReport.md`, `tests/test_bcmp2_at6.py`, `logs/at6_endurance_overnight_*.log`
 
 ---
 
@@ -183,7 +200,7 @@ tests/
     test_bcmp2_sb2.py            ✅ SB-2  25 gates
     test_bcmp2_at2.py            ✅ SB-3  29 gates
     test_bcmp2_at3_5.py          ✅ SB-3  19 gates
-    test_bcmp2_at6.py            ⏳ SB-5
+    test_bcmp2_at6.py            ✅ SB-5  17 gates
 
 BCMP2_STATUS.md                  ✅
 BCMP2_JOURNAL.md                 ✅
@@ -202,8 +219,8 @@ run_bcmp2_tests.py               ✅  4 suites, 90 gates
 | AT-3 | Single-failure mission | 7 | ✅ PASS |
 | AT-4 | Multi-failure mission | 6 | ✅ PASS |
 | AT-5 | Terminal integrity | 6 | ✅ PASS |
-| AT-6 | 3× repeatability / endurance | TBD | ⏳ SB-5 |
-| **Total** | | **90** | ✅ |
+| AT-6 | 3× repeatability / endurance | 17 | ✅ PASS |
+| **Total** | | **107** | ✅ |
 
 ---
 
@@ -211,9 +228,10 @@ run_bcmp2_tests.py               ✅  4 suites, 90 gates
 
 | Suite | Gates | Last verified on hardware |
 |---|---|---|
-| S5 acceptance | 111/111 | 30 March 2026 — SB-3 close |
-| S8 IMU / ALS-250 | 68/68 | 29 March 2026 — SB-1 close |
-| BCMP-2 combined | 90/90 | 30 March 2026 — SB-3 close |
+| S5 acceptance | 119/119 | 06 April 2026 — SB-5 close |
+| S8 IMU / ALS-250 | 68/68 | 06 April 2026 — SB-5 close |
+| BCMP-2 combined | 90/90 | 06 April 2026 — SB-5 close |
+| AT-6 repeatability + endurance | 17/17 | 06 April 2026 — overnight run |
 
 ---
 
