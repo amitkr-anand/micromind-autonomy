@@ -88,8 +88,12 @@ All test scenarios must be designed against these profiles. No other baseline is
 |---|---|---|
 | S-NEP-01 | ✅ CLOSED | 413/413 |
 | S-NEP-02 | ✅ CLOSED | 424/424 |
-| S-NEP-03 | 🔲 READY | EuRoC end-to-end, real MetricSet |
-| S-NEP-04 | 🔲 PLANNED | OpenVINS → ESKF integration |
+| S-NEP-03R | ✅ CLOSED | 21/21 — metrics_engine remediation, pipeline end-to-end PASS | `0a93567` |
+| S-NEP-04 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `c875356` |
+| S-NEP-05 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `4dd3a76` |
+| S-NEP-06 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `d090851` |
+| S-NEP-08 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `30c2d56` |
+| S-NEP-09 | ⚠ COMMITTED — gates print-only, no pytest enforcement | `4fcf231` |
 
 ### OpenVINS Validation
 Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) across EuRoC MH_03 + V1_01. Zero FM events. **Outdoor and km-scale validation PENDING (L1, L3 limitations).**
@@ -151,6 +155,9 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
 | OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
 | OI-29 | `pytest.ini` missing `endurance` marker registration — pytest warns "Unknown pytest.mark.endurance" on every AT-6 endurance run | Code | LOW — cosmetic; add `endurance` to `markers` in pytest.ini |
+| OI-NEW-01 | S-NEP-04 through S-NEP-09 gates are print-only (no pytest enforcement) — all committed but not gated by a test file equivalent to test_snep03r_e2e.py | QA Caveat | HIGH — before any sprint is declared formally closed |
+| OI-NEW-02 | nep-vio-sandbox sprint table header is missing a `Commit` column — added ad hoc for S-NEP-03R onwards; table schema should be formalised | Documentation | LOW — cosmetic |
+| OI-NEW-03 | G-03R-08 SIL regression must exclude test_snep03r_e2e.py itself (--ignore flag) to avoid recursive subprocess timeout — pattern must be applied to any future e2e gate files that include a SIL regression test | Architecture | MEDIUM — apply to future gate files |
 ---
 
 ## 9. QA Agent Standing Instructions
