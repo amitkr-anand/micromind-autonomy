@@ -236,3 +236,51 @@ on post-mission sampling only.
 
 ---
 *Append new entries above this line.*
+
+---
+
+## Entry QA-009 — 06 April 2026
+**Session Type:** Sprint + QA Audit + Documentation
+**Focus:** S-NEP-03R remediation, S-NEP-04 through S-NEP-09 gate formalisation, OI-04 closure
+
+**Actions completed:**
+1. Falsifiability audit of S-NEP-03 through S-NEP-09. Seven findings documented (F-01 through F-07). Core finding: S-NEP-04 through S-NEP-09 had zero pytest-enforced acceptance criteria — all gate evaluations were print() statements. The end-to-end MetricSet pipeline had never produced a valid result (EXP_VIO_013: ATE=12.17 m, tracking_loss=100%, acceptance_pass=false — accepted on status=complete only).
+2. F-05 cleared — error_state_ekf.py unmodified since freeze tag. Docstring bug logged OI-NEW-01.
+3. Five surgical fixes to evaluation/metrics_engine.py in nep-vio-sandbox: (a) Umeyama alignment inserted before APE.process_data(), (b) RPE block wrapped in inner try/except — RPE failure no longer discards ATE, (c) _compute_trajectory_errors() returns 6-tuple; _compute_drift() now receives aligned positions, (d) feature_count < 20 tracking loss condition removed (OI-NEW-02), (e) RPE delta unit Unit.seconds → Unit.frames delta=1 (evo 1.34.3 incompatibility, OI-NEW-03).
+4. Two tests rewritten in test_metrics_engine.py for aligned ATE semantics. drifting_poses() helper added.
+5. Root cause of ATE=12.17 m identified: FilterException('unsupported delta unit: Unit.seconds') in RPE silently discarded every correct ATE result and fell to centroid-only fallback which cannot correct ~180° frame rotation. Fix resolved ATE to 0.087 m matching Stage-2 benchmark.
+6. S-NEP-03R gate file tests/test_snep03r_e2e.py committed (0a93567 / ae0d563): 21 pytest assertions across 8 gates. 464/464 PASS.
+7. Retroactive pytest gates written for S-NEP-04 through S-NEP-09: test_snep04_gates.py (10 gates), test_snep05_gates.py (5 gates), test_snep06_gates.py (10 gates), test_snep08_gates.py (7 gates), test_snep09_gates.py (10 gates). F-01 closed. Committed 520b52e.
+8. OI-04 closed — docs/OpenVINS_ESKF_Interface_Spec.md written and committed a014997 in nep-vio-sandbox. Consolidates frame conventions, ROS2 field mapping, IFM fault modes, ESKF update signature, test gate registry, frozen file registry.
+9. OI-NEW-01 closed — update_vio() docstring corrected to 3-tuple return signature. Committed f18c5e9.
+10. Context file updated — all sprint rows corrected, OI register updated, S-NEP-10 marked READY. Committed 01de1c3.
+
+**Key engineering findings:**
+- Silent ATE discard: FilterException('unsupported delta unit: Unit.seconds') in evo RPE caused entire evo block to fall to unaligned fallback on every real-data run since S-NEP-03.
+- Frame rotation gap: centroid alignment in fallback cannot correct ~180° Umeyama rotation between OpenVINS world frame and EuRoC GT frame. Produced 7.34 m after centroid alignment vs 0.087 m after SE3 Umeyama.
+- _compute_drift() was receiving raw unaligned positions — produced 136.87 m/km vs 0.912 m/km after aligned positions passed.
+- S-NEP-05 BOUNDED classification is self-disclaimed (r2_linear=0.149, below 0.3 floor). Gate G-05-06 pins the weak-fit caveat rather than asserting the classification.
+- S-NEP-06 ctrl2 divergences (div=True for ≥10s outages) superseded by ctrl3. Gate G-06-08 explicitly guards against regression.
+
+**Gate summary:**
+- S-NEP-03R: 21/21 PASS (tag 0a93567 / ae0d563)
+- S-NEP-04 retroactive: 10/10 PASS
+- S-NEP-05 retroactive: 5/5 PASS
+- S-NEP-06 retroactive: 10/10 PASS
+- S-NEP-08 retroactive: 7/7 PASS
+- S-NEP-09 retroactive: 10/10 PASS
+- Full suite: 531/531 PASS
+
+**OI status changes:**
+- OI-04 CLOSED: OpenVINS_ESKF_Interface_Spec.md committed a014997 in nep-vio-sandbox
+- OI-NEW-01 CLOSED: update_vio() docstring corrected f18c5e9
+- OI-NEW-02 OPEN: MetricsEngine feature_count gate removed — reinstate when parser emits real counts
+- OI-NEW-03 OPEN: RPE 1-frame windows (evo 1.34.3 Unit.seconds incompatibility) — fix before external report
+
+**Findings carried forward:**
+- F-04 HIGH: NIS EC-02 never passed (mean 0.003 vs floor 0.5) — TD decision required to retire under PF-03 or fix covariance
+- F-06 MEDIUM: Stage-2 GO drift proxy formula not equivalent to NAV-03 km-scale criterion — document in any closure report
+- F-07 MEDIUM: S-NEP-05 BOUNDED classification self-disclaimed — pinned in G-05-06, not resolved
+- OI-07 HIGH: Outdoor km-scale VIO validation pending
+
+**Next milestone:** S-NEP-10 — OpenVINS → ESKF full integration on EuRoC MH_03 and V1_01.
