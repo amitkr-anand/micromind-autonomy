@@ -212,7 +212,7 @@ class ErrorStateEKF:
         pos_ned     : (3,) position in NED frame (m) — pre-rotated by caller
         cov_pos_ned : (3,3) position covariance in NED frame — pre-rotated by caller
 
-        Returns: (NIS: float, rejected: bool)
+        Returns: (NIS: float, rejected: bool, innov_mag: float)
         """
         cov_pos_ned = np.asarray(cov_pos_ned, dtype=np.float64).reshape(3, 3)
         diag = np.diag(cov_pos_ned)
