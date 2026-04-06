@@ -512,4 +512,32 @@ S-NEP-09 analysis established that the drift envelope metric over-conserves by 3
 - S-NEP-09 analysis (March 2026)
 
 ---
+
+## AD-22 — Demonstration Environment vs Embedded Compute Board Separation
+**Date:** 06 April 2026
+**Status:** APPROVED — Programme Director
+**Owner:** Programme Director
+
+### Decision
+The Customer Demonstration environment and the production embedded compute board are architecturally separate concerns. They run on different machines, serve different purposes, and have independent readiness gates. Coupling them in SRS v1.3 §9.4 was a specification error corrected by this decision.
+
+### Demo environment (micromind-node01)
+Runs Gazebo SITL, PX4 SITL, Vehicle A and Vehicle B autonomy stacks simultaneously over MAVLink UDP. GPU-accelerated Gazebo rendering. All logic and implementation exhibited here. Readiness gate: OI-20 (Gazebo X11/OGRE2) resolved, both stacks running simultaneously, VIZ-02 implemented, run_demo.sh verified. HIL on Jetson Orin NX is NOT a gate.
+
+### Embedded compute board (Jetson Orin NX)
+Runs the autonomy stack headlessly. Purpose: profile CPU/memory margins, quantify headroom for future capability. Outputs a single data point to the audience: stack runs on embedded hardware with measured compute margins. Does not run Gazebo. Does not drive a display. Not a prerequisite for the Customer Demonstration.
+
+### Rationale
+Coupling created a false sequencing dependency — the Customer Demonstration was gated on HIL completion. HIL integration is complex, customer-platform-specific, and cannot be fully anticipated before a customer engagement. Decoupling eliminates this dependency and places HIL correctly as a confidence-building parallel workstream.
+
+### Production HIL position
+Actual production integration is conducted with the customer's hardware, emulators, simulators, and platform specifications — on the customer's timeline.
+
+### Supersedes
+SRS v1.3 §9.4 VIZ-03 prerequisite clause: "Requires stable HIL integration on target airframe (Jetson Orin NX + PX4)." This clause is incorrect and is replaced by the Gazebo SITL readiness gate above.
+
+### Demo design session slot
+Full Run 1 and Run 2 display layout specification to be completed before SB-5 Phase C begins. Entry condition: SB-5 Phase A and Phase B exit gates both confirmed PASS.
+
+---
 *Append new decisions above the final line.*
