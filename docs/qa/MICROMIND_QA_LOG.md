@@ -47,6 +47,34 @@
 
 ---
 
+## Entry QA-007b — 06 April 2026 (SB-5 Closure)
+**Session Type:** Sprint — continuation
+**Focus:** BCMP-2 SB-5 final closure — overnight endurance results, closure report, G-17
+
+**Actions completed:**
+1. Overnight 4-hour endurance results confirmed: G-13 zero crashes (1483 missions), G-14 RSS slope 1.135 MB/hr (22× margin), G-15 completeness 1.0000 (1483/1483). All three gates pass at full duration.
+2. BCMP2_ClosureReport.md authored and committed (e9e8cb0). All 5 mandatory SIL caveats present: BASELINE, RADALT, DMRL, AD-15, EuRoC. All 5 required section headers present.
+3. G-17 passes. 17/17 AT-6 gates green. 107/107 total BCMP-2 gates across SB-1 through SB-5.
+4. Tag sb5-bcmp2-closure applied. Full sprint tag chain SB-1 through SB-5 intact.
+5. Context file updated: SB-5 row changed to CLOSED.
+
+**Key QA note — G-14 fix clarification:**
+The warmup filter fix applied two mechanisms: (1) post-mission RSS sampling (excludes pre-load baseline) and (2) _WARMUP_S=60 cutoff in the polyfit regression (excludes first-mission allocation ramp). Both are required. QA-007 entry understated this — post-mission sampling alone is insufficient; the warmup cutoff in the regression is the decisive mechanism. Steady-state evidence: 1.135 MB/hr across 213 post-warmup samples over 4 hours.
+
+**Gate summary — final:**
+- G-01–G-09 (drift envelope, 3 seeds): ✅ PASS
+- G-10–G-12 (phase chain, 3 seeds): ✅ PASS
+- G-13–G-15 (endurance, 4-hour): ✅ PASS
+- G-16 (HTML reports): ✅ PASS
+- G-17 (closure report): ✅ PASS
+
+**Regression baseline at closure:** 290 tests green + 17/17 AT-6 gates
+**Tag:** sb5-bcmp2-closure (e9e8cb0)
+
+**Next programme milestone:** S-NEP-03 — EuRoC end-to-end with real MetricSet.
+
+---
+
 ## Entry QA-006 — 05 April 2026
 **Session Type:** Sprint
 **Focus:** Sprint D — Pre-HIL completion. RC-11, RC-7, RC-8 (OI-16, OI-17, OI-18). SetpointCoordinator implementation.
