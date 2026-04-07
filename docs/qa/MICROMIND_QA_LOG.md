@@ -4,6 +4,38 @@
 
 ---
 
+## Entry QA-011 — 07 April 2026
+**Session Type:** Infrastructure fix
+**Focus:** OI-20 — Gazebo two-vehicle SITL rendering verification on micromind-node01
+
+**Actions completed:**
+1. Session baseline: S5 ✅, S8 68/68 ✅, BCMP-2 4/4 suites ✅. Full SIL: 460/460.
+2. Identified stale PX4 SITL process (baylands world, PID 14153) from a prior session polluting GZ transport topics — killed before clean test.
+3. **Step 1 — Diagnosis:** DISPLAY=:1 (real X.Org 21.1), Gazebo Harmonic 8.11.0 at /usr/bin/gz, RTX 5060 Ti driver 580.126.09. No simulation/ directory existed in repo. GZ_IP required for topic discovery (loopback 127.0.0.1).
+4. **Step 2 — Root cause:** OGRE2 fails on RTX 5060 Ti (Mesa gallium crash). Fix already proven for single vehicle (px4-rc.gzsim, commit 65ddd2c): server uses `GZ_ENGINE_NAME=ogre`, GUI uses `__EGL_VENDOR_LIBRARY_FILENAMES=10_nvidia.json` + `LD_PRELOAD` + `XDG_RUNTIME_DIR`.
+5. **Step 3 — World file:** Created `simulation/worlds/two_vehicle_sitl.sdf` — ground plane, sun, x500_0 @ [0,0,0.5], x500_1 @ [0,5,0.5] via `<include>` from PX4 gz model path. SDF warnings (gz_frame_id) are benign — both instances parsed correctly.
+6. **Step 4 — Launch + verify (headless + GUI, 35 s):**
+   - Server: `GZ_ENGINE_NAME=ogre gz sim -r -s --headless-rendering two_vehicle_sitl.sdf`
+   - GUI: with NVIDIA EGL fix
+   - Scene query at t+43s: `x500_0 ✅  x500_1 ✅  ground_plane ✅`
+   - Real-time factor: 0.9996–1.0002 throughout (stable)
+   - GUI stderr: zero OGRE/render errors
+7. **Step 5 — Fix documented:** `simulation/launch_two_vehicle_sitl.sh` — self-checking launch script with embedded scene verification pass/fail.
+8. **Step 6 — Commit:** eb33572. Frozen files: none touched. SIL: 460/460 after commit.
+
+**Key QA findings:**
+- `gz topic -l` requires `GZ_IP=127.0.0.1` to discover the local headless server — without it, discovery falls back to multicast and finds nothing (or a stale session).
+- The `x500_base` model has no standalone plugins; per-model topics (motor_speed etc.) only appear when PX4 gz_bridge is active. Scene presence must be verified via `gz service .../scene/info`, not topic count.
+- Both vehicles load from the same `model://x500_base` URI with different `<name>` overrides — Gazebo handles namespace isolation correctly.
+
+**OI-20 status:** ✅ CLOSED — two-vehicle simultaneous rendering verified, eb33572.
+**OI-30 status:** OPEN — run_demo.sh two-vehicle integration pending.
+
+**SIL regression:** 460/460 PASS.
+**Frozen files:** 0 touched.
+
+---
+
 ## Entry QA-007 — 06 April 2026
 **Session Type:** Sprint
 **Focus:** BCMP-2 SB-5 — AT-6 repeatability and endurance (16/17 gates)

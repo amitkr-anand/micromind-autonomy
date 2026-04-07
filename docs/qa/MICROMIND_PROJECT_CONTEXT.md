@@ -66,7 +66,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ---
 
-## 6. Current Programme State (06 April 2026)
+## 6. Current Programme State (07 April 2026)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -82,6 +82,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | Sprint B Adversarial SIL | ✅ CLOSED | 6/6 ADV tests | `41238ae` |
 | Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
 | Sprint D Pre-HIL RC-11 / RC-7 / RC-8 | ✅ CLOSED | 9/9 SD gates | `7bebc8c` |
+| OI-20 Gazebo Two-Vehicle SITL | ✅ CLOSED | x500_0 + x500_1 in scene, RTF ~1.0, 35+ s stable | `eb33572` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -146,7 +147,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-17 | ~~RC-7 (timestamp monotonicity injection under live timing) — pending Phase 3~~ **CLOSED: test_prehil_rc7.py committed at 7bebc8c. IFM-01 rejects non-monotonic, violation_count==1, subsequent frames accepted. SD-06 PASS.** | Architecture | HIGH — before CP-3 |
 | OI-18 | ~~RC-8 (logger non-blocking 200 Hz, 60 s formal test) — pending Phase 3~~ **CLOSED: test_prehil_rc8.py committed at 7bebc8c. 12000 entries, completeness=1.0, worst_call=0.173 ms. SD-07 PASS.** | Code | HIGH — before CP-3 |
 | OI-19 | ~~AT-6 gate count and exact acceptance criteria undefined — must be specified before SB-5~~ **CLOSED: Resolved this session — AT6_Acceptance_Criteria.md committed. 17 gates defined across 4 groups.** | Testing | MEDIUM — before SB-5 |
-| OI-20 | Gazebo GUI rendering on micromind-node01 — CRITICAL DEMO BLOCKER (AD-22). RTX 5060 Ti requires __EGL_VENDOR_LIBRARY_FILENAMES=10_nvidia.json in launch script. Partial fix confirmed in 29 March screenshots — single vehicle renders correctly. Two-vehicle simultaneous rendering not yet verified. | Code | CRITICAL — before any OEM meeting. HIL on Jetson is NOT a gate per AD-22. |
+| ~~OI-20~~ **CLOSED** eb33572 — Two-vehicle simultaneous Gazebo rendering verified on micromind-node01 (07 Apr 2026). Root cause: RTX 5060 Ti requires NVIDIA EGL (`__EGL_VENDOR_LIBRARY_FILENAMES=10_nvidia.json`) + OGRE1 (`GZ_ENGINE_NAME=ogre`). Fix confirmed in px4-rc.gzsim (single vehicle) and now extended to two-vehicle world. New files: `simulation/worlds/two_vehicle_sitl.sdf`, `simulation/launch_two_vehicle_sitl.sh`. Scene check: x500_0 ✅ x500_1 ✅ — RTF ~1.0, stable 35+ s, zero render errors. SIL: 460/460. OI-30 (run_demo.sh integration) remains open. | Code | CLOSED |
 | AD-22 | Demo environment (micromind-node01) and embedded compute (Jetson Orin NX) are architecturally decoupled per AD-22 (06 April 2026). SRS §9.4 VIZ-03 HIL prerequisite clause removed. Demo design session scheduled before SB-5 Phase C. | Architecture | CLOSED — decision recorded. |
 | OI-30 | run_demo.sh not yet written — single command must launch PX4 SITL + Vehicle A stack + Vehicle B MicroMind stack + Gazebo. No developer knowledge required to run. | Code | CRITICAL — before any OEM meeting |
 | OI-31 | Demo design session required before SB-5 Phase C — Run 1 (live two-vehicle Gazebo) and Run 2 (150 km interactive simulation) display layout, marker design, fault injection panel, and tile boundary specification must be completed before VIZ-02 sprint begins. Entry condition: SB-5 Phase A and Phase B exit gates confirmed PASS. | Architecture | HIGH — gates Phase C start |
