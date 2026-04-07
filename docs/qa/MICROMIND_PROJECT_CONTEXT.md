@@ -162,8 +162,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~OI-NEW-01~~ **CLOSED** fix committed — docstring corrected | QA Caveat | HIGH — before any sprint is declared formally closed |
 | OI-NEW-02 | nep-vio-sandbox sprint table header is missing a `Commit` column — added ad hoc for S-NEP-03R onwards; table schema should be formalised | Documentation | LOW — cosmetic |
 | OI-NEW-03 | G-03R-08 SIL regression must exclude test_snep03r_e2e.py itself (--ignore flag) to avoid recursive subprocess timeout — pattern must be applied to any future e2e gate files that include a SIL regression test | Architecture | MEDIUM — apply to future gate files |
-| ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 546/546 gates green, tag 4bc22b4 | QA | CLOSED |
-| OI-32 | run_04b_offline.py and run_04c_imu_vio.py both unrunnable — 2-tuple ESKF unpack + TUM format mismatch. mh01_run1.json logs (ATE 0.087 m) have no reproducible generating path in current repo. Must be resolved before S-NEP-03R result is cited in any external report. | Code/QA | HIGH — before any external citation of S-NEP-03R |
+| ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 552/552 gates green, tag 4bc22b4 | QA | CLOSED |
+| ~~OI-32~~ | **CLOSED** e70b981 — MH_01_easy added to S-NEP-10 gate file (G-10-18 to G-10-23). Reproducible Option B IMU+VIO baseline: ATE 0.3412 m. The mh01_run1.json figure of 0.0865 m is superseded (produced by an unrestorable pipeline version without IMU propagation). External reports must cite 0.3412 m for MH_01_easy. | Code/QA | CLOSED |
 ---
 
 ## 9. QA Agent Standing Instructions
