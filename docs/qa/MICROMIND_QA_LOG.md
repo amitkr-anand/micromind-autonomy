@@ -280,6 +280,34 @@ on post-mission sampling only.
 
 ---
 
+## Entry QA-010 Addendum — 07 April 2026 (OI-32 Resolution)
+**Focus:** MH_01_easy reproducible baseline — OI-32 closure
+
+**Finding confirmed:** run_04b_offline.py produced ATE 4.88 m on MH_01_easy after the two OI-32 fixes
+(YAML parser + 3-tuple unpack). This is consistent with the S-NEP-10 finding that VIO-only replay
+without IMU propagation produces ATE ~4–5 m. The committed mh01_run1.json value of 0.0865 m was
+produced by a pipeline version that included IMU propagation and cannot be reproduced from the
+current codebase via run_04b_offline.py.
+
+**Resolution:** MH_01_easy added to tests/test_snep10_integration.py as Group F gates
+(G-10-18 to G-10-23) using the identical Option B IMU+VIO pipeline validated in S-NEP-10.
+
+**Supersession record:**
+| Sequence | Old figure | Source | Status | New figure | Source |
+|---|---|---|---|---|---|
+| MH_01_easy | 0.0865 m ATE | mh01_run1.json (unrestorable pipeline) | SUPERSEDED | 0.3412 m ATE | e70b981 Option B IMU+VIO |
+
+**The 0.0865 m figure must not appear in any external report.** Any citation of MH_01_easy VIO
+performance must use 0.3412 m (Option B IMU+VIO, pytest-enforced, tag e70b981).
+
+**Gate summary:**
+- G-10-18 to G-10-23: 6 named gates (6 test methods) — all PASS
+- Full suite: 552/552 PASS — tag e70b981
+
+**OI status:** OI-32 CLOSED.
+
+---
+
 ## Entry QA-009 — 06 April 2026
 **Session Type:** Sprint + QA Audit + Documentation
 **Focus:** S-NEP-03R remediation, S-NEP-04 through S-NEP-09 gate formalisation, OI-04 closure
