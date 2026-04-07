@@ -94,7 +94,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | S-NEP-06 | ✅ CLOSED | 10/10 pytest gates | `d090851` |
 | S-NEP-08 | ✅ CLOSED | 7/7 pytest gates | `30c2d56` |
 | S-NEP-09 | ✅ CLOSED | 10/10 pytest gates | `4fcf231` |
-| S-NEP-10 | 🔲 READY | OpenVINS → ESKF full integration |
+| S-NEP-10 | ✅ CLOSED | 13 pytest gates (15 test methods) — MH_03 ATE 0.2729 m, V1_01 ATE 0.3424 m, acceptance_pass=true both sequences | `4bc22b4` |
 
 ### OpenVINS Validation
 Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) across EuRoC MH_03 + V1_01. Zero FM events. **Outdoor and km-scale validation PENDING (L1, L3 limitations).**
@@ -162,7 +162,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~OI-NEW-01~~ **CLOSED** fix committed — docstring corrected | QA Caveat | HIGH — before any sprint is declared formally closed |
 | OI-NEW-02 | nep-vio-sandbox sprint table header is missing a `Commit` column — added ad hoc for S-NEP-03R onwards; table schema should be formalised | Documentation | LOW — cosmetic |
 | OI-NEW-03 | G-03R-08 SIL regression must exclude test_snep03r_e2e.py itself (--ignore flag) to avoid recursive subprocess timeout — pattern must be applied to any future e2e gate files that include a SIL regression test | Architecture | MEDIUM — apply to future gate files |
-| S-NEP-10-PRE | S-NEP-10 entry criteria: OI-04 CLOSED ✅, 531/531 gates green ✅, F-04 TD decision pending (NIS EC-02) | QA | HIGH — confirm before sprint start |
+| ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 546/546 gates green, tag 4bc22b4 | QA | CLOSED |
+| OI-32 | run_04b_offline.py and run_04c_imu_vio.py both unrunnable — 2-tuple ESKF unpack + TUM format mismatch. mh01_run1.json logs (ATE 0.087 m) have no reproducible generating path in current repo. Must be resolved before S-NEP-03R result is cited in any external report. | Code/QA | HIGH — before any external citation of S-NEP-03R |
 ---
 
 ## 9. QA Agent Standing Instructions
