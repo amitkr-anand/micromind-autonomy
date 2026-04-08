@@ -166,6 +166,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 552/552 gates green, tag 4bc22b4 | QA | CLOSED |
 | ~~OI-32~~ | **CLOSED** e70b981 — MH_01_easy added to S-NEP-10 gate file (G-10-18 to G-10-23). Reproducible Option B IMU+VIO baseline: ATE 0.3412 m. The mh01_run1.json figure of 0.0865 m is superseded (produced by an unrestorable pipeline version without IMU propagation). External reports must cite 0.3412 m for MH_01_easy. | Code/QA | CLOSED |
 | ~~OI-33~~ | **CLOSED** 07 Apr 2026 — Demo world: Baylands selected (option a). Terrain 899 m × 587 m, non-repeating, Fuel assets fully cached locally (407 MB, no network dependency). Two-vehicle spawn verified at [0,0,0.5] and [0,5,0.5] — both land on solid terrain. 900 m X-axis flight corridor available. Flight altitude must be ≥ 50 m AGL (tree collision mesh present below). two_vehicle_sitl.sdf retained as rendering verification tool only — not demo world. OI-30 unblocked. | Architecture | CLOSED |
+| OI-35 | Vehicle A (INS-only, instance 1) arms but loses OFFBOARD before ellipse flight begins — setpoints go stale during ARM ACK + OFFBOARD ACK wait (~10s). Fix: continuous setpoint background thread during ARM/OFFBOARD sequence, same pattern as GCS heartbeat thread. Vehicle B (MicroMind) is unaffected. Blocks meaningful GPS denial divergence demonstration. | Code | HIGH — before OI-30 closure |
 ---
 
 ## 9. QA Agent Standing Instructions
