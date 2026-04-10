@@ -7,7 +7,8 @@
 ## Entry QA-017 — 10 April 2026 (SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate)
 **Session Type:** Feature implementation — PX4-04 seq-reset detection + D8a gate (SA-05–SA-07)
 **Focus:** SRS IT-PX4-02, PX4-04, EC-03; §16 Recovery Ownership Matrix
-**Commit:** `787ecd4`
+**Commit:** `787ecd4` (implementation) + `dca7407` (docs) + see docs(sb5-phase-a) follow-up for TECHNICAL_NOTES
+**TECHNICAL_NOTES.md:** CREATED — `integration/TECHNICAL_NOTES.md` (OODA rationale for seq-reset detection and D8a gate; module boundary table; known limitations)
 
 ### Step 1 — Current state findings
 
