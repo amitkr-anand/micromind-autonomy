@@ -638,14 +638,26 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # OI-36 fix: mission-level timeout guard.
+    # No mission_timeout key in config — hardcoded default 300s covers 2-lap GPS
+    # denial scenario (OI-37: pending config governance for this magic number).
+    MISSION_TIMEOUT_S = 300
+
     t_a = threading.Thread(target=mission_vehicle_a, args=(args,), daemon=True)
     t_b = threading.Thread(target=mission_vehicle_b, args=(args,), daemon=True)
 
     t_b.start()
     t_a.start()
 
-    t_a.join()
-    t_b.join()
+    t_a.join(timeout=MISSION_TIMEOUT_S)
+    if t_a.is_alive():
+        print("[MISSION] ABORT — Vehicle A thread did not complete within timeout. Forcing exit.")
+        os._exit(2)
+
+    t_b.join(timeout=MISSION_TIMEOUT_S)
+    if t_b.is_alive():
+        print("[MISSION] ABORT — Vehicle B thread did not complete within timeout. Forcing exit.")
+        os._exit(2)
 
     if abort_event.is_set():
         print("[MISSION] ABORT — EKF2/arming failure on one or both vehicles.")
