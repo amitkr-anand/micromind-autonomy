@@ -142,6 +142,36 @@ def _start_heartbeat(mav, stop_event):
         stop_event.wait(1.0)
 
 
+def _start_setpoint_stream(conn, target_pos, stop_event, rate_hz=20):
+    """
+    Stream SET_POSITION_TARGET_LOCAL_NED at `rate_hz` until stop_event is set.
+    Holds the vehicle at `target_pos` (x, y, z) during ARM/OFFBOARD ACK waits.
+    Called as a daemon thread — exits immediately when stop_event fires.
+    OI-35 fix: prevents PX4 timing out the OFFBOARD setpoint stream during
+    the ~10s ARM + OFFBOARD ACK blocking wait in _arm_and_offboard().
+    """
+    def _loop():
+        interval = 1.0 / rate_hz
+        while not stop_event.is_set():
+            conn.mav.set_position_target_local_ned_send(
+                0,                              # time_boot_ms (ignored by PX4)
+                conn.target_system,
+                conn.target_component,
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                0b0000111111111000,             # position only, ignore vel/acc/yaw_rate
+                target_pos[0],                  # x (North, m)
+                target_pos[1],                  # y (East, m)
+                target_pos[2],                  # z (Down, m — negative = up)
+                0, 0, 0,                        # vx, vy, vz
+                0, 0, 0,                        # afx, afy, afz
+                0, 0                            # yaw, yaw_rate
+            )
+            time.sleep(interval)
+    t = threading.Thread(target=_loop, daemon=True, name="setpoint_stream_a")
+    t.start()
+    return t
+
+
 def _arm_and_offboard(mav, target_system, target_component, label):
     # ARM
     mav.mav.command_long_send(
@@ -448,10 +478,23 @@ def mission_vehicle_a(args):
         time.sleep(0.05)
 
     # 5. ARM → OFFBOARD → climb
+    # OI-35 fix: continuous setpoint stream during ARM/OFFBOARD ACK waits (~10s)
+    # _arm_and_offboard() blocks on two recv_match() calls (5s each); without this
+    # thread PX4 times out the OFFBOARD setpoint stream and drops OFFBOARD mode.
+    _sp_stop = threading.Event()
+    _sp_thread = _start_setpoint_stream(
+        mav,
+        target_pos=[0.0, 0.0, -ALTITUDE_M],   # matches pre-arm setpoints at step 4
+        stop_event=_sp_stop
+    )
     if not _arm_and_offboard(mav, target_system, target_component, label):
+        _sp_stop.set()
+        _sp_thread.join(timeout=1.0)
         _hb_stop.set()
         abort_event.set()
         return
+    _sp_stop.set()
+    _sp_thread.join(timeout=1.0)   # confirm clean exit before _climb_to_altitude takes over
 
     if not _climb_to_altitude(mav, target_system, target_component,
                                0.0, 0.0, ALTITUDE_M, label):
