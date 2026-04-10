@@ -4,6 +4,33 @@
 
 ---
 
+## Entry QA-019 — 10 April 2026 (SB-5 Phase A — EC-07 docs follow-up + context closure)
+**Session Type:** SB-5 Phase A — EC-07 §16 verification docs follow-up
+**Focus:** Recovery Ownership Matrix code compliance check — QA log entry, context update, commit
+**Governance ref:** Code Governance Manual v3.2 §2.4
+
+**Compliance summary (6 events):**
+
+| Event | §16 Owner (Detects) | Compliant | Finding |
+|---|---|---|---|
+| GNSS Spoofing | Navigation Manager (BIM) | **N** | `core/bim/bim.py:288` sets `spoof_alert=True` in BIMResult — correct module — but no named log event (e.g. `GNSS_SPOOF_DETECTED`) is emitted. Struct field only, not auditable event. OI-39. |
+| VIO Degradation | Navigation Manager (VIOMode) | **Y** | `core/fusion/vio_mode.py:166` `_log.warning("VIO_OUTAGE_DETECTED: ...")`. Correct module. |
+| PX4 Reboot | PX4 Bridge (HEARTBEAT seq reset) | **Y** | `integration/bridge/reboot_detector.py:151` `"event": "PX4_REBOOT_DETECTED"`. Correct module. |
+| Corridor Violation (predicted) | *(not in §16)* | **N** | §16 has no ownership row. FSM emits `CORRIDOR_VIOLATION` → ABORT from 4 states (SM lines 240, 263, 304, 325). Ownership unspecified. OI-40. |
+| SHM Trigger | Mission Manager (trigger detection) | **Y** | `core/state_machine/state_machine.py:333` STATE_TRANSITION trigger `L10S_SE_ACTIVATION` → `SHM_ACTIVE`. Correct module (NanoCorteXFSM = Mission Manager). |
+| Target Lock Loss | DMRL/L10s-SE (detects) → Mission Manager (decides) | **Y** | `core/l10s_se/l10s_se.py:188` detects (`LOCK_LOST_TIMEOUT`). `core/state_machine/state_machine.py:352` decides (`EO_LOCK_LOSS`). Split matches §16 two-role assignment. |
+
+**New OIs raised:**
+- **OI-39** MEDIUM: GNSS Spoof — correct module, no `GNSS_SPOOF_DETECTED` log event. Fix required before Phase A exit gate. `bim.py` is frozen (explicit unfreeze needed).
+- **OI-40** MEDIUM: Corridor Violation — §16 has no ownership row. Fix: add row in SRS v1.4.
+
+**SIL:** 297/297 (no code changed this session)
+**Commit:** `fff0cc4` (SB5_EC07_OwnershipVerification.md + OI-39/40 in context + QA-018)
+**Artefact:** `docs/qa/SB5_EC07_OwnershipVerification.md`
+**Next:** Prompt 7 — PLN-02 Dynamic Retask R-01–R-06
+
+---
+
 ## Entry QA-018 — 10 April 2026 (SB-5 Phase A — EC-07 §16 Recovery Ownership Verification)
 **Session Type:** QA Audit — grep-and-document only (no code changes)
 **Focus:** EC-07 §16 Recovery Ownership Matrix — verify log-emitting module matches §16 owner for 6 events
