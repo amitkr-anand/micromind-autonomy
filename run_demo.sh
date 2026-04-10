@@ -45,7 +45,7 @@ BAYLANDS_SDF="$PX4_GZ_WORLDS/baylands.sdf"
 # ---------------------------------------------------------------------------
 
 # shellcheck disable=SC2064
-trap 'kill ${PX4_INST0_PID} ${PX4_INST1_PID} 2>/dev/null; pkill -f "bin/px4" 2>/dev/null; exit' INT TERM EXIT
+trap 'kill "${PX4_INST0_PID}" "${PX4_INST1_PID}" 2>/dev/null || true; pkill -9 -f "gz sim" 2>/dev/null || true; pkill -9 -f "bin/px4" 2>/dev/null || true; exit' INT TERM EXIT
 
 # ---------------------------------------------------------------------------
 # Environment — NVIDIA EGL fix (proven on micromind-node01, RTX 5060 Ti)
@@ -266,4 +266,15 @@ wait_ekf2_aligned 1 14541 || { echo "[run_demo] FAIL: EKF2 timeout on instance 1
 echo ""
 echo "[run_demo] Phase C: Launching run_mission.py..."
 echo ""
-exec python3.12 "$REPO_DIR/simulation/run_mission.py" "$@"
+python3.12 -u "$REPO_DIR/simulation/run_mission.py" "$@"
+MISSION_EXIT=$?
+
+echo "[run_demo] Mission exited with code ${MISSION_EXIT}."
+echo "[run_demo] Cleaning up Gazebo and PX4 processes..."
+kill "${PX4_INST0_PID}" "${PX4_INST1_PID}" 2>/dev/null || true
+sleep 1
+pkill -9 -f "gz sim" 2>/dev/null || true
+pkill -9 -f "bin/px4" 2>/dev/null || true
+rm -rf /tmp/px4_inst0 /tmp/px4_inst1
+echo "[run_demo] Cleanup complete."
+exit "${MISSION_EXIT}"
