@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 06 April 2026  
+**Last Updated:** 08 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -66,7 +66,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ---
 
-## 6. Current Programme State (07 April 2026)
+## 6. Current Programme State (08 April 2026)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -83,6 +83,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | Sprint C OM Stub + Route Planner | ✅ CLOSED | 8/8 SC gates | `96bf98a`, `6af0e4b` |
 | Sprint D Pre-HIL RC-11 / RC-7 / RC-8 | ✅ CLOSED | 9/9 SD gates | `7bebc8c` |
 | OI-20 Gazebo Two-Vehicle SITL | ✅ CLOSED | x500_0 + x500_1 in scene, RTF ~1.0, 35+ s stable | `eb33572` |
+| OI-35 Vehicle A OFFBOARD fix | ✅ CLOSED | ARM ✅ OFFBOARD ✅ climb 95 m ✅ lap 1 ✅ — setpoint stream thread fix verified in live SITL (08 Apr 2026) | `cd8b4f0` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -149,7 +150,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-19 | ~~AT-6 gate count and exact acceptance criteria undefined — must be specified before SB-5~~ **CLOSED: Resolved this session — AT6_Acceptance_Criteria.md committed. 17 gates defined across 4 groups.** | Testing | MEDIUM — before SB-5 |
 | ~~OI-20~~ **CLOSED** eb33572 — Two-vehicle simultaneous Gazebo rendering verified on micromind-node01 (07 Apr 2026). Root cause: RTX 5060 Ti requires NVIDIA EGL (`__EGL_VENDOR_LIBRARY_FILENAMES=10_nvidia.json`) + OGRE1 (`GZ_ENGINE_NAME=ogre`). Fix confirmed in px4-rc.gzsim (single vehicle) and now extended to two-vehicle world. New files: `simulation/worlds/two_vehicle_sitl.sdf`, `simulation/launch_two_vehicle_sitl.sh`. Scene check: x500_0 ✅ x500_1 ✅ — RTF ~1.0, stable 35+ s, zero render errors. SIL: 460/460. OI-30 (run_demo.sh integration) remains open. | Code | CLOSED |
 | AD-22 | Demo environment (micromind-node01) and embedded compute (Jetson Orin NX) are architecturally decoupled per AD-22 (06 April 2026). SRS §9.4 VIZ-03 HIL prerequisite clause removed. Demo design session scheduled before SB-5 Phase C. | Architecture | CLOSED — decision recorded. |
-| OI-30 | run_demo.sh not yet written — single command must launch PX4 SITL + Vehicle A stack + Vehicle B MicroMind stack + Gazebo two-vehicle world. Requirements: (1) cleanup step at top — kill any stale gz sim, px4, gz_bridge, MicroMind processes before launch (stale PX4 SITL found polluting GZ transport in OI-20 session — this is a recurring hazard); (2) use two_vehicle_sitl.sdf as base world or Baylands per OI-33 decision; (3) no developer knowledge required to run. | Code | CRITICAL — before any OEM meeting |
+| OI-30 | run_demo.sh exists (Baylands world, vehicle spawn, Gazebo GUI) but does NOT yet launch PX4 SITL instances or run_mission.py. Phase B of run_demo.sh must: (1) start PX4 instance 0 (Vehicle B) and instance 1 (Vehicle A) in background with correct env vars; (2) wait for EKF2 alignment on both instances; (3) exec run_mission.py. Unblocked as of OI-35 closure (08 Apr 2026). Infrastructure note: `~/.gz/sim/8/server.config` is now correct on micromind-node01 — sensor plugins active, no env var needed. | Code | CRITICAL — before any OEM meeting |
 | OI-31 | Demo design session required before SB-5 Phase C — Run 1 (live two-vehicle Gazebo) and Run 2 (150 km interactive simulation) display layout, marker design, fault injection panel, and tile boundary specification must be completed before VIZ-02 sprint begins. Entry condition: SB-5 Phase A and Phase B exit gates confirmed PASS. | Architecture | HIGH — gates Phase C start |
 | OI-21 | ~~mark_send not natively integrated into mavlink_bridge setpoint loop — CP-2 latency result has asterisk~~ **CLOSED: Sprint D code review (4972110) confirmed mark_send IS natively integrated at mavlink_bridge.py lines 358-359. CP-2 asterisk withdrawn.** | Code | MEDIUM — before CP-3 |
 | OI-22 | ESKF position PSD (1.0 m/√s) empirically set; needs derivation from STIM300 data before HIL | Architecture | MEDIUM — before HIL |
@@ -166,7 +167,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 552/552 gates green, tag 4bc22b4 | QA | CLOSED |
 | ~~OI-32~~ | **CLOSED** e70b981 — MH_01_easy added to S-NEP-10 gate file (G-10-18 to G-10-23). Reproducible Option B IMU+VIO baseline: ATE 0.3412 m. The mh01_run1.json figure of 0.0865 m is superseded (produced by an unrestorable pipeline version without IMU propagation). External reports must cite 0.3412 m for MH_01_easy. | Code/QA | CLOSED |
 | ~~OI-33~~ | **CLOSED** 07 Apr 2026 — Demo world: Baylands selected (option a). Terrain 899 m × 587 m, non-repeating, Fuel assets fully cached locally (407 MB, no network dependency). Two-vehicle spawn verified at [0,0,0.5] and [0,5,0.5] — both land on solid terrain. 900 m X-axis flight corridor available. Flight altitude must be ≥ 50 m AGL (tree collision mesh present below). two_vehicle_sitl.sdf retained as rendering verification tool only — not demo world. OI-30 unblocked. | Architecture | CLOSED |
-| OI-35 | Vehicle A (INS-only, instance 1) arms but loses OFFBOARD before ellipse flight begins — setpoints go stale during ARM ACK + OFFBOARD ACK wait (~10s). Fix: continuous setpoint background thread during ARM/OFFBOARD sequence, same pattern as GCS heartbeat thread. Vehicle B (MicroMind) is unaffected. Blocks meaningful GPS denial divergence demonstration. | Code | HIGH — before OI-30 closure |
+| ~~OI-35~~ **CLOSED** cd8b4f0 — `_start_setpoint_stream()` added to `simulation/run_mission.py`. Two call-sites in `mission_vehicle_a()`: thread starts before `_arm_and_offboard()`, stops (with `.join(timeout=1.0)`) after ACK. Live SITL verification 08 Apr 2026: VEH A ARM ✅ OFFBOARD ✅ altitude 95 m ✅ lap 1 complete T+107.7s ✅. Two infrastructure findings fixed this session: (1) `~/.gz/sim/8/server.config` updated to include PX4 sensor system plugins (Imu, NavSat, AirPressure, Magnetometer, Contact) — root cause of EKF2 alignment failures in all previous headless SITL attempts on this machine; (2) two Gazebo instance accumulation risk documented for OI-30 cleanup phase. | Code | CLOSED |
 ---
 
 ## 9. QA Agent Standing Instructions

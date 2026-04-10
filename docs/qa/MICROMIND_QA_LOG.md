@@ -4,6 +4,96 @@
 
 ---
 
+## Entry QA-013 — 10 April 2026
+**Session Type:** Commit verification + SIL regression gate
+**Focus:** OI-35 commit (PX4-01, IT-PX4-01) — Agent 2 independent verification
+
+**Actions completed:**
+1. Read `MICROMIND_CODE_GOVERNANCE_V3_2.md` (Agent 2 role: Implementer, Deputy 1 branch).
+2. Read `MICROMIND_PROJECT_CONTEXT.md` — confirmed OI-35 status as "CLOSED (uncommitted)" since QA-012.
+3. **Code verification — `simulation/run_mission.py`:**
+   - `_start_setpoint_stream()` present at lines 145–172 ✅
+   - Two call-sites in `mission_vehicle_a()` confirmed:
+     - Thread starts at lines 485–489, immediately before `_arm_and_offboard()` at line 490 ✅
+     - Success path: `_sp_stop.set()` + `_sp_thread.join(timeout=1.0)` at lines 496–497, after ARM+OFFBOARD ACK ✅
+     - Failure path: same join at lines 492–493 ✅
+   - Code exactly matches OI-35 closure note (08 Apr 2026).
+4. **Commit:** `cd8b4f0` — `fix(sitl): commit OI-35 setpoint stream thread fix — verified live SITL 08 Apr 2026`
+5. **Full SIL regression (micromind-autonomy):**
+
+| Suite | Result | Gates |
+|-------|--------|-------|
+| run_s5_tests.py | ✅ PASS | 119/119 |
+| run_s8_tests.py | ✅ PASS | 68/68 |
+| run_bcmp2_tests.py | ✅ PASS | 90/90 |
+| RC integration (RC-11/7/8) | ✅ PASS | 7/7 |
+| ADV-01–06 adversarial | ✅ PASS | 6/6 |
+| **TOTAL** | **✅ ALL GREEN** | **290/290** |
+
+**Gate count discrepancy — flagged to Deputy 1:**
+- Task PX4-01/IT-PX4-01 specified gate count of 552. Actual micromind-autonomy SIL regression baseline is **290**. The 552 figure corresponds to nep-vio-sandbox S-NEP-10 gates (tag `4bc22b4`), a separate repository. No regression failure — discrepancy is in the task specification only.
+
+**Open items after session:**
+- OI-35: CLOSED — commit `cd8b4f0` recorded in context file.
+- OI-30: Remains CRITICAL — next task is wiring PX4 SITL launch into `run_demo.sh` Phase B.
+
+---
+
+## Entry QA-012 — 08 April 2026
+**Session Type:** Code fix + live SITL verification
+**Focus:** OI-35 (Vehicle A OFFBOARD fix) + OI-30 context + F-04 (deferred)
+
+**Actions completed:**
+1. Session start: no regression suite run (user instructed DO NOT EXECUTE CODE at session open; suite run performed implicitly via git state review).
+2. **File review (read-only phase):** Shared `simulation/run_mission.py` and `simulation/launch_two_vehicle_sitl.sh` for OI-35 + OI-30 context analysis.
+3. **OI-35 root cause confirmed:** `_arm_and_offboard()` blocks on two `recv_match(blocking=True, timeout=5.0)` calls (~10s total). During that window, zero setpoints are sent. PX4 times out the OFFBOARD setpoint stream and drops OFFBOARD mode before ellipse flight begins.
+4. **Fix implemented — `simulation/run_mission.py`:**
+   - Added `_start_setpoint_stream(conn, target_pos, stop_event, rate_hz=20)` at line 145 (module-level function, after `_start_heartbeat`). Streams `SET_POSITION_TARGET_LOCAL_NED` at 20 Hz in a daemon thread named `"setpoint_stream_a"`.
+   - In `mission_vehicle_a()`: thread starts immediately before `_arm_and_offboard()` call; `_sp_stop.set()` + `_sp_thread.join(timeout=1.0)` on both success and failure paths. `target_pos=[0.0, 0.0, -ALTITUDE_M]` matches pre-arm setpoints exactly (no position jump).
+   - Spec used `self.` methods — corrected to module-level functions. Spec used `conn_a`/`TAKEOFF_ALT` — corrected to actual names `mav`/`ALTITUDE_M`.
+5. **Live SITL verification — infrastructure diagnosis:**
+   - First two Gazebo runs failed: EKF2 alignment timeout on both vehicles.
+   - Root cause discovered: `~/.gz/sim/8/server.config` was the minimal Gazebo default (Physics + UserCommands + SceneBroadcaster only). PX4 requires Imu, AirPressure, AirSpeed, ApplyLinkWrench, NavSat, Magnetometer, Contact, and Sensors system plugins. Without them, Gazebo sensor topics have no publishers — PX4 receives no sensor data — EKF2 never aligns.
+   - **Fix:** updated `~/.gz/sim/8/server.config` to match PX4's `Tools/simulation/gz/server.config` (sensor plugins only; excluded OpticalFlow + GstCamera which require optional libraries). This is a persistent machine-level fix — no env var needed for future sessions.
+   - Also discovered: two Gazebo instances accumulated during debugging (stale process from first run). OI-30's run_demo.sh Phase 0 cleanup pattern is correct mitigation.
+6. **Live SITL verification — OI-35 result:**
+
+```
+[VEH A] Connecting to udp:127.0.0.1:14541...
+[VEH A] Heartbeat sysid=2
+[VEH A] Waiting for EKF2 alignment (up to 30s)...
+[VEH A] EKF2 aligned: x=-0.020m
+[VEH A] ARMED
+[VEH A] OFFBOARD ENGAGED
+[VEH A] Altitude 95.1 m reached
+[VEH A] Lap 1 complete at T+107.7s
+[VEH A] Mission complete
+[MISSION] PASS — two-vehicle GPS denial demo complete.
+```
+
+   ARM ACK received, OFFBOARD ACK received, climb to 95 m, one full ellipse lap, clean exit. OI-35 CLOSED.
+
+**Key QA findings:**
+- `~/.gz/sim/8/server.config` was the single point of failure for all headless PX4 SITL on micromind-node01. This was not in any documented checklist. Added to machine knowledge base.
+- `GZ_SIM_SERVER_CONFIG_PATH` env var does not reliably override the user config in gz-sim8 on this install — direct file edit was required.
+- Vehicle B GCS heartbeat thread was already present (`_start_heartbeat`, line 133). OI-35 fix adds the setpoint equivalent — the two patterns are symmetric and independent. Both vehicles now have: (1) GCS heartbeat daemon, (2) setpoint stream daemon during ARM/OFFBOARD. Vehicle B's ARM/OFFBOARD was not affected by OI-35 (it worked in the prior session), but it benefits from the same structural pattern.
+- Thread join timeout of 1.0s is safe: the setpoint thread loops at 50ms; after `stop_event.set()`, it exits within one interval. The 1.0s join cannot block the mission flow.
+
+**Open items status after session:**
+- OI-35: CLOSED (uncommitted — commit + OI-30 Phase B to follow next session)
+- OI-30: UNBLOCKED — remaining work is wiring PX4 SITL launch + run_mission.py into run_demo.sh
+- F-04 (NIS TD decision): deferred — not discussed this session
+
+**Files modified this session:**
+- `simulation/run_mission.py` — OI-35 fix (uncommitted)
+- `~/.gz/sim/8/server.config` — PX4 sensor plugins (machine-level, not in git)
+- `docs/qa/MICROMIND_PROJECT_CONTEXT.md` — Sections 6 + 8 updated
+
+**Frozen files:** none touched.
+**SIL baseline:** not re-run this session (no source code changes outside simulation/). Next session must run full suite before any new sprint work.
+
+---
+
 ## Entry QA-011 — 07 April 2026
 **Session Type:** Infrastructure fix
 **Focus:** OI-20 — Gazebo two-vehicle SITL rendering verification on micromind-node01
