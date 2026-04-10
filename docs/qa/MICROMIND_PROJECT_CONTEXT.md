@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 08 April 2026  
+**Last Updated:** 10 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -85,6 +85,8 @@ All test scenarios must be designed against these profiles. No other baseline is
 | OI-20 Gazebo Two-Vehicle SITL | ✅ CLOSED | x500_0 + x500_1 in scene, RTF ~1.0, 35+ s stable | `eb33572` |
 | OI-35 Vehicle A OFFBOARD fix | ✅ CLOSED | ARM ✅ OFFBOARD ✅ climb 95 m ✅ lap 1 ✅ — setpoint stream thread fix verified in live SITL (08 Apr 2026) | `cd8b4f0` |
 | OI-30 run_demo.sh full integration | ✅ CLOSED | Phase A+B+C verified on micromind-node01 10 Apr 2026: GAZEBO_READY ✅ EKF2 x2 ✅ VEH A ARM ✅ OFFBOARD ✅ alt 95.1 m ✅ lap 1 T+106.0s ✅ MISSION PASS ✅. SIL 290/290 ✅ | `97b2f5a` |
+| EF-02 run_demo.sh clean exit | ✅ CLOSED | exec→foreground (python3.12 -u); explicit post-mission cleanup (pkill -9 gz sim, pkill -9 bin/px4, || true guards); EXIT trap fixed (|| true + pkill -9 gz sim added, pkill -9 bin/px4); os._exit() isolation test PASS (daemon thread terminated immediately, exit code 0). SIL 290/290 ✅ | `7ed5a8e` (run_mission.py) + `4ecff95` (run_demo.sh) |
+| EF-01 Vehicle A OFFBOARD failsafe | 🔴 OPEN | PX4 instance 1 (PX4_GZ_STANDALONE=1) triggers mc_pos_control invalid setpoints → Failsafe: blind land immediately after OFFBOARD engagement. mission_vehicle_a() while loop spins forever (OI-36). Pre-existing; not introduced by EF-02. Requires Deputy 1 authorisation to fix mission logic. | — |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -168,6 +170,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~S-NEP-10-PRE~~ | **CLOSED** — S-NEP-10 complete, 552/552 gates green, tag 4bc22b4 | QA | CLOSED |
 | ~~OI-32~~ | **CLOSED** e70b981 — MH_01_easy added to S-NEP-10 gate file (G-10-18 to G-10-23). Reproducible Option B IMU+VIO baseline: ATE 0.3412 m. The mh01_run1.json figure of 0.0865 m is superseded (produced by an unrestorable pipeline version without IMU propagation). External reports must cite 0.3412 m for MH_01_easy. | Code/QA | CLOSED |
 | ~~OI-33~~ | **CLOSED** 07 Apr 2026 — Demo world: Baylands selected (option a). Terrain 899 m × 587 m, non-repeating, Fuel assets fully cached locally (407 MB, no network dependency). Two-vehicle spawn verified at [0,0,0.5] and [0,5,0.5] — both land on solid terrain. 900 m X-axis flight corridor available. Flight altitude must be ≥ 50 m AGL (tree collision mesh present below). two_vehicle_sitl.sdf retained as rendering verification tool only — not demo world. OI-30 unblocked. | Architecture | CLOSED |
+| OI-36 | `mission_vehicle_a()` has no abort/timeout guard on `t_a.join()` — if Vehicle A fails to complete its waypoint loop (e.g., OFFBOARD failsafe lands vehicle), the join blocks forever and MISSION PASS is never reached. Requires Deputy 1 authorisation before any change to mission logic. Root cause of EF-01 hang observed during EF-02 verification runs (10 Apr 2026). | Code | HIGH — blocks full end-to-end demo verification |
 | ~~OI-35~~ **CLOSED** cd8b4f0 — `_start_setpoint_stream()` added to `simulation/run_mission.py`. Two call-sites in `mission_vehicle_a()`: thread starts before `_arm_and_offboard()`, stops (with `.join(timeout=1.0)`) after ACK. Live SITL verification 08 Apr 2026: VEH A ARM ✅ OFFBOARD ✅ altitude 95 m ✅ lap 1 complete T+107.7s ✅. Two infrastructure findings fixed this session: (1) `~/.gz/sim/8/server.config` updated to include PX4 sensor system plugins (Imu, NavSat, AirPressure, Magnetometer, Contact) — root cause of EKF2 alignment failures in all previous headless SITL attempts on this machine; (2) two Gazebo instance accumulation risk documented for OI-30 cleanup phase. | Code | CLOSED |
 ---
 

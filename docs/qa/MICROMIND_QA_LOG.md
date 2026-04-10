@@ -4,6 +4,51 @@
 
 ---
 
+## Entry QA-015 — 10 April 2026 (EF-02 demo exit + cleanup fixes)
+**Session Type:** Bug fix — run_demo.sh + run_mission.py clean exit (EF-02 CLOSED)
+**Focus:** EF-02: blocking exit after MISSION PASS, exec-prevents-cleanup, EXIT trap fragility
+
+### Summary
+
+Two commits close EF-02:
+
+**Commit `7ed5a8e` — `simulation/run_mission.py`**
+- Root cause: `sys.exit(0)` triggered Python cleanup phase; two alive `_hb_thread` daemon threads held open pymavlink UDP sockets, blocking finalizers for 60+ seconds.
+- Fix: replaced all three `sys.exit()` calls in `main()` with `os._exit()` (bypasses atexit/finalizers entirely).
+
+**Commit `4ecff95` — `run_demo.sh`**
+Four fixes applied:
+1. **exec→foreground:** `exec python3.12` replaced with `python3.12 -u ... ; MISSION_EXIT=$?` + explicit cleanup block. `exec` made the shell unreachable after Python launched — Gazebo/PX4 became orphans on `os._exit()`.
+2. **Gazebo SIGTERM resistance:** `pkill -f "gz sim"` → `pkill -9 -f "gz sim"`. SIGTERM takes 15–30 s or is ignored; SIGKILL is instant. Matches Phase 0 pattern.
+3. **`set -e` + dead PIDs:** `kill ... 2>/dev/null` → `kill ... 2>/dev/null || true` on all kill/pkill lines. Without `|| true`, a dead PID causes kill to return 1; `set -e` aborts the script, skipping "Cleanup complete." and `exit ${MISSION_EXIT}`.
+4. **EXIT trap — Bug 2:** Trap replaced with `|| true` guards on all kill/pkill lines; `pkill -9 -f "gz sim"` added (was completely absent); `pkill -f "bin/px4"` → `pkill -9 -f "bin/px4"`.
+
+### Verification
+
+| Check | Method | Result |
+|---|---|---|
+| `os._exit()` terminates with alive daemon thread | `python3.12 -c` isolation test | ✅ exit code 0, no hang |
+| stdout visible (unbuffered) | `-u` flag on python3.12 invocation | ✅ confirmed in prior runs |
+| EXIT trap || true guards | Code review | ✅ applied |
+| pkill -9 gz sim in trap | Code review | ✅ added |
+| No frozen files touched | `git diff HEAD~2 -- core/ scenarios/` | ✅ clean |
+
+### New open items raised
+
+- **EF-01 (OPEN):** Vehicle A OFFBOARD failsafe on PX4 instance 1 — `mc_pos_control: invalid setpoints → Failsafe: blind land` fires immediately after OFFBOARD engagement. Pre-existing; not caused by EF-02.
+- **OI-36 (OPEN):** `mission_vehicle_a()` has no abort/timeout guard on `t_a.join()`. If Vehicle A fails, join blocks forever. Full end-to-end demo verification blocked until EF-01/OI-36 resolved. Deputy 1 authorisation required to touch mission logic.
+
+### SIL regression
+
+| Suite | Gates | Result |
+|---|---|---|
+| run_s5_tests.py | 119 | ✅ 119/119 |
+| run_s8_tests.py | 68 | ✅ 68/68 |
+| run_bcmp2_tests.py | 90 | ✅ 90/90 |
+| **Total** | **290** | **✅ 290/290** |
+
+---
+
 ## Entry QA-014 — 10 April 2026 (Phase B + Phase C continuation)
 **Session Type:** Feature implementation — run_demo.sh Phase A + B + C (OI-30 CLOSED)
 **Focus:** OI-30 Phase B (PX4-01, VIZ-02) + Phase C (run_mission.py integration, live SITL verification)
