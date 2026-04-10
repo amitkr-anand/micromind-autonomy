@@ -4,6 +4,44 @@
 
 ---
 
+## Entry QA-018 — 10 April 2026 (SB-5 Phase A — EC-07 §16 Recovery Ownership Verification)
+**Session Type:** QA Audit — grep-and-document only (no code changes)
+**Focus:** EC-07 §16 Recovery Ownership Matrix — verify log-emitting module matches §16 owner for 6 events
+
+**Actions completed:**
+1. Read SRS §16 Recovery Ownership Matrix (from `docs/qa/MicroMind_SRS_v1_3.docx`). Extracted 6-event ownership table: Detects / Decides / Executes / Logs roles per event.
+2. Grep-searched codebase for all 6 events: GNSS Spoofing, VIO Degradation, PX4 Reboot, Corridor Violation (predicted), SHM Trigger, Target Lock Loss.
+3. Built `docs/qa/SB5_EC07_OwnershipVerification.md` — §16 source extract, verification table, grep evidence, OI descriptions.
+4. Raised OI-39 and OI-40 in `docs/qa/MICROMIND_PROJECT_CONTEXT.md` Section 8.
+5. SA-01–SA-07 sanity check: 7/7 PASS (no code changed; confirming no regression).
+
+**Verification results:**
+
+| Event | §16 Owner (Detects) | Compliant | Finding |
+|---|---|---|---|
+| GNSS Spoofing | Navigation Manager (BIM) | **N** | `core/bim/bim.py` sets `spoof_alert=True` in BIMResult (line 288) — correct module — but no named log event string (e.g. `GNSS_SPOOF_DETECTED`) is emitted anywhere. `spoof_alert` is a struct field, not a logged event. OI-39 raised. |
+| VIO Degradation | Navigation Manager (VIOMode) | **Y** | `core/fusion/vio_mode.py:166` emits `VIO_OUTAGE_DETECTED` via stdlib `_log.warning()`. Correct module. |
+| PX4 Reboot | PX4 Bridge (HEARTBEAT seq reset) | **Y** | `integration/bridge/reboot_detector.py:151` emits `PX4_REBOOT_DETECTED`. Correct module (RebootDetector instantiated by MAVLinkBridge = PX4 Bridge). |
+| Corridor Violation (predicted) | *(not in §16)* | **N** | §16 has no row for this event. `core/state_machine/state_machine.py` emits `CORRIDOR_VIOLATION` → ABORT from 4 states (lines 240, 263, 304, 325). Ownership unspecified in SRS. OI-40 raised. |
+| SHM Trigger | Mission Manager (trigger detection) | **Y** | `core/state_machine/state_machine.py:333` emits STATE_TRANSITION with trigger `L10S_SE_ACTIVATION` to `SHM_ACTIVE`. NanoCorteXFSM = Mission Manager component. |
+| Target Lock Loss | DMRL / L10s-SE (detects) → Mission Manager (decides) | **Y** | `core/l10s_se/l10s_se.py:188` detects (`LOCK_LOST_TIMEOUT`). `core/state_machine/state_machine.py:352` decides (`EO_LOCK_LOSS`). Split matches §16 two-role assignment. |
+
+**Non-compliances found (2):**
+- **OI-39** MEDIUM: GNSS Spoof — correct module, missing `GNSS_SPOOF_DETECTED` log call. Fix required before Phase A exit gate. `bim.py` is frozen — explicit unfreeze required.
+- **OI-40** MEDIUM: Corridor Violation — §16 documentation gap. No ownership row. Fix required in SRS v1.4.
+
+**Gate summary:**
+- SA-01–SA-07: 7/7 PASS (sanity check — no code changes this session)
+- SIL baseline: 297/297 unchanged
+
+**OI status changes:**
+- OI-39 OPEN: EC-07 GNSS Spoof missing log event
+- OI-40 OPEN: EC-07 Corridor Violation not in §16
+
+**Artefact produced:** `docs/qa/SB5_EC07_OwnershipVerification.md`
+
+---
+
 ## Entry QA-017 — 10 April 2026 (SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate)
 **Session Type:** Feature implementation — PX4-04 seq-reset detection + D8a gate (SA-05–SA-07)
 **Focus:** SRS IT-PX4-02, PX4-04, EC-03; §16 Recovery Ownership Matrix
