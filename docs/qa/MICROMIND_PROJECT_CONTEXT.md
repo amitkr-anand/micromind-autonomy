@@ -89,7 +89,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | EF-01 Vehicle A OFFBOARD failsafe | 🔴 OPEN | PX4 instance 1 (PX4_GZ_STANDALONE=1) triggers mc_pos_control invalid setpoints → Failsafe: blind land immediately after OFFBOARD engagement. Vehicle A never completes lap; mission exits via OI-36 timeout guard (ABORT, exit code 2). Pre-existing; not introduced by EF-02. Separate investigation required. | — |
 | SB-5 Phase A — Checkpoint v1.2 | 🟡 IN PROGRESS | SA-01–SA-04 ✅ — 6 new fields, P-01 SHM persistence, P-02 operator clearance gate, TECHNICAL_NOTES.md CREATED. SIL 294/294. | `fcb5106` |
 | SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate | 🟡 IN PROGRESS | SA-05–SA-07 ✅ — RebootDetector (seq-reset, rollover guard), MAVLinkBridge wired, on_reboot_detected() D8a gate, MISSION_RESUME_AUTHORISED nominal path. SIL 297/297. | `787ecd4` |
-| SB-5 Phase A — EC-07 §16 Recovery Ownership Verification | 🟡 IN PROGRESS | Grep audit complete. 4/6 events compliant (VIO Degradation, PX4 Reboot, SHM Trigger, Target Lock Loss). 2 non-compliances: OI-39 (GNSS Spoof — no GNSS_SPOOF_DETECTED log event), OI-40 (Corridor Violation — no §16 row). SB5_EC07_OwnershipVerification.md created. SIL 297/297. | pending commit |
+| SB-5 Phase A — EC-07 §16 Recovery Ownership Verification | 🟡 IN PROGRESS | Grep audit complete. 4/6 events compliant (VIO Degradation, PX4 Reboot, SHM Trigger, Target Lock Loss). 2 non-compliances: OI-39 (GNSS Spoof — no GNSS_SPOOF_DETECTED log event), OI-40 (Corridor Violation — no §16 row). SB5_EC07_OwnershipVerification.md created. SIL 297/297. | `fff0cc4` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
