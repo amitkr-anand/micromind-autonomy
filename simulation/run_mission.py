@@ -17,6 +17,7 @@ Both vehicles fly offset ellipses in Baylands world.
 import argparse
 import json
 import math
+import os
 import subprocess
 import sys
 import threading
@@ -648,13 +649,13 @@ def main():
 
     if abort_event.is_set():
         print("[MISSION] ABORT — EKF2/arming failure on one or both vehicles.")
-        sys.exit(1)
+        os._exit(1)
     elif mission_complete.is_set():
         print("[MISSION] PASS — two-vehicle GPS denial demo complete.")
-        sys.exit(0)
+        os._exit(0)
     else:
         print("[MISSION] FAIL — mission did not complete cleanly.")
-        sys.exit(1)
+        os._exit(1)
 
 
 if __name__ == '__main__':
