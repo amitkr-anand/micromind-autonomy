@@ -2,8 +2,9 @@
 core/mission_manager/mission_manager.py
 MicroMind / NanoCorteX — Mission Manager
 
-Controls the mission resume path and implements the P-02 operator clearance gate
-(SRS §10.15, PX4-05 correction P-02).
+Controls the mission resume path and implements:
+  - P-02 operator clearance gate (SRS §10.15, PX4-05 correction P-02)
+  - D8a gate / reboot-triggered recovery (SRS IT-PX4-02, PX4-04, EC-03)
 
 §9.1 failure-first sequence:
     The blocked/SHM path is implemented and evaluated BEFORE the nominal resume
@@ -19,13 +20,22 @@ P-02 gate — resume() behaviour when pending_operator_clearance_required=True:
     (b) Set state to MissionState.SHM  (vehicle enters SHM)
     (c) Return False  — autonomous flight does NOT resume
 
+D8a gate — on_reboot_detected() — triggered when PX4_REBOOT_DETECTED fires:
+    1. Restore latest Checkpoint from CheckpointStore.
+    2. Call resume(checkpoint) which evaluates pending_operator_clearance_required:
+         False → log MISSION_RESUME_AUTHORISED (req_id='PX4-04', severity='INFO'),
+                 set state ACTIVE, return True
+         True  → P-02 path: log AWAITING_OPERATOR_CLEARANCE, set SHM, return False
+
 Autonomous flight resumes only when:
     - grant_clearance() is called by an operator command handler, OR
     - abort() is called to end the mission
 
 References:
-    SRS §10.15  PX4-05 correction P-02
+    SRS §10.15      PX4-05 correction P-02
+    SRS IT-PX4-02   PX4-04, EC-03 (D8a gate)
     Code Governance Manual v3.2  §9.1 (failure-first sequence)
+    Code Governance Manual v3.2  §1.3 (no PX4 commands in MissionManager)
 """
 
 from __future__ import annotations
@@ -33,7 +43,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Callable, Dict, List
 
-from core.checkpoint.checkpoint import Checkpoint
+from core.checkpoint.checkpoint import Checkpoint, CheckpointStore
 
 
 class MissionState(str, Enum):
@@ -135,8 +145,44 @@ class MissionManager:
 
         # --- Nominal resume path --------------------------------------------
         # pending_operator_clearance_required is False; resume autonomously.
+        # Log MISSION_RESUME_AUTHORISED (PX4-04 D8a gate nominal outcome).
+        self._event_log.append({
+            "event":        "MISSION_RESUME_AUTHORISED",
+            "req_id":       "PX4-04",
+            "severity":     "INFO",
+            "module_name":  "MissionManager",
+            "timestamp_ms": self._clock_fn(),
+        })
         self._state = MissionState.ACTIVE
         return True
+
+    def on_reboot_detected(self, checkpoint_store: CheckpointStore) -> bool:
+        """
+        Handle a PX4_REBOOT_DETECTED event (D8a gate, SRS IT-PX4-02, PX4-04).
+
+        Called by the integration layer when RebootDetector.feed() returns True.
+        This method must NOT issue any PX4 commands (§1.3 forbidden behaviour).
+
+        Sequence (§9.1 failure-first):
+          1. Restore latest checkpoint from store.
+             If no checkpoint exists: return False (no mission state to recover).
+          2. Call resume(checkpoint):
+               pending_operator_clearance_required=False →
+                   log MISSION_RESUME_AUTHORISED, set ACTIVE, return True.
+               pending_operator_clearance_required=True  →
+                   log AWAITING_OPERATOR_CLEARANCE, set SHM, return False.
+
+        Args:
+            checkpoint_store: CheckpointStore to restore the latest checkpoint from.
+
+        Returns:
+            True  — mission recovered and now ACTIVE.
+            False — no checkpoint found, or P-02 gate blocked resume (SHM).
+        """
+        checkpoint = checkpoint_store.restore_latest()
+        if checkpoint is None:
+            return False
+        return self.resume(checkpoint)
 
     def grant_clearance(self) -> bool:
         """

@@ -37,6 +37,7 @@ import pymavlink.mavutil as mavutil
 
 from integration.bridge.time_reference import TimeReference
 from integration.bridge.bridge_logger import BridgeLogger
+from integration.bridge.reboot_detector import RebootDetector
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +154,14 @@ class MAVLinkBridge:
         self._local_pos_valid: bool = False
         self._local_pos_x:    float = 0.0
         self._last_pos_check_t: float = 0.0
+
+        # PX4-04: Reboot detection via HEARTBEAT sequence-number reset
+        # Shared event_log — callers can attach an external list before start().
+        self._reboot_event_log: list = []
+        self._reboot_detector = RebootDetector(
+            event_log=self._reboot_event_log,
+            clock_fn=self._time_ref.time_boot_ms,
+        )
 
     # ------------------------------------------------------------------
     # Public interface
@@ -411,6 +420,21 @@ class MAVLinkBridge:
 
                 if msg.get_type() == 'HEARTBEAT':
                     self._last_hb_t = time.monotonic()
+                    # PX4-04: sequence-number reset detection (§1.3: detection only,
+                    # no mission logic — D8a gate decision lives in MissionManager)
+                    try:
+                        hb_seq = msg.get_seq()
+                    except AttributeError:
+                        hb_seq = getattr(getattr(msg, '_header', None), 'seq', -1)
+                    if hb_seq >= 0:
+                        reboot = self._reboot_detector.feed(seq=hb_seq,
+                                                            wall_t=self._last_hb_t)
+                        if reboot:
+                            evt = self._reboot_event_log[-1]
+                            try:
+                                self._logger.log("PX4_REBOOT_DETECTED", evt)
+                            except Exception:
+                                pass   # Never crash T-MON on logger failure
                     new_mode = msg.custom_mode
                     if new_mode != self._last_custom_mode:
                         expected = (new_mode == self._OFFBOARD_CUSTOM_MODE)

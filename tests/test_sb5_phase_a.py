@@ -310,5 +310,205 @@ class TestSA04P02OperatorClearanceBlocksResume(unittest.TestCase):
             f"timestamp_ms: expected 5000, got '{evt.get('timestamp_ms')}'")
 
 
+
+# ---------------------------------------------------------------------------
+# SA-05 — Reboot detected within 3 s
+# ---------------------------------------------------------------------------
+
+class TestSA05RebootDetectedWithin3s(unittest.TestCase):
+    """
+    SA-05: RebootDetector triggers PX4_REBOOT_DETECTED on a backward sequence-
+    number jump of 10, and reports elapsed detection time <= 3000 ms.
+
+    RebootDetector is the sequence-number reset detection component used by
+    MAVLinkBridge (integration/bridge/reboot_detector.py).  It is tested here
+    directly because pymavlink is absent from the SIL conda environment and
+    MAVLinkBridge cannot be imported in SIL context — the detection logic is
+    isolated in a pymavlink-free module specifically for this purpose.
+
+    Injection pattern (equivalent to injecting a HEARTBEAT into the bridge
+    handler with seq = last_seq - 10):
+      1. feed(seq=BASELINE) — establishes last_seq
+      2. feed(seq=BASELINE-10) — triggers backward jump detection
+    """
+
+    def test_sa05_reboot_detected_within_3s(self):
+        from integration.bridge.reboot_detector import RebootDetector
+
+        event_log = []
+        detector = RebootDetector(event_log=event_log)
+
+        baseline_seq = 50
+        injected_seq = baseline_seq - 10   # = 40 — backward jump of 10
+
+        # Step 1: establish last_seq baseline
+        detector.feed(seq=baseline_seq)
+
+        # Step 2: inject HEARTBEAT with seq = last_seq - 10
+        detected = detector.feed(seq=injected_seq)
+
+        # --- Assert PX4_REBOOT_DETECTED was logged ---------------------------
+        self.assertTrue(detected,
+            "RebootDetector.feed() must return True on seq-reset detection")
+
+        reboot_events = [e for e in event_log if e.get("event") == "PX4_REBOOT_DETECTED"]
+        self.assertGreater(len(reboot_events), 0,
+            "No PX4_REBOOT_DETECTED event found in event_log after backward seq jump of 10")
+
+        evt = reboot_events[0]
+
+        # --- Assert required event fields ------------------------------------
+        self.assertEqual(evt["req_id"], "PX4-04")
+        self.assertEqual(evt["severity"], "WARNING")
+        self.assertEqual(evt["module_name"], "MAVLinkBridge")
+        self.assertIn("timestamp_ms", evt)
+        self.assertIn("payload", evt)
+
+        # --- Assert elapsed detection time <= 3000 ms -----------------------
+        elapsed_ms = evt["payload"]["elapsed_detection_ms"]
+        self.assertLessEqual(elapsed_ms, 3000,
+            f"elapsed_detection_ms {elapsed_ms} ms exceeds 3000 ms threshold")
+
+
+# ---------------------------------------------------------------------------
+# SA-06 — D8a clearance=False → MISSION_RESUME_AUTHORISED
+# ---------------------------------------------------------------------------
+
+class TestSA06D8aClearanceFalseResumes(unittest.TestCase):
+    """
+    SA-06: D8a gate nominal path — when pending_operator_clearance_required=False,
+    MissionManager.on_reboot_detected() logs MISSION_RESUME_AUTHORISED and
+    sets mission state to ACTIVE.
+    """
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp(prefix="sa06_cp_")
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_sa06_d8a_clearance_false_resumes(self):
+        # Write a checkpoint with pending_operator_clearance_required=False
+        store = CheckpointStore(checkpoint_dir=self._tmpdir)
+        cp = Checkpoint(
+            mission_id="SA-06-D8A-TEST",
+            timestamp_ms=8000,
+            fsm_state="GNSS_DENIED",
+            waypoint_index=3,
+            pending_operator_clearance_required=False,   # nominal path
+            shm_active=False,
+        )
+        store.write(cp)
+
+        event_log = []
+        current_time_ms = 8100
+        mm = MissionManager(
+            event_log=event_log,
+            clock_fn=lambda: current_time_ms,
+        )
+
+        # Trigger MissionManager reboot-recovery path
+        resumed = mm.on_reboot_detected(store)
+
+        # --- Assert mission resumed ------------------------------------------
+        self.assertTrue(resumed,
+            "on_reboot_detected() must return True when pending_operator_clearance_required=False")
+        self.assertEqual(mm.state, MissionState.ACTIVE,
+            f"Expected state=ACTIVE after D8a nominal resume, got {mm.state}")
+
+        # --- Assert MISSION_RESUME_AUTHORISED logged with all four required fields ---
+        resume_events = [
+            e for e in event_log if e.get("event") == "MISSION_RESUME_AUTHORISED"
+        ]
+        self.assertGreater(len(resume_events), 0,
+            "No MISSION_RESUME_AUTHORISED event found in event_log")
+
+        evt = resume_events[0]
+
+        self.assertIn("req_id", evt,
+            "req_id field missing from MISSION_RESUME_AUTHORISED event")
+        self.assertEqual(evt["req_id"], "PX4-04",
+            f"req_id: expected 'PX4-04', got '{evt.get('req_id')}'")
+
+        self.assertIn("severity", evt,
+            "severity field missing from MISSION_RESUME_AUTHORISED event")
+        self.assertEqual(evt["severity"], "INFO",
+            f"severity: expected 'INFO', got '{evt.get('severity')}'")
+
+        self.assertIn("module_name", evt,
+            "module_name field missing from MISSION_RESUME_AUTHORISED event")
+        self.assertEqual(evt["module_name"], "MissionManager",
+            f"module_name: expected 'MissionManager', got '{evt.get('module_name')}'")
+
+        self.assertIn("timestamp_ms", evt,
+            "timestamp_ms field missing from MISSION_RESUME_AUTHORISED event")
+
+
+# ---------------------------------------------------------------------------
+# SA-07 — D8a clearance=True → AWAITING_OPERATOR_CLEARANCE (SHM entered)
+# ---------------------------------------------------------------------------
+
+class TestSA07D8aClearanceTrueBlocks(unittest.TestCase):
+    """
+    SA-07: D8a gate P-02 path — when pending_operator_clearance_required=True,
+    MissionManager.on_reboot_detected() logs AWAITING_OPERATOR_CLEARANCE and
+    enters SHM; mission state is NOT ACTIVE.
+    """
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp(prefix="sa07_cp_")
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_sa07_d8a_clearance_true_blocks(self):
+        # Write a checkpoint with pending_operator_clearance_required=True
+        store = CheckpointStore(checkpoint_dir=self._tmpdir)
+        cp = Checkpoint(
+            mission_id="SA-07-D8A-TEST",
+            timestamp_ms=9000,
+            fsm_state="SHM_ACTIVE",
+            shm_active=True,
+            pending_operator_clearance_required=True,    # P-02 trigger
+            mission_abort_flag=False,
+        )
+        store.write(cp)
+
+        event_log = []
+        current_time_ms = 9100
+        mm = MissionManager(
+            event_log=event_log,
+            clock_fn=lambda: current_time_ms,
+        )
+
+        # Trigger MissionManager reboot-recovery path
+        resumed = mm.on_reboot_detected(store)
+
+        # --- Assert mission did NOT resume -----------------------------------
+        self.assertFalse(resumed,
+            "on_reboot_detected() must return False when pending_operator_clearance_required=True")
+        self.assertNotEqual(mm.state, MissionState.ACTIVE,
+            "Mission state must NOT be ACTIVE when P-02 gate blocks D8a resume")
+
+        # --- Assert SHM is entered -------------------------------------------
+        self.assertEqual(mm.state, MissionState.SHM,
+            f"Expected state=SHM after D8a blocked resume, got {mm.state}")
+        self.assertTrue(mm.shm_entered,
+            "shm_entered must be True after D8a P-02 blocks resume")
+
+        # --- Assert AWAITING_OPERATOR_CLEARANCE logged -----------------------
+        clearance_events = [
+            e for e in event_log if e.get("event") == "AWAITING_OPERATOR_CLEARANCE"
+        ]
+        self.assertGreater(len(clearance_events), 0,
+            "No AWAITING_OPERATOR_CLEARANCE event found after D8a P-02 trigger")
+
+        evt = clearance_events[0]
+        self.assertEqual(evt.get("req_id"), "PX4-05")
+        self.assertEqual(evt.get("severity"), "WARNING")
+        self.assertEqual(evt.get("module_name"), "MissionManager")
+        self.assertIn("timestamp_ms", evt)
+
+
 if __name__ == "__main__":
     unittest.main()
