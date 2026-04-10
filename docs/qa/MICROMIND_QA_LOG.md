@@ -4,6 +4,39 @@
 
 ---
 
+## Entry QA-014 — 10 April 2026
+**Session Type:** Feature implementation — run_demo.sh Phase A + B
+**Focus:** OI-30 Phase B (PX4-01, VIZ-02) — PX4 SITL dual-instance launch with EKF2 alignment wait
+
+**Actions completed:**
+1. Read `run_demo.sh` (working tree) — confirmed old single-vehicle inject_outage pattern; no Phase A present. Only uncommitted change was `python3 → python3.12`.
+2. Read `simulation/launch_two_vehicle_sitl.sh` — extracted proven env var pattern: `GZ_ENGINE_NAME=ogre`, NVIDIA EGL fix (`__EGL_VENDOR_LIBRARY_FILENAMES`, `LD_PRELOAD`, `XDG_RUNTIME_DIR`), `GZ_IP=127.0.0.1`, `GZ_SIM_RESOURCE_PATH`.
+3. Read `build/px4_sitl_default/rootfs/gz_env.sh` — extracted exact `PX4_GZ_MODELS`, `PX4_GZ_WORLDS`, `PX4_GZ_PLUGINS` paths.
+4. Read `PX4-Autopilot/Tools/simulation/sitl_multiple_run.sh` — confirmed per-instance working-directory pattern: `mkdir -p instance_N; cd instance_N; px4 -i N -d $etc`.
+5. Read `build/px4_sitl_default/etc/init.d-posix/rcS` lines 296–325 — confirmed DDS topic namespace:
+   - Instance 0: `/fmu/out/vehicle_local_position` (no prefix)
+   - Instance 1: `/px4_1/fmu/out/vehicle_local_position` (prefix `px4_<N>`)
+6. Read `px4-rc.gzsim` — confirmed `PX4_GZ_STANDALONE=1` pattern (skips world launch) and auto-detect logic (`gz topic -l | grep /world/.*/clock`).
+7. **Rewrote `run_demo.sh` v2.0** with:
+   - **Phase 0:** `pkill` + `rm -rf /tmp/px4_inst{0,1}` cleanup.
+   - **Phase A:** `GZ_ENGINE_NAME=ogre gz sim -r -s --headless-rendering baylands.sdf`; scene/info service ready-poll (30s, 1s interval); `gz sim -g` GUI with NVIDIA EGL fix.
+   - **Phase B:** Instance 0 (Vehicle B, `PX4_GZ_MODEL_POSE=0,0,0.5`, no STANDALONE) + Instance 1 (Vehicle A, `PX4_GZ_MODEL_POSE=0,5,0.5`, `PX4_GZ_STANDALONE=1`), 4s stagger between launches. `wait_ekf2_aligned` shell function: `timeout 2 gz topic -e -n 1 <topic>` per-attempt, 60s total timeout per instance, prints `EKF2_ALIGNED instance=N` or `EKF2_ALIGNMENT_TIMEOUT instance=N`.
+   - **Phase C NOT wired** — `run_mission.py` deferred to Prompt 3.
+8. Bash syntax check: `bash -n run_demo.sh` → SYNTAX OK.
+9. **SIL regression:** 290/290 green (no regression impact from shell-script-only change).
+10. **Commit:** `afdde74` — `feat(demo): OI-30 Phase B — PX4 SITL dual-instance launch with EKF2 alignment wait`
+
+**Implementation notes:**
+- Spawn poses (0,0,0.5) and (0,5,0.5) match `SPAWN_B_ENU` and `SPAWN_A_ENU` constants in `run_mission.py` exactly.
+- 4s stagger between instance 0 and 1 startup gives instance 0's gz_bridge time to register with the Gazebo scene service before instance 1 attaches. This prevents a race that could cause instance 1 to misdetect "no world running" even with `PX4_GZ_STANDALONE=1` (defensive belt-and-braces).
+- EKF2 topic path `/px4_1/fmu/out/vehicle_local_position` derived from rcS source; requires uxrce_dds_client running. If DDS agent is not active, the 60s timeout fires cleanly.
+- Phase C (exec `run_mission.py`) is explicitly not wired per Prompt 3 scope.
+
+**Open items after session:**
+- OI-30: Phase A + B committed `afdde74`. Phase C (run_mission.py wiring) is the next prompt.
+
+---
+
 ## Entry QA-013 — 10 April 2026
 **Session Type:** Commit verification + SIL regression gate
 **Focus:** OI-35 commit (PX4-01, IT-PX4-01) — Agent 2 independent verification
