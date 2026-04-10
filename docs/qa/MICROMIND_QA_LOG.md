@@ -4,6 +4,53 @@
 
 ---
 
+## Entry QA-020 — 11 April 2026 (SB-5 Phase B — PLN-02 Retask R-01–R-06 + PLN-03 Dead-End Recovery)
+**Session Type:** SB-5 Phase B gate work
+**Focus:** PLN-02 Dynamic Retask R-01–R-06 + PLN-03 Dead-End Recovery (SB-01–SB-05)
+**Governance ref:** Code Governance Manual v3.2 §1.3, §1.4, §9.1
+
+**Step 1 findings:**
+- (a) File: `core/route_planner/hybrid_astar.py`, Class: `HybridAstar`
+- (b) `retask()` method: NOT present — does not exist in HybridAstar
+- (c) R-01 through R-06 already present: NONE
+- (d) PLN-03 dead-end recovery: NOT present
+
+**Implementation summary:**
+- New module `core/route_planner/route_planner.py` — `RoutePlanner` class wrapping `HybridAstar`
+- `RetaskNavMode` enum: CRUISE / GNSS_DENIED / TERMINAL / INS_ONLY
+- Named constants: `RETASK_TIMEOUT_S = 15.0`, `EW_MAP_STALENESS_THRESHOLD_S = 15.0`, `WAYPOINT_POSITION_TOLERANCE_M = 15.0` (no magic numbers per §1.3)
+- R-01 terrain ordering: terrain_regen_fn → RETASK_TERRAIN_FIRST log → ew_refresh_fn; ordering enforced and auditable
+- R-02 EW staleness: age check vs `EW_MAP_STALENESS_THRESHOLD_S`; EW_MAP_STALE_ON_RETASK WARNING logged; non-blocking
+- R-03 rollback: snapshots EW map + terrain corridor + waypoints before retask; all three restored on any failure path
+- R-04 upload order: `assert upload_indices == sorted(upload_indices)` before px4_upload_fn; WAYPOINT_UPLOAD_ORDER_VERIFIED logged
+- R-05 INS_ONLY rejection: first check in retask(); RETASK_REJECTED_INS_ONLY WARNING logged; returns False
+- R-06 timeout: `mission_clock.now()` only (no `time.time()`); 15 s limit across constraint levels; RETASK_TIMEOUT_ROLLBACK logged; full rollback on expiry
+- PLN-03 dead-end: DEAD_END_DETECTED logged; route set to last_valid_waypoint; route never empty
+- `core/route_planner/TECHNICAL_NOTES.md` CREATED — 4 OODA-loop rationale sections
+
+**Gate results:**
+- SB-01: PASS (3 test methods: CRUISE accepted, TERMINAL rejected, INS_ONLY rejected + log verified)
+- SB-02: PASS (GNSS_DENIED retask completes, RETASK_COMPLETE logged, route non-empty)
+- SB-03: PASS (forced dead-end: EW map restored, terrain corridor restored, waypoints → last_valid_wp via PLN-03)
+- SB-04: PASS (mock clock 0→20 s: RETASK_TIMEOUT_ROLLBACK logged, full state rolled back)
+- SB-05: PASS (all replans fail: DEAD_END_DETECTED logged, route = [last_valid_waypoint], no empty route)
+
+**SIL:** 304/304 (297 prior + 7 Phase B test methods; S5 119/119 ✅, S8 68/68 ✅, BCMP2 90/90 ✅, pre-HIL+adversarial 20/20 ✅, Phase A+B 7/7 ✅)
+
+**Commit:** `pending`
+
+**Standing notes logged to context:**
+- OI-41 RAISED: bim.py structured log debt (stdlib logging vs event_log dict pattern used everywhere else in SB-5)
+
+**Deviations from prompt:**
+- SB-01 implemented as 3 test methods (CRUISE, TERMINAL, INS_ONLY) rather than 1 — more rigorous coverage of the three-mode boundary. Total 7 test methods for 5 gates.
+- Waypoints after PLN-03 dead-end = [last_valid_wp], not full initial list — correct per PLN-03 spec; SB-03 test updated to assert PLN-03 recovery semantics.
+
+**Session close:** 11 April 2026
+**Next session:** Prompt 8 — MM-04 Queue Latency + SB-06, then Prompt 9 housekeeping, then Prompt 10A Pre-Handoff Checklist before Handoff 1 to Deputy 2.
+
+---
+
 ## Entry QA-019 — 10 April 2026 (SB-5 Phase A — EC-07 docs follow-up + context closure)
 **Session Type:** SB-5 Phase A — EC-07 §16 verification docs follow-up
 **Focus:** Recovery Ownership Matrix code compliance check — QA log entry, context update, commit
