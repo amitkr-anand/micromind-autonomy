@@ -4,6 +4,128 @@
 
 ---
 
+## Entry QA-016 — 10 April 2026 (SB-5 Phase A — Checkpoint v1.2 Schema)
+**Session Type:** Feature implementation — PX4-05 Checkpoint v1.2 schema + SA-01–SA-04 gates
+**Focus:** SRS §10.15, PX4-05, EC-02 (corrections P-01 SHM persistence, P-02 operator clearance gate)
+**Commit:** `fcb5106`
+
+### Step 1 — Checkpoint fields found before changes
+
+**Status: ABSENT.** No `Checkpoint` class, `checkpoint.py`, or checkpoint module
+exists anywhere in the codebase prior to this session.  Grep across all `.py`
+files returns zero matches for `class Checkpoint` and `Checkpoint`.  The module
+is a greenfield implementation.
+
+**atexit: CONFIRMED ABSENT** (from OI-36 investigation — zero atexit hits across
+the repo).
+
+### Step 2 — Six new v1.2 fields added
+
+All six fields added to `core/checkpoint/checkpoint.py` `Checkpoint` dataclass
+with specified defaults.  Serialisation via `dataclasses.asdict()` captures all
+fields automatically — no field can be silently dropped.
+
+| Field | Type | Default | Added |
+|---|---|---|---|
+| `shm_active` | `bool` | `False` | ✅ |
+| `pending_operator_clearance_required` | `bool` | `False` | ✅ |
+| `mission_abort_flag` | `bool` | `False` | ✅ |
+| `eta_to_destination_ms` | `int` | `0` | ✅ |
+| `terrain_corridor_phase` | `str` | `""` | ✅ |
+| `route_corridor_half_width_m` | `float` | `0.0` | ✅ |
+
+**Serialisation path:** `to_dict()` → `asdict()` (all fields), `from_dict()` →
+filters to `dataclasses.fields(Checkpoint)`, constructs via `cls(**filtered)`.
+No field can be dropped. Legacy checkpoint files with missing v1.2 fields load
+with defaults (forward compatibility confirmed).
+
+### P-01 round-trip verification
+
+`shm_active=True` written via `CheckpointStore.write()` → JSON on disk →
+`store.restore_latest()` → `Checkpoint.from_dict()`. Restored value: `True`.
+Round-trip error: **0** (exact). Verified in SA-02 gate. **PASS.**
+
+### P-02 implementation
+
+**File:** `core/mission_manager/mission_manager.py`  
+**Method:** `MissionManager.resume(checkpoint: Checkpoint) -> bool`
+
+Implementation (§9.1 failure-first):
+1. Sets `_state = RESUMING` (transient).
+2. **P-02 gate evaluated FIRST** — if `checkpoint.pending_operator_clearance_required`:
+   - Appends `{"event": "AWAITING_OPERATOR_CLEARANCE", "req_id": "PX4-05",
+     "severity": "WARNING", "module_name": "MissionManager", "timestamp_ms": clock_fn()}`
+     to shared `event_log`.
+   - Sets `_state = MissionState.SHM`.
+   - Returns `False` — autonomous flight blocked.
+3. Nominal path — sets `_state = ACTIVE`, returns `True`.
+
+`grant_clearance()` unblocks from SHM → ACTIVE.
+`abort()` unconditionally sets ABORTED.
+
+### Gate results
+
+| Gate | Test name | Result | Note |
+|---|---|---|---|
+| SA-01 | `test_sa01_checkpoint_v12_fields_present` | **PASS** | All 6 keys in dict+JSON, correct types, round-trip values match |
+| SA-02 | `test_sa02_checkpoint_restore_after_sigkill` | **PASS** | pos_ned error = 0.0 m (exact), all 6 v1.2 fields correct |
+| SA-03 | `test_sa03_checkpoint_rolling_purge` | **PASS** | retained=5 after 6 writes, CHECKPOINT_PURGED ×1 logged |
+| SA-04 | `test_sa04_p02_operator_clearance_blocks_resume` | **PASS** | resume()=False, state=SHM, all 4 fields verified |
+
+All four passed first run. No fix-and-retry required.
+
+### SIL regression
+
+| Suite | Expected | Actual | Result |
+|---|---|---|---|
+| run_s5_tests.py | 119 | 119 | ✅ |
+| run_s8_tests.py | 68 | 68 | ✅ |
+| run_bcmp2_tests.py | 90 | 90 | ✅ |
+| RC-11/RC-7/RC-8/ADV tests | 13 | 13 | ✅ |
+| SA-01–SA-04 (new) | 4 | 4 | ✅ |
+| **Total** | **294** | **294** | **✅ 294/294** |
+
+No pre-existing gate broke. SIL baseline advanced from 290 to 294.
+
+### TECHNICAL_NOTES.md
+
+**CREATED** — `core/checkpoint/TECHNICAL_NOTES.md`  
+Contents:
+- OODA-Loop Rationale — P-01 (SHM Persistence): threat model for post-reboot
+  SHM re-entry vs. RF exposure window and corridor escape risk.
+- OODA-Loop Rationale — P-02 (Operator Clearance Gate): D8a failure mode
+  (stale target acquisition on stale ESKF position after uncontrolled reboot).
+- Design Decision — Six New Fields: type, default, consequence-of-loss table.
+- Serialisation Guarantee: asdict() + atomic .tmp→rename write pattern.
+- Rolling Purge: max_retained=5, lexicographic=chronological sort guarantee.
+
+### Deviations from prompt
+
+None. No unblock-protocol triggers. All four gates passed first run.
+
+### Commit
+
+`fcb5106` — `feat(sb5-phase-a): PX4-05 Checkpoint v1.2 schema — 6 new fields,
+P-01 SHM persistence, P-02 operator clearance gate, SA-01–SA-04 PASS`
+
+Files changed (6 new files, 938 insertions):
+- `core/checkpoint/__init__.py`
+- `core/checkpoint/checkpoint.py`
+- `core/checkpoint/TECHNICAL_NOTES.md`
+- `core/mission_manager/__init__.py`
+- `core/mission_manager/mission_manager.py`
+- `tests/test_sb5_phase_a.py`
+
+### Next prompt
+
+**Prompt 5 — PX4-04 reboot detection + D8a gate (SA-05–SA-07)**  
+SA-05: cold-start vs. reboot discriminator (checkpoint-present detection)  
+SA-06: ESKF position integrity on restore (covariance inflation post-SIGKILL)  
+SA-07: D8a gate integration — full end-to-end reboot → clearance → resume flow  
+EC-02 will be fully addressed on SA-07 PASS.
+
+---
+
 ## Entry QA-015 — 10 April 2026 (EF-02 demo exit + cleanup fixes)
 **Session Type:** Bug fix — run_demo.sh + run_mission.py clean exit (EF-02 CLOSED)
 **Focus:** EF-02: blocking exit after MISSION PASS, exec-prevents-cleanup, EXIT trap fragility
