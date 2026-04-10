@@ -49,6 +49,40 @@ Four fixes applied:
 
 ---
 
+### QA-014e — OI-36 join timeout guard (same session, continuation of EF-02)
+
+**Focus:** OI-36 — `t_a.join()` / `t_b.join()` timeout guard + abort-on-timeout
+
+**Change 1 applied:** `main()` in `simulation/run_mission.py` — `t_a.join()` →
+`t_a.join(timeout=MISSION_TIMEOUT_S)` + `is_alive()` → `os._exit(2)`. Same for
+`t_b`. `MISSION_TIMEOUT_S = 300` (hardcoded; no `mission_timeout` config key found).
+OI-37 raised for config governance.
+
+**Change 2 — atexit check:** `grep -r "atexit" simulation/` — zero hits in any
+Python source. Checkpoint module does NOT use atexit. **ABSENT.**
+
+**TECHNICAL_NOTES.md:** Created `simulation/TECHNICAL_NOTES.md` — OODA rationale,
+OI-37 magic number entry, OI-36 fix note.
+
+**SIL:** 290/290 ✅ (119/119 S5, 68/68 S8, 90/90 BCMP-2)
+
+**Verification — live SITL (`./run_demo.sh --loops 1`):**
+
+| Condition | Result |
+|---|---|
+| ABORT or PASS message printed | ✅ `[MISSION] ABORT — Vehicle A thread did not complete within timeout. Forcing exit.` |
+| (a) exits to prompt within 5 s | ✅ Bash tool returned immediately after ABORT |
+| (b) gz sim gone after exit | ✅ `ps aux \| grep "gz sim"` — no output |
+| (c) px4 gone after exit | ✅ `ps aux \| grep "bin/px4"` — no output |
+
+Note: ABORT via OI-36 timeout guard confirms EF-01 still active (Vehicle A OFFBOARD
+failsafe). Both OI-36 (timeout guard) and EF-01 (failsafe root cause) are separate
+issues. OI-36 is now CLOSED; EF-01 remains open for separate investigation.
+
+**Commit:** `4fbe1d4` — `fix(sitl): OI-36 — t_a/t_b.join() timeout guard, mission abort on thread timeout, os._exit(2)`
+
+---
+
 ## Entry QA-014 — 10 April 2026 (Phase B + Phase C continuation)
 **Session Type:** Feature implementation — run_demo.sh Phase A + B + C (OI-30 CLOSED)
 **Focus:** OI-30 Phase B (PX4-01, VIZ-02) + Phase C (run_mission.py integration, live SITL verification)
