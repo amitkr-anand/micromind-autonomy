@@ -90,7 +90,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | SB-5 Phase A — Checkpoint v1.2 | 🟡 IN PROGRESS | SA-01–SA-04 ✅ — 6 new fields, P-01 SHM persistence, P-02 operator clearance gate, TECHNICAL_NOTES.md CREATED. SIL 294/294. | `fcb5106` |
 | SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate | 🟡 IN PROGRESS | SA-05–SA-07 ✅ — RebootDetector (seq-reset, rollover guard), MAVLinkBridge wired, on_reboot_detected() D8a gate, MISSION_RESUME_AUTHORISED nominal path. SIL 297/297. | `787ecd4` |
 | SB-5 Phase A — EC-07 §16 Recovery Ownership Verification | ✅ CLOSED | EC-07 ownership verification complete. SB5_EC07_OwnershipVerification.md committed. Phase A exit gate: SA-01–SA-07 ✅, EC-07 doc ✅. 5/6 events compliant. OI-39 CLOSED (GNSS_SPOOF_DETECTED log event added to bim.py — Deputy 1 unfreeze authorised). OI-40 OPEN (Corridor Violation — §16 doc gap, SRS v1.4 fix). SIL 297/297. | `fff0cc4` (doc) + see OI-39 code commit |
-| SB-5 Phase B — PLN-02 Retask + PLN-03 Dead-End | 🟡 IN PROGRESS | SB-01–SB-05 ✅ — R-01–R-06 + PLN-03 applied to RoutePlanner, 7 gate tests, TECHNICAL_NOTES.md CREATED. SIL 304/304. | `pending` |
+| SB-5 Phase B — PLN-02 Retask + PLN-03 Dead-End | 🟡 IN PROGRESS | SB-01–SB-05 ✅ — R-01–R-06 + PLN-03 applied to RoutePlanner, 7 gate tests, TECHNICAL_NOTES.md CREATED. SIL 304/304. | `6c405aa` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |

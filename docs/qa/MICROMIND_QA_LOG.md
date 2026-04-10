@@ -37,7 +37,7 @@
 
 **SIL:** 304/304 (297 prior + 7 Phase B test methods; S5 119/119 ✅, S8 68/68 ✅, BCMP2 90/90 ✅, pre-HIL+adversarial 20/20 ✅, Phase A+B 7/7 ✅)
 
-**Commit:** `pending`
+**Commit:** `6c405aa`
 
 **Standing notes logged to context:**
 - OI-41 RAISED: bim.py structured log debt (stdlib logging vs event_log dict pattern used everywhere else in SB-5)
