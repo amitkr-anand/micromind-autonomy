@@ -4,6 +4,98 @@
 
 ---
 
+## Entry QA-017 — 10 April 2026 (SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate)
+**Session Type:** Feature implementation — PX4-04 seq-reset detection + D8a gate (SA-05–SA-07)
+**Focus:** SRS IT-PX4-02, PX4-04, EC-03; §16 Recovery Ownership Matrix
+**Commit:** `787ecd4`
+
+### Step 1 — Current state findings
+
+**(a) Seq-reset detection present:** NO — `_monitor_loop()` HEARTBEAT handler tracks
+only `_last_custom_mode` and `_last_hb_t`. No `_last_rx_seq` field existed.
+
+**(b) PX4_REBOOT_DETECTED logged:** NO — no such event in bridge or any module.
+
+**(c) P-02 wired to D8a gate:** GAP — `MissionManager.resume()` had the P-02 gate
+(SA-04 verified), but no `on_reboot_detected()` entry point existed. Nothing
+restored a checkpoint or called `resume()` in response to a detected reboot.
+
+**Additional constraint:** `pymavlink` is absent from the SIL conda environment.
+`MAVLinkBridge` cannot be imported in tests. Reboot detection was extracted into
+`integration/bridge/reboot_detector.py` (pure Python, no pymavlink dependency)
+so SA-05 can exercise it directly in the SIL environment.
+
+### Implementation
+
+**`integration/bridge/reboot_detector.py` (NEW)**  
+`RebootDetector.feed(seq, wall_t)` — processes each HEARTBEAT sequence number.
+
+Detection criterion (rollover-safe modular arithmetic):
+```
+backward_dist = (last_seq – new_seq) % 256  > threshold (5)
+forward_dist  = (new_seq – last_seq) % 256  > threshold (5)
+```
+Both must hold.  Rollover (last≈255, new≈0): forward_dist ≈ 1–4 → fails 2nd condition.
+Reboot (last arbitrary, new≈0): both distances large → detected.
+
+Logs to shared `event_log`:
+```json
+{"event": "PX4_REBOOT_DETECTED", "req_id": "PX4-04", "severity": "WARNING",
+ "module_name": "MAVLinkBridge", "timestamp_ms": <int>,
+ "payload": {"elapsed_detection_ms": <int>}}
+```
+
+**`integration/bridge/mavlink_bridge.py` (MODIFIED)**  
+Imports `RebootDetector`. Instantiates in `__init__` with shared `_reboot_event_log`.
+Calls `self._reboot_detector.feed(seq=hb_seq)` in `_monitor_loop()` HEARTBEAT
+handler. Per §1.3: detection + logging only, no mission logic.
+
+**`core/mission_manager/mission_manager.py` (MODIFIED)**  
+- `on_reboot_detected(checkpoint_store)` added — D8a gate (IT-PX4-02, PX4-04):
+  restores latest checkpoint, calls `resume()`.
+- `resume()` nominal path now logs `MISSION_RESUME_AUTHORISED`:
+  `{"event": "MISSION_RESUME_AUTHORISED", "req_id": "PX4-04", "severity": "INFO",
+   "module_name": "MissionManager", "timestamp_ms": <int>}`
+- SA-04 unaffected (tests P-02 path only; nominal path not exercised by that test).
+
+### Gate results
+
+| Gate | Test name | Result | Note |
+|---|---|---|---|
+| SA-05 | `test_sa05_reboot_detected_within_3s` | **PASS** | seq 50→40, detected=True, elapsed_ms≤3000 |
+| SA-06 | `test_sa06_d8a_clearance_false_resumes` | **PASS** | MISSION_RESUME_AUTHORISED logged, state=ACTIVE |
+| SA-07 | `test_sa07_d8a_clearance_true_blocks` | **PASS** | AWAITING_OPERATOR_CLEARANCE logged, state=SHM |
+
+All three passed first run. No fix-and-retry required. SA-01–SA-04 unaffected.
+
+### SIL regression
+
+| Suite | Expected | Actual | Result |
+|---|---|---|---|
+| run_s5_tests.py | 119 | 119 | ✅ |
+| run_s8_tests.py | 68 | 68 | ✅ |
+| run_bcmp2_tests.py | 90 | 90 | ✅ |
+| RC-11/RC-7/RC-8/ADV tests | 13 | 13 | ✅ |
+| SA-01–SA-07 (cumulative new) | 7 | 7 | ✅ |
+| **Total** | **297** | **297** | **✅ 297/297** |
+
+### Deviations from prompt
+
+One deviation from literal prompt wording: "Inject a HEARTBEAT with seq = last_seq - 10
+into the MAVLinkBridge handler" — MAVLinkBridge cannot be imported in SIL environment
+(pymavlink absent). Detection logic extracted to `RebootDetector` (pymavlink-free);
+SA-05 tests `RebootDetector.feed()` directly. Equivalent injection semantics preserved.
+This is a known SIL-environment constraint, not a gap in implementation.
+
+No unblock-protocol triggers.
+
+### Next prompt
+
+**Prompt 6 — SB-5 Phase B (SA-08+):** EC-02 full closure, Recovery Ownership Matrix
+implementation, remaining SRS §16 gates.
+
+---
+
 ## Entry QA-016 — 10 April 2026 (SB-5 Phase A — Checkpoint v1.2 Schema)
 **Session Type:** Feature implementation — PX4-05 Checkpoint v1.2 schema + SA-01–SA-04 gates
 **Focus:** SRS §10.15, PX4-05, EC-02 (corrections P-01 SHM persistence, P-02 operator clearance gate)
