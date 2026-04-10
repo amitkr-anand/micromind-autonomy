@@ -260,7 +260,7 @@ wait_ekf2_aligned 1 14541 || { echo "[run_demo] FAIL: EKF2 timeout on instance 1
 # Date: 10 April 2026
 # Verified: Gazebo ✅ | PX4 x2 ✅ | EKF2 x2 ✅ | mission ✅
 # Vehicle A: altitude 95 m ✅ | lap 1 complete ✅
-# Commit: <this commit hash — fill after commit>
+# Commit: 97b2f5a
 # ---------------------------------------------------------------------------
 
 echo ""

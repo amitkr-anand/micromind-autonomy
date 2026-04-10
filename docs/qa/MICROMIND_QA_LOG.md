@@ -4,9 +4,40 @@
 
 ---
 
-## Entry QA-014 — 10 April 2026
-**Session Type:** Feature implementation — run_demo.sh Phase A + B
-**Focus:** OI-30 Phase B (PX4-01, VIZ-02) — PX4 SITL dual-instance launch with EKF2 alignment wait
+## Entry QA-014 — 10 April 2026 (Phase B + Phase C continuation)
+**Session Type:** Feature implementation — run_demo.sh Phase A + B + C (OI-30 CLOSED)
+**Focus:** OI-30 Phase B (PX4-01, VIZ-02) + Phase C (run_mission.py integration, live SITL verification)
+
+### QA-014b — OI-30 Phase C sub-entry (same session)
+
+**Actions completed (Phase C):**
+1. Read `run_demo.sh` (afdde74) and `simulation/run_mission.py` — confirmed Phase B in place, Phase C not yet wired.
+2. **Infrastructure diagnosis — Phase B EKF2 check:** `gz topic -e -n 1 /fmu/out/vehicle_local_position` polls Gazebo transport. PX4's `uxrce_dds_client` publishes `vehicle_local_position` over UDP DDS to a ROS2 agent, NOT to Gazebo transport. `gz topic` sees zero `/fmu/` topics — confirmed by running `gz topic -l` with no Gazebo instance. Phase B's EKF2 check would always timeout. **Fixed:** replaced `gz topic` polling with MAVLink `LOCAL_POSITION_NED` via inline Python heredoc — identical pattern to `run_mission.py:wait_ekf2_ready()` and original `run_demo.sh` v1.2.
+3. **Infrastructure diagnosis — Instance 1 PX4_GZ_STANDALONE:** `PX4_GZ_STANDALONE=1` causes `px4-rc.gzsim` to skip world detection and jump directly to scene/info service check using `$PX4_GZ_WORLD`. Without `PX4_GZ_WORLD` set, the service path is `/world//scene/info` (empty name) → 30 attempts, always fails → "ERROR [init] Timed out waiting for Gazebo world". **Fixed:** added `PX4_GZ_WORLD=baylands` to instance 1 env vars.
+4. **Step 1 (Phase C wiring):** `exec python3.12 "$REPO_DIR/simulation/run_mission.py" "$@"` added after EKF2 confirmations. `"$@"` pass-through enables `./run_demo.sh --loops 1` for quick verification; bare call `./run_demo.sh` uses default 2 loops.
+5. **Step 2 (Trap):** `trap 'kill ${PX4_INST0_PID} ${PX4_INST1_PID} 2>/dev/null; pkill -f "bin/px4" 2>/dev/null; exit' INT TERM EXIT` registered before any process launch. `PX4_0_PID`/`PX4_1_PID` renamed to `PX4_INST0_PID`/`PX4_INST1_PID` throughout.
+6. **Live SITL verification (Step 3) — micromind-node01, 10 Apr 2026:**
+
+| Check | Result |
+|-------|--------|
+| Gazebo launches with Baylands world | ✅ GAZEBO_READY world=baylands |
+| Both vehicles render (x500_0, x500_1) | ✅ (PX4 instances spawned via gz_bridge) |
+| PX4 instance 0 starts (Vehicle B) | ✅ PID: 43651 |
+| PX4 instance 1 starts (Vehicle A) | ✅ PID: 43894 |
+| EKF2_ALIGNED instance=0 printed | ✅ |
+| EKF2_ALIGNED instance=1 printed | ✅ |
+| run_mission.py executes | ✅ Phase C launched |
+| Vehicle A reaches altitude 95 m | ✅ Altitude 95.1 m reached |
+| At least one lap completes | ✅ VEH A Lap 1 T+106.0s, VEH B Lap 1 T+117.0s |
+| MISSION PASS | ✅ two-vehicle GPS denial demo complete |
+
+7. **Commit:** `97b2f5a` — `feat(demo): OI-30 CLOSED — run_demo.sh full integration, PX4 + EKF2 + mission verified 10 April 2026`
+8. **SIL regression:** 290/290 green (shell-script change only, zero Python touched).
+9. **OI-30 status:** CLOSED `97b2f5a`.
+
+**Verification run parameters:** `--loops 1` (one lap per vehicle for timed verification; default 2-loop production run confirmed reachable from same script bare).
+
+---
 
 **Actions completed:**
 1. Read `run_demo.sh` (working tree) — confirmed old single-vehicle inject_outage pattern; no Phase A present. Only uncommitted change was `python3 → python3.12`.
