@@ -33,7 +33,7 @@ Full §16 rows relevant to the six events under verification:
 
 | Event | §16 Owner (Detects) | Module emitting log | Log event string | File : Line | Compliant | Notes |
 |---|---|---|---|---|---|---|
-| GNSS Spoofing | Navigation Manager (BIM) | `core/bim/bim.py` | **NOT FOUND** | `bim.py:288` (`spoof_alert=True` in BIMResult only) | **N** | BIM is correct module per §16, but no named log event string (e.g. `GNSS_SPOOF_DETECTED`) is emitted. `spoof_alert` is a struct field, not a logged event. See OI-39. |
+| GNSS Spoofing | Navigation Manager (BIM) | `core/bim/bim.py` | `GNSS_SPOOF_DETECTED` | `bim.py:252` (`_log.warning("GNSS_SPOOF_DETECTED: bim_score=%.4f", raw)`) | **Y** | OI-39 CLOSED. `import logging` + module-level `_log` added. `_log.warning()` emitted immediately after `spoof = self._detect_spoof(measurement)` when spoof is True. Pattern matches `vio_mode.py` (VIO_OUTAGE_DETECTED). |
 | VIO Degradation | Navigation Manager (VIOMode) | `core/fusion/vio_mode.py` | `VIO_OUTAGE_DETECTED` | `vio_mode.py:166` | **Y** | Correct module (VIOMode = Navigation Manager). Logged via stdlib `_log.warning()`; not structured MissionLog but module ownership is correct. |
 | PX4 Reboot | PX4 Bridge (HEARTBEAT seq reset) | `integration/bridge/reboot_detector.py` | `PX4_REBOOT_DETECTED` | `reboot_detector.py:151` | **Y** | Correct module (RebootDetector instantiated by MAVLinkBridge = PX4 Bridge). Also forwarded to BridgeLogger at `mavlink_bridge.py:435`. |
 | Corridor Violation (predicted) | *(not in §16)* | `core/state_machine/state_machine.py` | `CORRIDOR_VIOLATION` | `state_machine.py:240,263,304,325` | **N** | §16 has **no recovery ownership row** for this event. NanoCorteXFSM emits `CORRIDOR_VIOLATION` → ABORT from multiple states. Ownership unspecified in §16. See OI-40. |
@@ -46,28 +46,23 @@ Full §16 rows relevant to the six events under verification:
 
 | Compliant | Count | Events |
 |---|---|---|
-| **Y** | 4 | VIO Degradation, PX4 Reboot, SHM Trigger, Target Lock Loss |
-| **N** | 2 | GNSS Spoofing (no log event), Corridor Violation (not in §16) |
+| **Y** | 5 | GNSS Spoofing (OI-39 CLOSED), VIO Degradation, PX4 Reboot, SHM Trigger, Target Lock Loss |
+| **N** | 1 | Corridor Violation (not in §16 — OI-40 open) |
 
 ---
 
 ## Non-Compliances → OIs Raised
 
-### OI-39: EC-07 — GNSS Spoof event has no dedicated named log event string
+### ~~OI-39~~: EC-07 — GNSS Spoof event has no dedicated named log event string — **CLOSED**
 
 **Event:** GNSS Spoofing  
 **§16 requirement:** Navigation Manager (BIM) detects and logs GNSS spoof event.  
-**Finding:** `core/bim/bim.py` `_detect_spoof()` correctly identifies spoofing and
-sets `spoof_alert=True` in the `BIMResult` dataclass (line 288). However, no named
-log event string (e.g. `GNSS_SPOOF_DETECTED`) is emitted by any `log()` call.
-The `spoof_alert` field is carried in the BIMResult data structure passed upstream
-but is not logged as a discrete auditable event.  
-**Impact:** §16 requires the detection event to be consumable by Mission Manager
-(trust state consumer) and Demo Tool. Without a named event string, neither module
-can subscribe to or audit the spoof detection.  
-**Priority:** MEDIUM (correct module, missing log call — not a §1.3 forbidden
-behaviour violation since BIM is the designated owner).  
-**Fix required before:** Phase A exit gate.
+**Resolution:** `_log.warning("GNSS_SPOOF_DETECTED: bim_score=%.4f", raw)` added to
+`core/bim/bim.py` immediately after `spoof = self._detect_spoof(measurement)` (line
+252). `import logging as _logging` and module-level `_log = _logging.getLogger(__name__)`
+added following the pattern established by `vio_mode.py` (VIO_OUTAGE_DETECTED).
+No logic changes. SIL 297/297 confirmed. Deputy 1 unfreeze authorised for this change only.  
+**Closed by commit:** see Step 5 commit hash in QA-019/QA-020.
 
 ### OI-40: EC-07 — Corridor Violation (predicted) absent from §16 Recovery Ownership Matrix
 
