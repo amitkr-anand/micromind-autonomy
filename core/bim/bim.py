@@ -41,6 +41,7 @@ References:
 
 from __future__ import annotations
 
+import logging as _logging
 import time
 from collections import deque
 from dataclasses import dataclass, field
@@ -49,6 +50,8 @@ from typing import Deque, List, Optional, Tuple
 import numpy as np
 
 from logs.mission_log_schema import BIMState
+
+_log = _logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -247,6 +250,8 @@ class BIM:
 
         # --- Spoof alert (hard criterion — bypass hysteresis) ---
         spoof = self._detect_spoof(measurement)
+        if spoof:
+            _log.warning("GNSS_SPOOF_DETECTED: bim_score=%.4f", raw)
 
         # --- Apply hysteresis ---
         confirmed_state, hyst_count, state_changed = self._apply_hysteresis(
