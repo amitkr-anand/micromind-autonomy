@@ -30,6 +30,7 @@ FI-05 — EO feed frozen
   Expected: DMRL receives stale frame (frame_id does not advance)
 """
 
+import threading
 import time
 import pytest
 import sys
@@ -268,6 +269,113 @@ class TestFI05EOFreeze:
         fm.activate(FI_EO_FREEZE)
         assert sensor_proxy.eo_available(True) is True
         assert sensor_proxy.eo_available(False) is False
+
+
+# ---------------------------------------------------------------------------
+# FaultInjectionProxy infrastructure classes
+# ---------------------------------------------------------------------------
+
+class FI06IOStarve:
+    """
+    FI-NEW-01: Checkpoint I/O starvation.
+    Saturates /tmp disk I/O to simulate
+    heavy checkpoint write contention.
+    Req: RS-04, EC-05
+    """
+    def __init__(self, target_dir="/tmp",
+                 duration_s=5.0):
+        self._target = target_dir
+        self._duration = duration_s
+        self._thread = None
+        self._stop = threading.Event()
+
+    def start(self):
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._spam_io,
+            daemon=True
+        )
+        self._thread.start()
+
+    def stop(self):
+        self._stop.set()
+        if self._thread:
+            self._thread.join(timeout=2.0)
+
+    def _spam_io(self):
+        import os, tempfile
+        deadline = time.monotonic() + \
+                   self._duration
+        while not self._stop.is_set() and \
+              time.monotonic() < deadline:
+            try:
+                fd, path = tempfile.mkstemp(
+                    dir=self._target,
+                    prefix="fi06_"
+                )
+                os.write(fd, b"x" * 65536)
+                os.fsync(fd)
+                os.close(fd)
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+class FI07EWMaze:
+    """
+    FI-NEW-02: RoutePlanner infinite cost maze.
+    Generates a synthetic EW costmap that
+    fully encloses the vehicle in
+    infinite-cost nodes, forcing A* to exhaust
+    the search space before R-06 timeout fires.
+    Req: PLN-02, R-06
+    """
+    def __init__(self, map_size=100,
+                 center=(50, 50),
+                 wall_cost=1e9):
+        self._size = map_size
+        self._center = center
+        self._wall_cost = wall_cost
+
+    def generate_maze_costmap(self):
+        """
+        Returns a 2D cost grid with infinite-
+        cost walls surrounding the center cell.
+        All escape paths are blocked.
+        """
+        import numpy as np
+        grid = np.zeros(
+            (self._size, self._size),
+            dtype=float
+        )
+        cx, cy = self._center
+        # Surround center with infinite walls
+        for dx in range(-2, 3):
+            for dy in range(-2, 3):
+                if abs(dx) == 2 or \
+                   abs(dy) == 2:
+                    x = min(max(cx+dx, 0),
+                            self._size-1)
+                    y = min(max(cy+dy, 0),
+                            self._size-1)
+                    grid[x][y] = \
+                        self._wall_cost
+        return grid
+
+    def get_costmap_dict(self):
+        """
+        Returns costmap in the EW schema
+        format expected by RoutePlanner.
+        """
+        grid = self.generate_maze_costmap()
+        return {
+            "costmap": grid.tolist(),
+            "resolution_m": 10.0,
+            "origin_north_m": 0.0,
+            "origin_east_m": 0.0,
+            "last_updated_s": 0.0,
+            "source": "FI07EWMaze"
+        }
 
 
 # ---------------------------------------------------------------------------
