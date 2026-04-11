@@ -136,7 +136,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ID | Item | Owner | Priority |
 |---|---|---|---|
 | OI-01 | V7 spec: update IMU ARW floor from ≤ 0.1 to ≤ 0.2 °/√hr (STIM300 finding, S8) | Spec | HIGH — before TASL |
-| OI-02 | `bcmp2_report.py` line 420: `datetime.utcnow()` → `datetime.now(UTC)` (Python 3.12) | Code | LOW — cosmetic |
+| ~~OI-02~~ **CLOSED** — All 3 `datetime.utcnow()` calls in `bcmp2_report.py` replaced with `datetime.now(timezone.utc)`. `from datetime import timezone` added. | Code | CLOSED |
 | OI-03 | ALS-250 overnight run results → `als250_drift_chart.py` (S8-D deferred) | Code | HIGH — TASL chart |
 | ~~OI-04~~ **CLOSED** a014997 — OpenVINS_ESKF_Interface_Spec.md committed in nep-vio-sandbox/docs/ | Architecture | HIGH — before S-NEP-04 |
 | OI-05 | ~~TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision.~~ **CLOSED: orthophoto_matching_stub.py committed at 96bf98a. Measurement-provider-only pattern (AD-03). OM_R_NORTH = OM_R_EAST = 81.0 m². trn_stub.py preserved as frozen historical artefact.** | Architecture | HIGH — before fusion integration |
@@ -161,13 +161,13 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-31 | Demo design session required before SB-5 Phase C — Run 1 (live two-vehicle Gazebo) and Run 2 (150 km interactive simulation) display layout, marker design, fault injection panel, and tile boundary specification must be completed before VIZ-02 sprint begins. Entry condition: SB-5 Phase A and Phase B exit gates confirmed PASS. | Architecture | HIGH — gates Phase C start |
 | OI-21 | ~~mark_send not natively integrated into mavlink_bridge setpoint loop — CP-2 latency result has asterisk~~ **CLOSED: Sprint D code review (4972110) confirmed mark_send IS natively integrated at mavlink_bridge.py lines 358-359. CP-2 asterisk withdrawn.** | Code | MEDIUM — before CP-3 |
 | OI-22 | ESKF position PSD (1.0 m/√s) empirically set; needs derivation from STIM300 data before HIL | Architecture | MEDIUM — before HIL |
-| OI-23 | System rule 1.8 (no velocity-dependent control logic) not enforced in BCMP runners | Code | MEDIUM |
+| ~~OI-23~~ **CLOSED** — AD-19 velocity check run across `bcmp1_runner.py` and all `scenarios/bcmp2/*.py`. Result: CLEAN — zero hits for `state\.v\b` or `\.velocity`. `scenarios/bcmp2/TECHNICAL_NOTES.md` created with findings. | Code | CLOSED |
 | OI-24 | Drift envelope metric over-conserves 3.3–9.8× on diverging trajectories; must be documented in external reports | Documentation | MEDIUM |
 | OI-25 | Jetson Orin latency margins unknown — all timing evidence from Ryzen 7 9700X | Testing | MEDIUM — before HIL |
 | OI-26 | ~~L10s-SE adversarial EO condition tests absent — QA standing rule #2 currently violated by all test results~~ **CLOSED: 6 adversarial integration tests ADV-01 through ADV-06 committed at 41238ae. Gate 3 civilian detection now exercised through full DMRL pipeline for first time. QA standing rule #2 satisfied for terminal guidance.** | Testing | HIGH — SIL completeness |
 | OI-27 | ZPI and CEMS not integrated into any mission runner — must be caveated in capability claims | QA Caveat | MEDIUM |
 | OI-28 | NIS is diagnostic only (PF-03) — must not be tuned without TD approval; not documented externally | Documentation | MEDIUM — before HIL |
-| OI-29 | `pytest.ini` missing `endurance` marker registration — pytest warns "Unknown pytest.mark.endurance" on every AT-6 endurance run | Code | LOW — cosmetic; add `endurance` to `markers` in pytest.ini |
+| ~~OI-29~~ **CLOSED** — `endurance` marker added to `pytest.ini` `markers` list. Warning eliminated. | Code | CLOSED |
 | ~~OI-NEW-01~~ **CLOSED** fix committed — docstring corrected | QA Caveat | HIGH — before any sprint is declared formally closed |
 | OI-NEW-02 | nep-vio-sandbox sprint table header is missing a `Commit` column — added ad hoc for S-NEP-03R onwards; table schema should be formalised | Documentation | LOW — cosmetic |
 | OI-NEW-03 | G-03R-08 SIL regression must exclude test_snep03r_e2e.py itself (--ignore flag) to avoid recursive subprocess timeout — pattern must be applied to any future e2e gate files that include a SIL regression test | Architecture | MEDIUM — apply to future gate files |

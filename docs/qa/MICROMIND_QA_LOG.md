@@ -1004,3 +1004,29 @@ Focus: MM-04 event bus queue latency (SB-06), Phase B closure
 **Phase B status: CLOSED — SB-01 through SB-06 all green.**
 
 Next: Prompt 9 — housekeeping OI-29/OI-02/OI-23
+
+---
+
+## Entry QA-022 — 11 April 2026 (Housekeeping — OI-29 / OI-02 / OI-23)
+Session Type: Housekeeping (Prompt 9)
+Focus: pytest endurance marker, datetime deprecation, AD-19 velocity check
+
+**OI-29:** DONE — `endurance: marks tests as endurance/long-running (AT-6 suite)` added to `pytest.ini` markers list. "Unknown pytest.mark.endurance" warning eliminated. Verified: `python -m pytest --co -q` produces zero Unknown pytest.mark warnings.
+
+**OI-02:** DONE — All 3 `datetime.utcnow()` calls in `scenarios/bcmp2/bcmp2_report.py` replaced:
+- Line 77 (`__init__`): `→ datetime.now(timezone.utc)`
+- Line 420 (`_html_foot`): `→ datetime.now(timezone.utc)`
+- Line 443 (`write_reports`): `→ datetime.now(timezone.utc)`
+- `from datetime import timezone` added to imports.
+- Confirmed: `grep -n "utcnow" bcmp2_report.py` → 0 results.
+
+**OI-23:** CLEAN — AD-19 velocity check run across:
+- `scenarios/bcmp1/bcmp1_runner.py`
+- `scenarios/bcmp2/bcmp2_runner.py`, `bcmp2_scenario.py`, `bcmp2_drift_envelopes.py`, `baseline_nav_sim.py`, `bcmp2_report.py`, `bcmp2_terrain_gen.py`
+- Pattern: `state\.v\b` and `\.velocity`
+- Result: **0 hits** — no velocity-dependent control logic found. No governance violation comments required.
+- `scenarios/bcmp2/TECHNICAL_NOTES.md` created with findings.
+
+**SIL: 305/305** — no regression (119/119 S5, 68/68 S8, 90/90 BCMP-2, 13/13 RC/ADV, 7/7 Phase A, 8/8 Phase B).
+
+Next: Prompt 11 — IT-PX4-01 formal 30-min OFFBOARD continuity test

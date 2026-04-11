@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 
@@ -74,7 +74,7 @@ class BCMPReport:
 
     def __init__(self, run_output: dict, run_date: Optional[str] = None):
         self._data     = run_output
-        self._run_date = run_date or datetime.utcnow().strftime("%Y-%m-%d")
+        self._run_date = run_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self._seed     = run_output.get("seed", "?")
         self._comp     = run_output.get("comparison", {})
         self._va       = run_output.get("vehicle_a", {})
@@ -417,7 +417,7 @@ class BCMPReport:
     def _html_foot(self) -> str:
         return (f'<p style="font-size:0.72rem;opacity:0.4;margin-top:20px;text-align:center;">'
                 f'MicroMind / NanoCorteX — BCMP-2 Report — '
-                f'Generated {datetime.utcnow().strftime("%Y-%m-%d %H:%M")} UTC — '
+                f'Generated {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")} UTC — '
                 f'Seed {self._seed}'
                 f'</p></body></html>')
 
@@ -440,7 +440,7 @@ def generate_report(
     (json_path, html_path)
     """
     seed = run_output.get("seed", "unknown")
-    date = run_date or datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    date = run_date or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     stem = f"{prefix}_seed{seed}_{date}"
 
     json_path = os.path.join(output_dir, f"{stem}.json")
