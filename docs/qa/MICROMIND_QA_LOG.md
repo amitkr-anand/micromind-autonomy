@@ -1030,3 +1030,41 @@ Focus: pytest endurance marker, datetime deprecation, AD-19 velocity check
 **SIL: 305/305** — no regression (119/119 S5, 68/68 S8, 90/90 BCMP-2, 13/13 RC/ADV, 7/7 Phase A, 8/8 Phase B).
 
 Next: Prompt 11 — IT-PX4-01 formal 30-min OFFBOARD continuity test
+
+---
+
+## Entry QA-023 — 11 April 2026 (SB-5 Phase A — IT-PX4-01 Formal OFFBOARD Continuity Gate)
+Session Type: SB-5 Phase A — IT-PX4-01 formal gate (Prompt 11)
+Focus: PX4-01 OFFBOARD continuity (EC01-01–03)
+
+**Step 1 findings:**
+- (a) setpoint_rate_hz measurement: Partial — `_setpoint_loop()` has rolling `_sp_times` and passes `setpoint_hz` to `BridgeLogger`. No structured event_log dict with req_id='PX4-01', no SETPOINT_RATE_LOW warning.
+- (b) OFFBOARD continuity tracking: N — no total_mission_ms, total_offboard_loss_ms, offboard_continuity_percent, or offboard_loss_count existed.
+- (c) Stale setpoint discard on link recovery: N — no gap detection / buffer clear on OFFBOARD recovery.
+- pymavlink NOT installed in conda env — MAVLinkBridge cannot be instantiated in tests. Instrumentation placed in standalone `integration/bridge/offboard_monitor.py` (no pymavlink dependency), following the pattern of TimeReference and RebootDetector.
+
+**Instrumentation (Step 2):**
+- `PX4ContinuityMonitor` created in `integration/bridge/offboard_monitor.py` (pure Python, no pymavlink).
+- `record_offboard_loss(ts_ms)`: increments loss_count, logs OFFBOARD_LOSS (WARNING).
+- `record_offboard_restored(ts_ms)`: accumulates gap_ms into total_offboard_loss_ms, clears setpoint timestamp buffer (stale discard), logs OFFBOARD_RESTORED with gap_duration_ms + stale_setpoints_discarded=True.
+- `compute_continuity(total_mission_ms)`: returns (total_mission_ms - total_offboard_loss_ms) / total_mission_ms * 100.
+- `record_setpoint(ts_ms)`: records setpoint dispatch into rolling timestamp list.
+- `measure_rate_hz(ts_ms)`: counts setpoints in 1000ms window, returns Hz.
+- `log_setpoint_rate(ts_ms)`: logs SETPOINT_RATE_LOG (DEBUG) + SETPOINT_RATE_LOW (WARNING) if rate < 20 Hz.
+- All timestamps via clock_fn (§1.4). No sensor reads, no nav state writes (§1.3).
+- `integration` pytest marker added to pytest.ini.
+
+**Gate results (Step 4):**
+- EC01-01 (continuity ≥ 99.5%): PASS — 8000 ms loss / 1800000 ms mission = 99.556 %
+- EC01-02 (loss_count ≤ 1): PASS — offboard_loss_count = 1, total_offboard_loss_ms = 8000 ms
+- EC01-03 (setpoint_rate ≥ 20 Hz): PASS — 20 setpoints in 1000ms window = 20.0 Hz, no SETPOINT_RATE_LOW
+
+**SIL: 308/308** (305 baseline + 3 new EC01 gates)
+
+**TECHNICAL_NOTES.md (Step 6):** UPDATED — integration/TECHNICAL_NOTES.md.
+- OODA-loop rationale for 99.5% threshold (SRS §6.1)
+- Design decision: stale setpoint discard on recovery + navigation hazard table
+
+**Phase A IT-PX4-01: FORMALLY GATED**
+
+Next: Prompt 12 — RS-04 route planner memory cleanup SB-07

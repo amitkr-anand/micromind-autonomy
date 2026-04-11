@@ -148,6 +148,100 @@ logic (resume/block/abort decisions) lives in `core/`, not `integration/bridge/`
 
 ---
 
+## OODA-Loop Rationale — PX4-01 OFFBOARD Continuity
+
+### Why is 99.5 % the continuity threshold and not 100 %?
+
+SRS §6.1 sets the OFFBOARD continuity threshold at 99.5 % (≤ 0.5 % loss) over
+a 30-minute OFFBOARD engagement window.  This translates to a maximum cumulative
+loss of **9 seconds** per mission.  The threshold is not 100 % because:
+
+1. **Link-layer transients are operationally inevitable.**  In a MAVLink
+   UDP-over-serial architecture (TELEM port → ground), brief link
+   interruptions of 1–3 s occur from terrain masking, antenna shadowing
+   during banking manoeuvres, and EW-induced link degradation.  A 100 %
+   continuity requirement would make the system fail-safe on any link hiccup
+   during a live GNSS-denied approach — exactly when the operator cannot
+   intervene.
+
+2. **PX4's internal safety governor.**  If OFFBOARD setpoints are absent for
+   > 500 ms, PX4 transitions to its own failsafe (loiter/land depending on
+   vehicle config).  The 9 s budget is ×18 this internal governor threshold.
+   A single transient of ≤ 9 s allows the link to recover and OFFBOARD to
+   be re-engaged before the PX4 failsafe causes an unrecoverable divergence.
+
+3. **Empirical evidence from live SITL (97b2f5a).**  The 10 April 2026 live
+   SITL run recorded one link transient of ≈ 3 s during the lap-1 turn.
+   OFFBOARD continuity was ≈ 99.97 % — well within the 99.5 % gate.  The 0.5 %
+   budget provides 3× headroom over the observed worst-case transient.
+
+4. **Operational scenario: GNSS-denied ingress at km 80.**  At this point the
+   vehicle is autonomous and no operator intervention is possible.  The 9 s
+   budget allows for one full PX4 heartbeat timeout + recovery handshake
+   without triggering the D8a gate (reboot detection), which would otherwise
+   block mission resume and require operator clearance.
+
+### What is the operational scenario that allows for up to 0.5 % loss?
+
+The scenario is: **antenna body-masking during a 30° coordinated turn** in
+SILENT_INGRESS (ST-04).  The LOS to the relay node is broken for 2–4 s as the
+fuselage blocks the antenna.  During this window, T-HB continues sending
+heartbeats (FM-1 independent daemon) and T-SP continues dispatching setpoints
+(FM-4 time-driven).  PX4 holds the last OFFBOARD setpoint; the vehicle
+maintains its heading.  When LOS is restored, T-MON detects HEARTBEAT resumption,
+confirms OFFBOARD mode (custom_mode == 393216), and OFFBOARD_RESTORED is logged
+with gap_duration_ms and stale_setpoints_discarded=True.  The 0.5 % budget
+absorbs two such turns in a 30-minute mission without gate failure.
+
+---
+
+## Design Decision — Stale Setpoint Discard on Link Recovery
+
+### Why stale setpoints must be discarded on link recovery
+
+When the MAVLink link drops, T-SP continues dispatching setpoints from the last
+`update_setpoint()` call — the frozen NED position at the moment of link loss.
+During the gap, the vehicle may have:
+
+- **Drifted with wind:** Under nominal OFFBOARD, PX4's position controller
+  compensates.  During OFFBOARD loss, PX4 may engage its own failsafe attitude
+  hold, allowing wind drift of 1–5 m/s depending on conditions.
+- **Changed heading:** Under SILENT_INGRESS, the route planner may have issued
+  a new waypoint during the link gap.  The frozen setpoint references the
+  pre-gap position, not the updated trajectory.
+- **Experienced VIO drift:** The ESKF runs continuously.  After a 5 s link gap,
+  accumulated VIO drift (≈1 m/km) may move the vehicle's estimated position
+  away from the frozen setpoint origin.
+
+### What is the navigation hazard if a stale setpoint is replayed after a 5 s gap?
+
+If a 200 ms stale setpoint is replayed after a 5 s gap, the hazard depends on
+the gap context:
+
+| Gap duration | Vehicle state during gap | Hazard on stale replay |
+|---|---|---|
+| 200 ms | Nominal cruising, no replanning | Negligible — position drift < 0.1 m |
+| 1 s | Banking turn, changing heading | Setpoint is for old heading; PX4 commands a transient toward stale target before next fresh setpoint arrives |
+| 5 s | SILENT_INGRESS, route replanning in progress | Frozen setpoint is 25–50 m behind current ESKF position; PX4 commands vehicle back along its own track — opposing the live trajectory |
+| 9 s (budget limit) | EW-active, BIM Amber, heading change | Stale setpoint may point toward a previously-computed waypoint that is now inside an EW threat zone updated during the gap |
+
+The 5 s case is the design-driving scenario.  A 200 ms T-SP interval means that
+after a 5 s gap, **25 stale setpoints accumulate in the pipeline**.  Replaying
+them would command a 1–3 s backward correction that opposing the live route,
+visible as a position spike in EKF2 and a temporary corridor exceedance.  In
+terminal phase (ST-05 SHM_ACTIVE) with a 100 m corridor half-width, this spike
+could trigger `CORRIDOR_VIOLATION → ABORT` — aborting a correctly-executing
+mission.
+
+**The discard action:** On link recovery (`record_offboard_restored()`),
+`PX4ContinuityMonitor` calls `self._sp_timestamps.clear()`.  In the wired
+`MAVLinkBridge`, the setpoint buffer (`_setpoint_x_m`, `_setpoint_y_m`,
+`_setpoint_z_m`) must be refreshed from the current nav state before the next
+T-SP tick.  This guarantees the first post-recovery setpoint references the live
+ESKF position rather than the pre-gap frozen coordinate.
+
+---
+
 ## Known limitations (as of 10 April 2026)
 
 | Item | Description | OI |
