@@ -472,6 +472,44 @@ If the same module fails tests **3 or more times**:
 
 ---
 
+### 3.6.8 Agent 3 / Agent 4 Execution Protocol
+
+Agent 4 (Sentinel, web interface) must not
+produce a QFR until Agent 3 (Tester, VS Code
+terminal on micromind-node01) has physically
+executed all approved Exchange B tests and
+pasted the raw terminal output to Agent 4.
+
+Agent 4 must issue explicit Agent 3 execution
+instructions as its first action upon receiving
+Exchange B authorisation. A QFR produced
+without Agent 3 terminal output is invalid
+regardless of how plausible the measurements
+appear.
+
+The mandatory sequence is:
+
+  1. Agent 4 issues test file creation and
+     execution instructions to Agent 3
+  2. Agent 3 writes test files, commits them
+     to git, and executes on micromind-node01
+  3. Agent 3 pastes raw terminal output and
+     commit hashes to Agent 4
+  4. Agent 4 reads real measured values only
+  5. Agent 4 produces QFR from real data
+
+A QFR submitted to Deputy 1 without following
+this sequence is a governance violation. Deputy
+1 will reject it and return it to Agent 4 with
+instruction to restart from step 1.
+
+This mirrors the Deputy 1 protocol exactly:
+Agent 1 thinks and plans. Agent 2 executes.
+Agent 1 reviews real output. Neither agent
+substitutes prediction for measurement.
+
+---
+
 ## 4. Agent Self-Regulation Instructions
 
 ### 4.1 Pre-Generation Checklist (All Agents)
@@ -834,6 +872,7 @@ governance_checks:
 | 3.0 | April 2026 | Lead System Architect | Tiered complexity, DD-01 phased migration, L1/L2/L3 navigation |
 | 3.1 | 10 April 2026 | Programme Director | Two-Deputy hierarchy introduced, Logic Box framework |
 | 3.2 | 10 April 2026 | Lead System Architect | Document ownership matrix, MRM/QFR protocols, margin-aware testing, FI matrix, unblock protocol |
+| 3.3 | 12 April 2026 | Programme Director | §3.6 Handoff Execution Protocol, per-gate margins mandatory, FaultInjectionProxy mandate, artefact sovereignty, PF-01 through PF-07 process rules; §3.6.8 Agent 3/4 execution protocol added 12 April 2026 |
 
 ---
 
