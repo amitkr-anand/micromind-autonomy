@@ -295,6 +295,25 @@ deputy2_session_id: "<session-id>"
 sentinel_agent: "Agent 4"
 tester_agent: "Agent 3"
 
+# EXECUTION TRACE — mandatory for all QFRs
+# Agent 3 must generate these hashes on
+# micromind-node01 using:
+#   pytest <test_files> --junit-xml=\
+#     /tmp/results.xml -v \
+#     2>&1 | tee /tmp/terminal.txt
+#   sha256sum /tmp/results.xml \
+#     /tmp/terminal.txt
+execution_trace:
+  junit_xml_hash: "<sha256 of results.xml>"
+  terminal_output_hash: "<sha256 of terminal.txt>"
+  executed_on: "micromind-node01"
+  execution_date: "<YYYY-MM-DD>"
+  jitter_seed: "<seed provided by Deputy 1>"
+  node_hostname: "<hostname from Agent 3>"
+
+# A QFR without execution_trace is a Hard Fail.
+# Deputy 1 will reject without review.
+
 # OVERALL VERDICT
 overall_verdict: CONDITIONAL_PASS  # PASS | CONDITIONAL_PASS | FAIL | BLOCKED
 
@@ -330,7 +349,19 @@ gate_details:
     margin_absolute: 7.7
     margin_percent: 15.4
     margin_risk: MEDIUM
+    wall_clock_timestamp: "2026-04-12T14:23:07"
     note: "Approaching boundary — monitor on Jetson Orin"
+
+  # Example latency gate with FAIL status — wall_clock_timestamp mandatory:
+  - gate_id: "EC01-03"
+    status: FAIL
+    measured_value: 16.4
+    threshold: 20.0
+    unit: "Hz"
+    margin_absolute: -3.6
+    margin_percent: -18.0
+    margin_risk: CRITICAL
+    wall_clock_timestamp: "2026-04-12T14:23:07"
     
   - gate_id: "OM-08"
     status: FAIL
@@ -458,6 +489,13 @@ Deputy 2 must classify all quantifiable test results by margin risk:
 
 **Note:** A PASS with CRITICAL margin is more dangerous than a clean FAIL. Deputy 2 must flag all CRITICAL margin results regardless of pass/fail status.
 
+**Latency gate wall-clock requirement:**
+Any gate with a threshold expressed in ms, Hz, or seconds must be measured using real
+wall-clock time on micromind-node01. Mock clock measurement of a latency gate is a
+Hard Fail — the gate result is invalid.
+`margin_not_applicable` is only permitted for gates whose threshold is not time-based
+(e.g. field presence, state assertion, count assertion).
+
 ### 3.5 Unblock Protocol
 
 If the same module fails tests **3 or more times**:
@@ -508,6 +546,34 @@ Agent 1 thinks and plans. Agent 2 executes.
 Agent 1 reviews real output. Neither agent
 substitutes prediction for measurement.
 
+**Execution Trace Requirement (v3.4):**
+Agent 3 must generate an execution trace
+hash for every Exchange B test run:
+
+  pytest <approved_test_files> \
+    --junit-xml=/tmp/results.xml -v \
+    2>&1 | tee /tmp/terminal.txt
+  sha256sum /tmp/results.xml \
+    /tmp/terminal.txt
+
+Both hashes must be pasted to Agent 4 along
+with the raw terminal output. Agent 4 must
+include them verbatim in the QFR
+execution_trace field.
+
+**Jitter Seed Protocol:**
+At the start of each Exchange B session,
+Deputy 1 provides a jitter_seed integer.
+Agent 3 passes this as a parameter to all
+FaultInjectionProxy adversarial test calls.
+The seed is not communicated to Agent 4
+until after the QFR is submitted — this
+makes fabrication detectable because Agent 4
+cannot predict seed-dependent outcomes.
+Jitter seed applies only to adversarial tests
+in test_*_d2_handoff*.py files. It does not
+apply to the regression baseline suites.
+
 ---
 
 ## 4. Agent Self-Regulation Instructions
@@ -526,6 +592,7 @@ Before generating any code, verify:
 | 6 | I am using `mission_clock.py` for all timing (not `time.time()`) | ☐ |
 | 7 | All thresholds come from config, not hardcoded values | ☐ |
 | 8 | I am not accessing USV fields I am not authorised to modify | ☐ |
+| 9 | [Agent 4 only] I have received raw terminal output and execution trace hashes from Agent 3 for this session before populating any measured_value field in the QFR. If I have not, I must state: "GOVERNANCE BLOCKED: Awaiting Agent 3 terminal output and execution_trace hashes per §3.6.8." and halt QFR production. | ☐ |
 
 ### 4.2 Logic Bleed Detection
 
@@ -873,6 +940,7 @@ governance_checks:
 | 3.1 | 10 April 2026 | Programme Director | Two-Deputy hierarchy introduced, Logic Box framework |
 | 3.2 | 10 April 2026 | Lead System Architect | Document ownership matrix, MRM/QFR protocols, margin-aware testing, FI matrix, unblock protocol |
 | 3.3 | 12 April 2026 | Programme Director | §3.6 Handoff Execution Protocol, per-gate margins mandatory, FaultInjectionProxy mandate, artefact sovereignty, PF-01 through PF-07 process rules; §3.6.8 Agent 3/4 execution protocol added 12 April 2026 |
+| 3.4 | 12 April 2026 | Programme Director | execution_trace_hash mandate in QFR; wall-clock timestamp required on all latency gates; mock clock prohibition on timing thresholds; jitter seed protocol for adversarial tests; Anti-Hallucination Gate added to §4.1 for Agent 4; §3.6.8 extended with execution trace and jitter seed requirements |
 
 ---
 
@@ -880,7 +948,7 @@ governance_checks:
 
 | Field | Value |
 |-------|-------|
-| Document ID | TASL-MM-GOV-3.2 |
+| Document ID | TASL-MM-GOV-3.4 |
 | Classification | Programme Confidential |
 | Review Cycle | Each sprint closure |
 | Approval | Programme Director |
