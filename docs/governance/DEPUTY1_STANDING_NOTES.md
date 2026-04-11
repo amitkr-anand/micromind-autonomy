@@ -3,7 +3,7 @@
 **Authority:** Agent 1 (Architect Lead, Deputy 1)  
 **Purpose:** Persistent cross-session notes for Deputy 1 — active open items,
 sprint plan reference, and handoff reminders. Update at each session close.  
-**Last updated:** 11 April 2026 (Prompt 8 session close, 62456c4)
+**Last updated:** 11 April 2026 (Prompt 9 session close, ec5d26f)
 
 ---
 
@@ -23,8 +23,8 @@ sprint plan reference, and handoff reminders. Update at each session close.
 | Prompt | Focus | Status |
 |---|---|---|
 | Prompt 7 | PLN-02 Retask R-01–R-06 + PLN-03 Dead-End (SB-01–SB-05) | ✅ COMPLETE — `6c405aa` |
-| Prompt 8 (this session) | MM-04 Queue Latency + SB-06 — Phase B CLOSED | ✅ COMPLETE — `62456c4` |
-| Prompt 9 | Housekeeping (OI triage, doc tidy) | 🔲 PENDING |
+| Prompt 8 | MM-04 Queue Latency + SB-06 — Phase B CLOSED | ✅ COMPLETE — `62456c4` |
+| Prompt 9 (this session) | Housekeeping — OI-29/OI-02/OI-23 CLOSED | ✅ COMPLETE — `ec5d26f` |
 | Prompt 10A | Deputy 1 Pre-Handoff Checklist (`DEPUTY1_PREHANDOFF_CHECKLIST.md`) | 🔲 PENDING |
 | Handoff 1 | Pass MRM to Deputy 2 for adversarial stress review | 🔲 PENDING |
 
@@ -54,3 +54,4 @@ layers are clean and SIL baseline is confirmed.
 |---|---|---|---|
 | 1.0 | 11 April 2026 | Agent 1 (Deputy 1) | Initial issue — active items EF-01, OI-37, OI-40, OI-41; sprint plan ref; Handoff 1 reminder |
 | 1.1 | 11 April 2026 | Agent 2 (Implementer) | Prompt 8 complete — MM-04 SB-06 PASS, Phase B CLOSED, OI-38 CLOSED, SIL 305/305 |
+| 1.2 | 11 April 2026 | Agent 2 (Implementer) | Prompt 9 complete — OI-29/OI-02/OI-23 CLOSED, SIL 305/305 |
