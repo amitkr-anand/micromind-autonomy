@@ -41,6 +41,7 @@ RETASK_TIMEOUT_S              = 15.0   # PLN-02 §R-06: max computation time (s)
 EW_MAP_STALENESS_THRESHOLD_S  = 15.0   # PLN-02 §R-02: EW map max age before warning (s)
 WAYPOINT_POSITION_TOLERANCE_M = 15.0   # SRS §5.2: waypoint proximity threshold (m)
 RETASK_CONSTRAINT_LEVELS      = 3      # Number of constraint relaxation levels to try
+ROUTE_FRAGMENT_BYTES_PER_WP   = 24     # RS-04: bytes per waypoint (3 floats × 8 bytes)
 
 
 # ---------------------------------------------------------------------------
@@ -141,6 +142,10 @@ class RoutePlanner:
 
         # EW map age tracking — updated by mark_ew_map_updated()
         self._ew_map_last_updated_s: float = 0.0
+
+        # RS-04: intermediate route fragments accumulated during retask search
+        # (waypoint lists from non-adopted replan attempts at each constraint level)
+        self._intermediate_fragments: List[List[Tuple[float, float, float]]] = []
 
     # ------------------------------------------------------------------
     # Properties
@@ -253,12 +258,14 @@ class RoutePlanner:
                 "module_name":  "RoutePlanner",
                 "timestamp_ms": ts_ms,
             })
+            self._cleanup_route_fragments(ts_ms)  # RS-04: no fragments generated
             return False
 
         # ── TERMINAL rejection (non-INS_ONLY blocked mode) ──────────────────
         # Terminal approach: vehicle is in final engagement phase.
         # Re-routing here would break the deterministic ROE execution sequence.
         if self._nav_mode == RetaskNavMode.TERMINAL:
+            self._cleanup_route_fragments(ts_ms)  # RS-04: no fragments generated
             return False
 
         # ── R-02: EW map staleness check (non-blocking warning) ─────────────
@@ -346,6 +353,9 @@ class RoutePlanner:
                 found_route = result.waypoints
                 break
 
+            # RS-04: track this non-adopted replan attempt as an intermediate fragment
+            self._intermediate_fragments.append(list(result.waypoints))
+
             # Check timeout after each failed attempt
             elapsed_s = self._clock.now() - retask_start_s
             if elapsed_s > RETASK_TIMEOUT_S:
@@ -364,6 +374,7 @@ class RoutePlanner:
                 "timestamp_ms": final_ts_ms,
             })
             _rollback()
+            self._cleanup_route_fragments(final_ts_ms)  # RS-04
             return False
 
         # ── PLN-03: Dead-end recovery ─────────────────────────────────────────
@@ -382,6 +393,7 @@ class RoutePlanner:
             _rollback()
             if self._last_valid_waypoint is not None:
                 self._waypoints = [self._last_valid_waypoint]
+            self._cleanup_route_fragments(final_ts_ms)  # RS-04
             return False
 
         # ── R-04: Waypoint upload in ascending index order ────────────────────
@@ -414,4 +426,51 @@ class RoutePlanner:
             "module_name":  "RoutePlanner",
             "timestamp_ms": final_ts_ms,
         })
+        self._cleanup_route_fragments(final_ts_ms)  # RS-04
         return True
+
+    # ------------------------------------------------------------------
+    # RS-04 Fragment cleanup
+    # ------------------------------------------------------------------
+
+    def _cleanup_route_fragments(self, ts_ms: int) -> None:
+        """
+        RS-04: Explicitly clear intermediate route fragments accumulated
+        during a retask search and log the cleanup event.
+
+        Intermediate fragments are waypoint lists from non-adopted replan
+        attempts at each constraint relaxation level (R-06).  They are
+        tracked in self._intermediate_fragments and must be cleared after
+        every retask operation — successful, failed, timed-out, or rejected
+        — so that long missions do not accumulate stale fragment state.
+
+        Args:
+            ts_ms: Log timestamp in milliseconds (from caller — no new
+                   clock call; §1.4 forbids time.time()).
+
+        Logs:
+            ROUTE_FRAGMENT_CLEANUP at DEBUG with req_id='RS-04'.
+        """
+        fragments_cleared = len(self._intermediate_fragments)
+        bytes_freed = sum(
+            len(frag) * ROUTE_FRAGMENT_BYTES_PER_WP
+            for frag in self._intermediate_fragments
+        )
+        self._intermediate_fragments.clear()
+
+        self._event_log.append({
+            "event":        "ROUTE_FRAGMENT_CLEANUP",
+            "req_id":       "RS-04",
+            "severity":     "DEBUG",
+            "module_name":  "RoutePlanner",
+            "timestamp_ms": ts_ms,
+            "payload": {
+                "fragments_cleared":    fragments_cleared,
+                "bytes_freed_estimate": bytes_freed,
+            },
+        })
+        _log.debug(
+            "ROUTE_FRAGMENT_CLEANUP: fragments_cleared=%d bytes_freed_estimate=%d",
+            fragments_cleared,
+            bytes_freed,
+        )

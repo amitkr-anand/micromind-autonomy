@@ -631,6 +631,134 @@ class TestSB06UTmm04QueueLatencyUnderLoad(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# SB-07 — RS-04 Route fragment cleanup
+# ---------------------------------------------------------------------------
+
+class TestSB07RS04RouteFragmentCleanup(unittest.TestCase):
+    """
+    SB-07: RS-04 route fragment cleanup — intermediate waypoint lists generated
+    during retask constraint-relaxation levels must be explicitly cleared after
+    every retask operation.
+
+    (a) Successful retask: ROUTE_FRAGMENT_CLEANUP logged with fragments_cleared >= 0.
+    (b) Failed retask (forced rollback via impassable map): ROUTE_FRAGMENT_CLEANUP
+        logged after rollback with fragments_cleared >= 0.
+    (c) Memory stability: 10 consecutive failed retask operations do not grow
+        _intermediate_fragments — count remains 0 after each operation.
+
+    Requirements: RS-04, E-02
+    SRS ref: §11.4, RS-04 v1.2
+    Governance: Code Governance Manual v3.2 §1.3, §1.4, §9.1
+    """
+
+    def setUp(self):
+        self.engine = _make_engine()
+        self.clock  = _make_clock(0.0)
+        self.planner, self.event_log = _make_planner(
+            engine = self.engine,
+            clock  = self.clock,
+        )
+        self.planner.load_route([_START_WP])
+        self.planner.nav_mode = RetaskNavMode.CRUISE
+
+    def tearDown(self):
+        del self.planner, self.event_log, self.engine, self.clock
+
+    # ------------------------------------------------------------------
+    # Shared failure stub
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _fail_replan(*args, **kwargs) -> ReplanResult:
+        """Stub replan: always returns success=False (impassable map simulation)."""
+        return ReplanResult(
+            replan_id            = "FAIL-SB07",
+            trigger              = "test",
+            mission_time_s       = 0.0,
+            wall_latency_ms      = 1.0,
+            success              = False,
+            waypoints            = [],
+            original_waypoints   = [],
+            max_east_deviation_m = 0.0,
+            kpi_ew02_pass        = True,
+            nodes_explored       = 0,
+        )
+
+    # ------------------------------------------------------------------
+
+    def test_sb07_rs04_route_fragment_cleanup(self):
+        """
+        Three sub-assertions:
+          (a) Successful retask → ROUTE_FRAGMENT_CLEANUP logged, fragments_cleared >= 0.
+          (b) Failed retask (forced rollback) → ROUTE_FRAGMENT_CLEANUP logged, fragments_cleared >= 0.
+          (c) Memory stability: 10 consecutive failures → _intermediate_fragments == 0 each iteration.
+        """
+        # ── (a) Successful retask ─────────────────────────────────────────────
+        result = self.planner.retask(
+            new_goal_north_m = _GOAL_NORTH,
+            new_goal_east_m  = _GOAL_EAST,
+            cruise_alt_m     = _CRUISE_ALT,
+            trigger          = "SB-07-SUCCESS",
+        )
+        self.assertTrue(result, "(a) Successful retask must return True")
+
+        cleanup_events = _logged_events(self.event_log, "ROUTE_FRAGMENT_CLEANUP")
+        self.assertGreaterEqual(
+            len(cleanup_events), 1,
+            "(a) ROUTE_FRAGMENT_CLEANUP must be logged after successful retask",
+        )
+        ev = cleanup_events[-1]
+        self.assertGreaterEqual(
+            ev["payload"]["fragments_cleared"], 0,
+            "(a) fragments_cleared must be >= 0",
+        )
+        self.assertEqual(ev["req_id"],      "RS-04")
+        self.assertEqual(ev["severity"],    "DEBUG")
+        self.assertEqual(ev["module_name"], "RoutePlanner")
+        self.assertIn("timestamp_ms", ev)
+
+        # ── (b) Failed retask — forced rollback via impassable map ────────────
+        self.event_log.clear()
+        with patch.object(self.planner._astar, "replan", side_effect=self._fail_replan):
+            result = self.planner.retask(
+                new_goal_north_m = _GOAL_NORTH,
+                new_goal_east_m  = _GOAL_EAST,
+                trigger          = "SB-07-FAIL",
+            )
+        self.assertFalse(result, "(b) Failed retask must return False")
+
+        cleanup_events = _logged_events(self.event_log, "ROUTE_FRAGMENT_CLEANUP")
+        self.assertGreaterEqual(
+            len(cleanup_events), 1,
+            "(b) ROUTE_FRAGMENT_CLEANUP must be logged after failed retask rollback",
+        )
+        ev = cleanup_events[-1]
+        self.assertGreaterEqual(
+            ev["payload"]["fragments_cleared"], 0,
+            "(b) fragments_cleared must be >= 0 after rollback",
+        )
+        self.assertEqual(ev["req_id"],      "RS-04")
+        self.assertEqual(ev["severity"],    "DEBUG")
+        self.assertEqual(ev["module_name"], "RoutePlanner")
+
+        # ── (c) Memory stability — 10 consecutive failed retask operations ────
+        for i in range(10):
+            self.event_log.clear()
+            with patch.object(self.planner._astar, "replan", side_effect=self._fail_replan):
+                self.planner.retask(
+                    new_goal_north_m = _GOAL_NORTH,
+                    new_goal_east_m  = _GOAL_EAST,
+                    trigger          = f"SB-07-STABILITY-{i}",
+                )
+            fragment_count = len(self.planner._intermediate_fragments)
+            self.assertEqual(
+                fragment_count, 0,
+                f"(c) _intermediate_fragments must be 0 after iteration {i}, "
+                f"got {fragment_count} — fragment accumulation detected",
+            )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
