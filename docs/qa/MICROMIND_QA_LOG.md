@@ -945,3 +945,62 @@ performance must use 0.3412 m (Option B IMU+VIO, pytest-enforced, tag e70b981).
 - OI-07 HIGH: Outdoor km-scale VIO validation pending
 
 **Next milestone:** S-NEP-10 — OpenVINS → ESKF full integration on EuRoC MH_03 and V1_01.
+
+---
+
+## Entry QA-021 — 11 April 2026 (SB-5 Phase B — MM-04 Queue Latency, SB-06 Final Gate)
+Session Type: SB-5 Phase B — final gate (Prompt 8)
+Focus: MM-04 event bus queue latency (SB-06), Phase B closure
+
+**Pre-flight check:** SIL 304/304 confirmed (119/119 + 68/68 + 90/90 + 13/13 + 14/14).
+
+**Step 1 findings:**
+- (a) No internal event bus existed. `NanoCorteXFSM` (core/state_machine/state_machine.py) is a synchronous guard evaluator. `MissionManager` (core/mission_manager/mission_manager.py) writes to event_log list directly — no queue.
+- (b) Existing latency measurement: None.
+- (c) Enqueue/dequeue pattern: None — events appended synchronously to event_log on method call.
+- (d) mission_clock accessible: Yes — `MissionManager` accepts `clock_fn: Callable[[], int]` returning ms. Pattern followed by MissionEventBus.
+
+**Instrumentation (Step 2):**
+- `MissionEventBus` class added to `core/mission_manager/mission_manager.py` (no new file — extends existing module).
+- `EventPriority` enum: CRITICAL / INFO.
+- `enqueue()`: stamps `enqueue_ts_ms = clock_fn()`, checks queue utilisation.
+- `_process_loop()` (worker thread): stamps `dequeue_ts_ms`, computes `latency_ms`, logs `EVENT_QUEUE_LATENCY` at DEBUG.
+- `QUEUE_HIGH` (WARNING): fired when utilisation > 80%; INFO events dropped.
+- `QUEUE_CRITICAL_OVERFLOW` (CRITICAL): fired when queue full and critical event cannot be accepted; `queue_overflow_count` incremented.
+- All timestamps via `clock_fn` only (§1.4 — no `time.time()`).
+- No raw sensor reads; no navigation state writes (§1.3 confirmed).
+- `__init__.py` updated to export `EventPriority`, `MissionEventBus`.
+
+**SB-06 gate (Step 3 + 4):**
+- Test: `TestSB06UTmm04QueueLatencyUnderLoad.test_sb06_ut_mm04_queue_latency_under_load`
+- Setup: background `_busy_loop` thread (~70% CPU: 7 ms spin / 3 ms sleep); `MissionEventBus` with `clock_fn = lambda: int(time.monotonic() * 1000)`.
+- Injection: 20 × `EventPriority.CRITICAL` events at 50 Hz (20 ms interval).
+- (a) 20 events delivered: PASS
+- (b) max latency ≤ 100 ms: PASS
+- (c) 20 EVENT_QUEUE_LATENCY log entries: PASS
+- (d) queue_overflow_count == 0: PASS
+- **SB-06: PASS**
+
+**Full Phase B gate run:** `python -m pytest tests/test_sb5_phase_b.py -v`
+- SB-01 (3 methods) + SB-02 + SB-03 + SB-04 + SB-05 + SB-06 = **8/8 PASS**
+
+**Full SIL (Step 5):**
+- run_s5_tests.py: 119/119 ✅
+- run_s8_tests.py: 68/68 ✅
+- run_bcmp2_tests.py: 90/90 ✅
+- test_prehil_rc11.py + test_prehil_rc7.py + test_prehil_rc8.py + test_s5_l10s_se_adversarial.py: 13/13 ✅
+- test_sb5_phase_a.py: 7/7 ✅
+- test_sb5_phase_b.py (SB-01–SB-06): 8/8 ✅
+- **Total: 305/305 ✅**
+
+**TECHNICAL_NOTES.md (Step 6):** CREATED at `core/state_machine/TECHNICAL_NOTES.md`.
+- OODA-loop rationale for 100 ms threshold (SRS §5.4 / §6.4)
+- Design decision: INFO-drop-before-CRITICAL under queue pressure
+- Operational consequence table: CORRIDOR_BREACH vs. diagnostic log line
+
+**OI status changes:**
+- OI-38 CLOSED: Phase B exit gates UT-PLN-02 ✅, IT-PLN-01 ✅, IT-PLN-02 ✅, UT-MM-04 ✅
+
+**Phase B status: CLOSED — SB-01 through SB-06 all green.**
+
+Next: Prompt 9 — housekeeping OI-29/OI-02/OI-23

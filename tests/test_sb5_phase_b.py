@@ -7,16 +7,20 @@ SB-02  test_sb02_retask_succeeds_gnss_denied       IT-PLN-01 retask under GNSS_D
 SB-03  test_sb03_rollback_restores_ew_and_terrain  R-03 rollback completeness
 SB-04  test_sb04_retask_timeout_triggers_rollback  R-06 timeout + rollback
 SB-05  test_sb05_dead_end_returns_to_last_waypoint PLN-03 dead-end recovery
+SB-06  test_sb06_ut_mm04_queue_latency_under_load  UT-MM-04 queue latency (MM-04, SRS §5.4)
 
-Requirements: PLN-02, PLN-03, EC-04
-SRS ref:      §5.2, IT-PLN-01, IT-PLN-02, UT-PLN-02, GAP-02, GAP-03
+Requirements: PLN-02, PLN-03, EC-04, MM-04, EC-08
+SRS ref:      §5.2, §5.4, IT-PLN-01, IT-PLN-02, UT-PLN-02, UT-MM-04,
+              GAP-02, GAP-03, GAP-05
 Governance:   Code Governance Manual v3.2 §1.3, §1.4, §9.1
 
-All five gates are independent; setUp/tearDown isolate state between tests.
+All six gates are independent; setUp/tearDown isolate state between tests.
 """
 
 from __future__ import annotations
 
+import threading
+import time
 import unittest
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
@@ -24,6 +28,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from core.ew_engine.ew_engine import EWEngine
+from core.mission_manager.mission_manager import EventPriority, MissionEventBus
 from core.route_planner.hybrid_astar import ReplanResult
 from core.route_planner.route_planner import (
     RETASK_TIMEOUT_S,
@@ -498,6 +503,130 @@ class TestSB05DeadEndReturnsToLastWaypoint(unittest.TestCase):
         self.assertFalse(
             _logged_events(self.event_log, "RETASK_TIMEOUT_ROLLBACK"),
             "RETASK_TIMEOUT_ROLLBACK must NOT be logged on dead-end (no timeout)",
+        )
+
+
+# ---------------------------------------------------------------------------
+# SB-06 — UT-MM-04 queue latency under load
+# ---------------------------------------------------------------------------
+
+class TestSB06UTmm04QueueLatencyUnderLoad(unittest.TestCase):
+    """
+    SB-06: MM-04 event bus delivers 20 critical events within 100 ms latency
+    while a background thread consumes ~70 % CPU (ST-CPU-01 load simulation).
+
+    Requirements: MM-04, EC-08
+    SRS ref:      §5.4, UT-MM-04, GAP-05
+    Governance:   Code Governance Manual v3.2 §1.3, §1.4, §9.1
+    """
+
+    # Number of events to inject and expected delivery count
+    _EVENT_COUNT    = 20
+    # Injection rate: 50 Hz → one event every 20 ms
+    _INJECT_PERIOD  = 0.020
+    # Maximum allowed latency per event (SRS §5.4 / §6.4)
+    _MAX_LATENCY_MS = 100.0
+    # Wait budget for processing after last injection
+    _DRAIN_TIMEOUT  = 5.0
+
+    def setUp(self) -> None:
+        # --- Busy-loop thread (~70 % CPU) ---
+        self._busy_stop   = threading.Event()
+        self._busy_thread = threading.Thread(
+            target=self._busy_loop, daemon=True, name="SB06-busyloop"
+        )
+        self._busy_thread.start()
+
+        # --- Event bus under test ---
+        self._event_log: List[Dict[str, Any]] = []
+        # Real wall-clock milliseconds — needed to measure actual delivery
+        # latency in a real-time injection test.
+        self._clock_fn = lambda: int(time.monotonic() * 1000)
+        self._bus = MissionEventBus(
+            event_log=self._event_log,
+            clock_fn=self._clock_fn,
+        )
+        self._bus.start()
+
+    def _busy_loop(self) -> None:
+        """
+        Simulate ST-CPU-01 load: consume ~70 % CPU on one thread.
+        Pattern: busy-spin 7 ms, sleep 3 ms → 70 % duty cycle.
+        Uses time.monotonic() for pacing (test infrastructure only).
+        """
+        while not self._busy_stop.is_set():
+            deadline = time.monotonic() + 0.007
+            while time.monotonic() < deadline:
+                pass  # tight busy-spin
+            time.sleep(0.003)  # yield to allow other threads to run
+
+    def tearDown(self) -> None:
+        # Stop event bus worker first
+        self._bus.stop(timeout=2.0)
+        # Stop busy-loop thread
+        self._busy_stop.set()
+        self._busy_thread.join(timeout=2.0)
+
+    # ------------------------------------------------------------------
+
+    def test_sb06_ut_mm04_queue_latency_under_load(self) -> None:
+        """
+        Inject 20 critical events at 50 Hz under ~70 % CPU load.
+        Assert all 20 delivered within 100 ms latency (SRS §5.4).
+
+        Gate assertions:
+          (a) delivered_count == 20
+          (b) max(latency_ms) <= 100 ms
+          (c) len(EVENT_QUEUE_LATENCY log entries) == 20
+          (d) queue_overflow_count == 0  (no critical events dropped)
+        """
+        # Inject 20 critical events at 50 Hz
+        for i in range(self._EVENT_COUNT):
+            self._bus.enqueue(f"CRITICAL_SHM_TRIGGER_{i}", EventPriority.CRITICAL)
+            time.sleep(self._INJECT_PERIOD)
+
+        # Wait for all events to be processed (poll up to _DRAIN_TIMEOUT)
+        deadline = time.monotonic() + self._DRAIN_TIMEOUT
+        while time.monotonic() < deadline:
+            latency_entries = [
+                e for e in self._event_log
+                if e.get("event") == "EVENT_QUEUE_LATENCY"
+            ]
+            if len(latency_entries) >= self._EVENT_COUNT:
+                break
+            time.sleep(0.010)
+        else:
+            latency_entries = [
+                e for e in self._event_log
+                if e.get("event") == "EVENT_QUEUE_LATENCY"
+            ]
+
+        # (a) All 20 critical events delivered
+        delivered_count = len(latency_entries)
+        self.assertEqual(
+            delivered_count, self._EVENT_COUNT,
+            f"Expected {self._EVENT_COUNT} events delivered, got {delivered_count}",
+        )
+
+        # (b) All latency values ≤ 100 ms (SRS §5.4 / §6.4 critical event delivery budget)
+        latencies = [e["payload"]["latency_ms"] for e in latency_entries]
+        max_latency_ms = max(latencies)
+        self.assertLessEqual(
+            max_latency_ms, self._MAX_LATENCY_MS,
+            f"Max latency {max_latency_ms:.1f} ms exceeds SRS §5.4 limit of "
+            f"{self._MAX_LATENCY_MS} ms",
+        )
+
+        # (c) EVENT_QUEUE_LATENCY logged for all 20 events
+        self.assertEqual(
+            len(latency_entries), self._EVENT_COUNT,
+            "EVENT_QUEUE_LATENCY must be logged for every delivered event",
+        )
+
+        # (d) No critical events dropped (overflow count == 0)
+        self.assertEqual(
+            self._bus.queue_overflow_count, 0,
+            "queue_overflow_count must be 0 — no critical events may be dropped",
         )
 
 
