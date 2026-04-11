@@ -138,6 +138,34 @@ Deputy 1 cross-checks each PASS claim:
 
 ---
 
+## Deputy 2 Commit Verification (Deputy 1 Pre-Countersignature Check)
+
+Before countersigning any QFR, Deputy 1 must verify every test file the QFR
+references exists in git:
+
+```bash
+git log -- tests/<file_cited_in_qfr>.py
+```
+
+If this returns no output: the file is not committed. Reject the QFR and instruct
+Deputy 2 to commit before resubmitting.
+
+**Process rules (PF-01/02/03 — 11 Apr 2026):**
+
+**PF-01:** Deputy 2 must commit all test artefacts AND the QFR document to the
+repository before submitting the QFR. QFRs referencing uncommitted files are
+invalid.
+
+**PF-02:** Deputy 1 must run `git log` on every test file cited in a QFR before
+countersigning. This is non-negotiable.
+
+**PF-03:** Agent 2 must not edit any file in `tests/` that was authored by
+Deputy 2. If a production code fix is needed to make a Deputy 2 test pass,
+Agent 2 fixes the production module only. Deputy 2 then re-runs and re-commits
+their own test.
+
+---
+
 ## The Prompt Agent 2 Receives (Prompt 10A / 19A)
 Deputy 1 Pre-Handoff Review — Phase [A+B / C+D]
 Before the MRM is signed and passed to Deputy 2, run the
@@ -168,3 +196,4 @@ countersigning the MRM.
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0 | 10 April 2026 | Agent 1 (Deputy 1) | Initial issue |
+| 1.1 | 11 April 2026 | Agent 2 (Implementer) | PF-01/02/03 process rules added — Deputy 2 commit verification section inserted |

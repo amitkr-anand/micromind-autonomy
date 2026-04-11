@@ -4,6 +4,38 @@
 
 ---
 
+## Entry QA-025 — 11 April 2026
+**Session Type:** Handoff 1 final closure  
+**Focus:** QFR integrity resolution + Phase C authorisation  
+**Governance ref:** Code Governance Manual v3.2 §2.4
+
+**QFR integrity findings:**
+- **PF-01:** Deputy 2 submitted QFR referencing uncommitted test file — resolved by requiring commit before QFR acceptance. Standing rule added: Deputy 2 must commit ALL test artefacts and the QFR document to the repository before submitting. QFRs referencing uncommitted files are invalid.
+- **PF-02:** Deputy 1 countersigned without verifying commit existence — corrected. Standing rule added: Deputy 1 must run `git log -- <file>` on every test file cited in a QFR before countersigning. Non-negotiable.
+- **PF-03:** Agent 2 edited uncommitted Deputy 2 file — reverted. Standing rule added: Agent 2 must not edit any file in `tests/` authored by Deputy 2. If a production code fix is needed to make a Deputy 2 test pass, Agent 2 fixes production code only — Deputy 2 re-runs and re-commits their own test.
+
+**Final certified baseline: 314/314**
+
+| Commit | Content |
+|---|---|
+| `f909a7c` | `tests/test_sb5_adversarial_d2.py` — Deputy 2 adversarial + fault injection gates (ADV-01/02/03, FI-01, FI-07) |
+| `99fd55b` | `QFR_SB5_PHASE_AB_11APR2026.yaml` — QFR document |
+
+**SIL breakdown (314):**
+- S5: 119  S8: 68  BCMP2: 90  Pre-HIL RC+ADV: 13
+- Phase A: 7  Phase B: 9  EC-01: 3  Deputy 2 adversarial d2: 5
+
+**Phase C authorised by Deputy 1.**  
+OI-31 demo design session is the active Phase C entry gate — governs VIZ-02 scope.
+
+**Process rules committed:** PF-01, PF-02, PF-03 — `docs/governance/DEPUTY1_STANDING_NOTES.md` + `docs/governance/DEPUTY1_PREHANDOFF_CHECKLIST.md`
+
+**Deviations:** NONE.
+
+**Next:** OI-31 demo design session → Prompt 13 VIZ-02 data pipeline.
+
+---
+
 ## Entry QA-024 — 11 April 2026 (SB-5 Phase B — RS-04 Route Fragment Cleanup, SB-07)
 **Session Type:** SB-5 Phase B — final deliverable
 **Focus:** RS-04 route fragment cleanup (SB-07)
