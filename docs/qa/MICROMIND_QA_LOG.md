@@ -4,6 +4,51 @@
 
 ---
 
+## Entry QA-024 — 11 April 2026 (SB-5 Phase B — RS-04 Route Fragment Cleanup, SB-07)
+**Session Type:** SB-5 Phase B — final deliverable
+**Focus:** RS-04 route fragment cleanup (SB-07)
+**Governance ref:** Code Governance Manual v3.2 §1.3, §1.4, §9.1
+
+**Step 1 findings:**
+- (a) Failed retask fragment cleanup: N — `_rollback()` restores EW map/terrain/waypoints but no explicit intermediate fragment tracking or clearing exists.
+- (b) Successful retask fragment cleanup: N — no `_intermediate_fragments` attribute; non-adopted `result` objects discarded implicitly by GC only.
+- (c) Accumulation risk present: Y — no explicit tracking means RS-04 v1.2 requirement unmet; long GNSS-denied missions with high retask frequency create credible unbounded accumulation path.
+
+**Cleanup implemented:**
+- `ROUTE_FRAGMENT_BYTES_PER_WP = 24` named constant added (§1.3: no magic numbers).
+- `_intermediate_fragments: List[List[Tuple[...]]] = []` added to `RoutePlanner.__init__`.
+- Non-adopted replan attempts tracked: `self._intermediate_fragments.append(list(result.waypoints))` in constraint loop after each failed attempt.
+- `_cleanup_route_fragments(ts_ms: int)` method: clears list, computes bytes_freed estimate, appends `ROUTE_FRAGMENT_CLEANUP` DEBUG event (req_id='RS-04', payload: fragments_cleared, bytes_freed_estimate). No `time.time()` call — ts_ms passed from caller (§1.4).
+- Cleanup called on ALL exit paths: INS_ONLY rejection, TERMINAL rejection, timeout rollback (after RETASK_TIMEOUT_ROLLBACK), dead-end (after DEAD_END_DETECTED + rollback), and successful retask (after RETASK_COMPLETE).
+
+**Gate results:**
+- SB-07 (a) successful retask fragment cleanup: PASS
+- SB-07 (b) failed retask fragment cleanup: PASS
+- SB-07 (c) memory stability 10× consecutive failures: PASS
+- SB-01 through SB-06: all PASS (no regressions)
+
+**SIL:** 309/309
+- S5: 119/119 ✅  S8: 68/68 ✅  BCMP2: 90/90 ✅
+- Phase A (SA-01–SA-07): 7/7 ✅
+- Phase B (SB-01–SB-07): 9/9 ✅
+- EC-01 (test_sb5_ec01.py): 3/3 ✅
+- Pre-HIL RC-11/RC-7/RC-8: 7/7 ✅
+- Adversarial ADV-01–06: 6/6 ✅
+
+**Commit:** `c35122a`
+
+**TECHNICAL_NOTES.md:** UPDATED — "OODA-Loop Rationale — RS-04 Fragment Cleanup" section added. Explains accumulation mechanism, failure mode on long GNSS-denied missions, and RS-04 v1.2 deterministic cleanup resolution.
+
+**Phase B: FULLY CLOSED**
+SB-01 through SB-07 all green.
+Phase A + Phase B exit gates all satisfied.
+
+**Deviations:** NONE.
+
+**Next:** Prompt 10A — Deputy 1 Pre-Handoff Checklist before Handoff 1 to Deputy 2.
+
+---
+
 ## Entry QA-020 — 11 April 2026 (SB-5 Phase B — PLN-02 Retask R-01–R-06 + PLN-03 Dead-End Recovery)
 **Session Type:** SB-5 Phase B gate work
 **Focus:** PLN-02 Dynamic Retask R-01–R-06 + PLN-03 Dead-End Recovery (SB-01–SB-05)
