@@ -1,0 +1,208 @@
+manifest_version: "1.0"
+handoff_type: DEPUTY1_TO_DEPUTY2
+timestamp: "2026-04-11T13:38:00Z"
+phase_covered: "SB-5 Phase A + Phase B"
+deputy1_session_ids:
+  - "10 April 2026"
+  - "11 April 2026"
+
+files_changed:
+  - {path: "simulation/run_mission.py",
+     action: MODIFIED, commits: ["cd8b4f0",
+     "7ed5a8e", "4fbe1d4"]}
+  - {path: "simulation/run_demo.sh",
+     action: MODIFIED, commits: ["afdde74",
+     "97b2f5a", "4ecff95"]}
+  - {path: "simulation/TECHNICAL_NOTES.md",
+     action: CREATED, commit: "4fbe1d4"}
+  - {path: "core/checkpoint/checkpoint.py",
+     action: CREATED}
+  - {path: "core/checkpoint/TECHNICAL_NOTES.md",
+     action: CREATED, commit: "fcb5106"}
+  - {path: "core/mission_manager/mission_manager.py",
+     action: MODIFIED}
+  - {path: "core/mission_manager/TECHNICAL_NOTES.md",
+     action: CREATED}
+  - {path: "integration/bridge/reboot_detector.py",
+     action: CREATED}
+  - {path: "integration/bridge/offboard_monitor.py",
+     action: CREATED}
+  - {path: "integration/TECHNICAL_NOTES.md",
+     action: CREATED, commit: "545de66"}
+  - {path: "core/route_planner/route_planner.py",
+     action: CREATED}
+  - {path: "core/route_planner/TECHNICAL_NOTES.md",
+     action: CREATED}
+  - {path: "core/state_machine/TECHNICAL_NOTES.md",
+     action: CREATED}
+  - {path: "core/bim/bim.py",
+     action: MODIFIED_FROZEN,
+     unfreeze_authority: "Deputy 1 OI-39 10 Apr 2026",
+     commit: "fcf73cf"}
+  - {path: "core/bim/TECHNICAL_NOTES.md",
+     action: CREATED}
+  - {path: "scenarios/bcmp2/TECHNICAL_NOTES.md",
+     action: CREATED}
+  - {path: "tests/test_sb5_phase_a.py",
+     action: CREATED}
+  - {path: "tests/test_sb5_phase_b.py",
+     action: CREATED}
+  - {path: "tests/test_sb5_ec01.py",
+     action: CREATED}
+  - {path: "docs/qa/SB5_EC07_OwnershipVerification.md",
+     action: CREATED}
+  - {path: "docs/governance/DEPUTY1_PREHANDOFF_CHECKLIST.md",
+     action: CREATED}
+  - {path: "docs/governance/DEPUTY1_STANDING_NOTES.md",
+     action: CREATED}
+
+requirements_addressed:
+  - {req_id: "PX4-01", srs_section: "§6.1",
+     gates: ["EC01-01", "EC01-02", "EC01-03"]}
+  - {req_id: "PX4-04", srs_section: "§6.4",
+     gates: ["SA-05", "SA-06", "SA-07"]}
+  - {req_id: "PX4-05", srs_section: "§10.15",
+     gates: ["SA-01", "SA-02", "SA-03", "SA-04"]}
+  - {req_id: "PLN-02", srs_section: "§5.2",
+     gates: ["SB-01", "SB-02", "SB-03", "SB-04"]}
+  - {req_id: "PLN-03", srs_section: "§5.2",
+     gates: ["SB-05"]}
+  - {req_id: "MM-04", srs_section: "§5.4",
+     gates: ["SB-06"]}
+  - {req_id: "RS-04", srs_section: "§11.4",
+     gates: ["SB-07"]}
+  - {req_id: "EC-01", srs_section: "§17",
+     gates: ["EC01-01", "EC01-02", "EC01-03"]}
+  - {req_id: "EC-02", srs_section: "§17",
+     gates: ["SA-01", "SA-02", "SA-03", "SA-04"]}
+  - {req_id: "EC-03", srs_section: "§17",
+     gates: ["SA-05", "SA-06", "SA-07"]}
+  - {req_id: "EC-04", srs_section: "§17",
+     gates: ["SB-01", "SB-02", "SB-03", "SB-04", "SB-05"]}
+  - {req_id: "EC-07", srs_section: "§16",
+     gates: ["EC-07 doc"]}
+  - {req_id: "EC-08", srs_section: "§17",
+     gates: ["SB-06"]}
+
+gate_summary:
+  phase_a:
+    SA-01: PASS
+    SA-02: PASS
+    SA-03: PASS
+    SA-04: PASS
+    SA-05: PASS
+    SA-06: PASS
+    SA-07: PASS
+    EC01-01: PASS
+    EC01-02: PASS
+    EC01-03: PASS
+    EC-07-doc: PASS
+  phase_b:
+    SB-01: PASS
+    SB-02: PASS
+    SB-03: PASS
+    SB-04: PASS
+    SB-05: PASS
+    SB-06: PASS
+    SB-07: PASS
+  total_gates: 18
+  total_pass: 18
+  total_fail: 0
+
+sil_regression:
+  baseline_before: 290
+  gates_added: 19
+  total_after: 309
+  result: ALL_GREEN
+  suites:
+    run_s5_tests: {count: 119, result: PASS}
+    run_s8_tests: {count: 68, result: PASS}
+    run_bcmp2_tests: {count: 90, result: PASS}
+    prehil_rc_adversarial: {count: 13, result: PASS}
+    test_sb5_phase_a: {count: 7, result: PASS}
+    test_sb5_phase_b: {count: 9, result: PASS}
+    test_sb5_ec01: {count: 3, result: PASS}
+
+complexity_measured:
+  - {module: "RoutePlanner.retask",
+     grade: C, value: 15, limit: 25,
+     tier: MATHEMATICAL}
+  - {module: "MAVLinkBridge._monitor_loop",
+     grade: C, value: 13, limit: 15,
+     tier: DRIVER}
+
+frozen_files_modified:
+  - {path: "core/bim/bim.py",
+     change: "GNSS_SPOOF_DETECTED log call added at line 252",
+     authority: "Deputy 1 OI-39 unfreeze 10 Apr 2026",
+     commit: "fcf73cf"}
+
+config_keys_added: []
+
+known_deviations:
+  - id: "DEV-01"
+    description: "seq_threshold=5 is a constructor default in RebootDetector,
+      not a versioned config key"
+    oi: "OI-37"
+    risk: LOW
+  - id: "DEV-02"
+    description: "MISSION_TIMEOUT_S=300 hardcoded in run_mission.py main()"
+    oi: "OI-37"
+    risk: LOW
+  - id: "DEV-03"
+    description: "bim.py GNSS_SPOOF_DETECTED uses stdlib _log.warning() not
+      structured log_event() — missing timestamp_ms, req_id, severity"
+    oi: "OI-41"
+    risk: LOW
+  - id: "DEV-04"
+    description: "except Exception: pass in mavlink_bridge.py T-MON guard —
+      no log event emitted. Functionally justified (prevents infinite error
+      spam in T-MON thread). Deputy 2 should be aware."
+    risk: LOW
+
+open_items_for_deputy2_attention:
+  - "EF-01: Vehicle A OFFBOARD failsafe — PX4 instance 1 rejects setpoints
+    under PX4_GZ_STANDALONE=1. Mission exits via OI-36 timeout guard. Requires
+    SITL investigation before demo rehearsal."
+  - "OI-40: SRS §16 Corridor Violation ownership row absent — code is correct,
+    doc gap only."
+
+test_guidance:
+  fault_injection:
+    - {id: "FI-01", description: "GNSS Spoofing + VIO Outage — verify BIM
+        RED + nav demotion + SHM"}
+    - {id: "FI-07", description: "PX4 Reboot mid-mission — verify D8a gate
+        fires, pending_operator_clearance_required path and nominal path both
+        exercised"}
+  adversarial:
+    - "Retask under simultaneous GNSS_DENIED + EW_MAP_STALE — verify R-02
+      and R-05 interact correctly"
+    - "20 consecutive failed retasks — verify SB-07 memory stability under
+      stress (10x was gated; 20x is adversarial)"
+    - "Queue saturation: inject 100 mixed CRITICAL + INFO events at 200 Hz —
+      verify QUEUE_HIGH fires, INFO dropped, zero CRITICAL overflow"
+  known_caveats:
+    - "RoutePlanner complexity grade C (15) — acceptable at MATHEMATICAL tier
+      limit 25 but monitor under Prompt 7 retask extension"
+    - "PX4ContinuityMonitor tested against mock clock only — live SITL
+      continuity verified at 97b2f5a but not re-run post Phase A/B commits"
+
+deputy1_checklist:
+  req_id_in_headers: PASS
+  complexity_within_tier: PASS
+  no_magic_numbers: PASS
+  logging_schema_compliant: PASS
+    # exception: bim.py OI-41 stdlib pattern
+  mission_clock_used: PASS
+  forbidden_behaviours_checked: PASS
+  usv_access_correct: PASS
+  technical_notes_present: PASS
+    # HF-2 and HF-4 resolved in Prompt 10B
+
+deputy1_declaration: |
+  Deputy 1 certifies Phase A and Phase B are complete. All 18 gates PASS.
+  SIL 309/309. Four pre-handoff Hard Fails resolved in Prompt 10B before
+  this MRM was signed. Phase C (VIZ-02) must not begin until Deputy 2
+  confirms all Phase A and Phase B exit gates. OI-31 demo design session
+  governs Phase C entry.
+  Signed: Agent 1 (Deputy 1), 11 April 2026

@@ -156,11 +156,14 @@ class CheckpointStore:
         committed .json is always valid and complete.
 
     Events logged to event_log (list of dicts):
-        {"event": "CHECKPOINT_WRITTEN",  "checkpoint_id": str,
+        {"event": "CHECKPOINT_WRITTEN",  "req_id": "PX4-05", "severity": "INFO",
+         "module_name": "CheckpointStore", "checkpoint_id": str,
          "path": str, "timestamp_ms": int}
-        {"event": "CHECKPOINT_RESTORED", "checkpoint_id": str,
+        {"event": "CHECKPOINT_RESTORED", "req_id": "PX4-05", "severity": "INFO",
+         "module_name": "CheckpointStore", "checkpoint_id": str,
          "path": str, "timestamp_ms": int}
-        {"event": "CHECKPOINT_PURGED",   "checkpoint_id": str,
+        {"event": "CHECKPOINT_PURGED",   "req_id": "PX4-05", "severity": "DEBUG",
+         "module_name": "CheckpointStore", "checkpoint_id": str,
          "path": str, "timestamp_ms": int}
     """
 
@@ -223,6 +226,9 @@ class CheckpointStore:
 
         self._event_log.append({
             "event":         "CHECKPOINT_WRITTEN",
+            "req_id":        "PX4-05",
+            "severity":      "INFO",
+            "module_name":   "CheckpointStore",
             "checkpoint_id": checkpoint.checkpoint_id,
             "path":          str(dest),
             "timestamp_ms":  checkpoint.timestamp_ms,
@@ -265,6 +271,9 @@ class CheckpointStore:
         cp = Checkpoint.from_dict(data)
         self._event_log.append({
             "event":         "CHECKPOINT_RESTORED",
+            "req_id":        "PX4-05",
+            "severity":      "INFO",
+            "module_name":   "CheckpointStore",
             "checkpoint_id": cp.checkpoint_id,
             "path":          str(path),
             "timestamp_ms":  cp.timestamp_ms,
@@ -289,6 +298,9 @@ class CheckpointStore:
             cid   = parts[2] if len(parts) == 3 else "unknown"
             self._event_log.append({
                 "event":         "CHECKPOINT_PURGED",
+                "req_id":        "PX4-05",
+                "severity":      "DEBUG",
+                "module_name":   "CheckpointStore",
                 "checkpoint_id": cid,
                 "path":          str(oldest),
                 "timestamp_ms":  ts_ms,
