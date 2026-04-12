@@ -4,6 +4,46 @@
 
 ---
 
+## Entry QA-026 — 12 April 2026
+**Session Type:** SB-5 Phase C — Prompt 13  
+**Focus:** VIZ-02 Run 1 overlay + Run 2 data pipeline  
+**Governance ref:** Code Governance Manual v3.4 §1.3, §1.4, §2.5
+
+**Step 1 findings:**
+- (a) telemetry to file: Y — `/tmp/mm_overlay_a.json` + `/tmp/mm_overlay_b.json` (real-time snapshot overwrites at 20 Hz; not a trail log)
+- (b) planned waypoints exposed: Y — `ellipse_waypoints()` pure function + module-level constants (`ELLIPSE_CX/CY/A/B`, `VEH_A_CY_OFFSET`); importable without modification
+- (c) KPI JSON with positions: NO (before this session) — `to_kpi_dict()` stripped states; no Vehicle B position log at all
+- (d) KPI position fields added this session: `sim_timestamp_ms`, `mission_km`, `north_m`, `east_m`, `true_north_m`, `true_east_m`, `cross_track_m`, `phase`, `gnss_available`, `nav_mode` (Vehicle A); `sim_timestamp_ms`, `mission_km`, `north_m`, `east_m`, `alt_m`, `nav_mode`, `phase`, `gnss_available` (Vehicle B synthesised)
+
+**New files created:**
+- `simulation/baylands_demo_camera.py` — Gazebo GUI camera top-down setter
+- `simulation/demo_overlay.py` — matplotlib MAVLink real-time overlay (Run 1)
+- `simulation/demo_data_pipeline.py` — shared data layer (Run 2 all modes)
+- `simulation/demo/TECHNICAL_NOTES.md` — OI-31 design decisions
+
+**Modified files:**
+- `scenarios/bcmp2/baseline_nav_sim.py` — `to_kpi_dict()` extended with `position_log`
+- `scenarios/bcmp2/bcmp2_runner.py` — `run_bcmp2()` extended with `vehicle_b_position_log` + `_build_vehicle_b_position_log()` helper; import of `build_nominal_route` added
+- `simulation/run_demo.sh` — Phase 3b overlay launch block added; `OVERLAY_PID` in cleanup trap
+
+**KPI files pre-computed:**
+| Seed | File | Size | VA pos records | VB pos records |
+|------|------|------|----------------|----------------|
+| 42  | `docs/qa/bcmp2_kpi_seed_42.json`  | 5.2 MB | 13,637 | 750 |
+| 101 | `docs/qa/bcmp2_kpi_seed_101.json` | 5.2 MB | 13,637 | 750 |
+| 303 | `docs/qa/bcmp2_kpi_seed_303.json` | 5.2 MB | 13,637 | 750 |
+
+**SIL: 314/314** (119 S5 + 68 S8 + 90 BCMP-2 + 37 integration = 314; all runners green)  
+**No test suite impact** — new files in `simulation/` and `docs/qa/` only.
+
+**Commit:** TBD
+
+**OI-31: CLOSED** — design decisions recorded in `simulation/demo/TECHNICAL_NOTES.md`
+
+**Next:** Prompt 14 — Layout A Replay mode (Run 2, 150 km storytelling)
+
+---
+
 ## Entry QA-025 — 11 April 2026
 **Session Type:** Handoff 1 final closure  
 **Focus:** QFR integrity resolution + Phase C authorisation  

@@ -270,6 +270,26 @@ class BaselineNavSim:
         return gates
 
     def to_kpi_dict(self, result: BaselineRunResult) -> dict:
+        # Serialise position log — every recorded VehicleAState.
+        # Used by demo_data_pipeline.get_vehicle_tracks() to build the
+        # Vehicle A animation track without re-running the simulation.
+        # Record cadence: every 40 steps at 200 Hz = every 0.2 s sim time
+        # ≈ every 5.56 m at VEHICLE_SPEED_MS (27.78 m/s).
+        position_log = [
+            {
+                "sim_timestamp_ms": int(round(s.t_s * 1000)),
+                "mission_km":       round(s.mission_km, 4),
+                "north_m":          round(s.north_m, 2),
+                "east_m":           round(s.east_m, 2),
+                "true_north_m":     round(s.true_north_m, 2),
+                "true_east_m":      round(s.true_east_m, 2),
+                "cross_track_m":    round(s.cross_track_m, 3),
+                "phase":            s.phase,
+                "gnss_available":   s.gnss_available,
+                "nav_mode":         "GNSS_AIDED" if s.gnss_available else "INS_ONLY",
+            }
+            for s in result.states
+        ]
         return {
             "vehicle":                     "A_baseline",
             "seed":                        result.seed,
@@ -284,6 +304,7 @@ class BaselineNavSim:
             "final_lateral_error_m": (
                 result.states[-1].cross_track_m if result.states else None
             ),
+            "position_log":                position_log,
         }
 
 
