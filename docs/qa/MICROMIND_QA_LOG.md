@@ -1425,3 +1425,76 @@ Focus: PX4-01 OFFBOARD continuity (EC01-01–03)
 **Phase A IT-PX4-01: FORMALLY GATED**
 
 Next: Prompt 12 — RS-04 route planner memory cleanup SB-07
+
+---
+
+## Entry QA-031 — 12 April 2026 (SB-5 Gate 4 — Extended Corridor + Monte Carlo Drift Envelopes)
+Session Type: Gate Implementation (Agent 2 — continuation of SB-5 Gate 4 prompt)
+Focus: 180km Shimla–Manali corridor, DEMLoader multi-tile stitching, Monte Carlo N=300 drift envelopes, NAV-09 through NAV-12
+
+### New Infrastructure Delivered
+
+**core/trn/dem_loader.py — DEMLoader.from_directory()**
+- `from_directory(terrain_dir)` classmethod for multi-tile rasterio.merge stitching
+- Single-tile fast path delegates to `__init__`; multi-tile path verifies CRS compatibility, merges, builds instance from in-memory merged array
+- BoundingBox and array_bounds imported from rasterio; required for merged-array bounds computation
+- Production HIL path: terrain package is a directory of COP30 tiles; interface identical — only path changes
+
+**core/navigation/corridors.py**
+- `MissionCorridor` dataclass: waypoints (lat, lon), total_distance_km, terrain_dir, gnss_denial_start_km, gnss_denial_end_km
+- `position_at_km(km)`: Haversine segment distances rescaled to total_distance_km; linear interpolation of (lat, lon) in correct segment
+- `waypoint_bearing_deg(idx)`: initial bearing between adjacent waypoints
+- `SHIMLA_MANALI`: 8 waypoints (31.104°N Shimla → 32.240°N Manali approach), 180 km, gnss_denial 10 km → end
+- `SHIMLA_LOCAL`: 2 waypoints (Shimla → Rampur direction), 55 km, gnss_denial 5 km → end
+
+**core/navigation/monte_carlo_nav.py**
+- `MonteCarloNavEvaluator`: AD-16 methodology; N seeds vectorised over numpy arrays
+- Physical constants: DRIFT_PSD=1.5 m/√s per axis (STIM300 ARW matched to Gate 3), σ_GNSS=5 m, σ_TRN=25 m (phase correlation residual), step=100 m
+- GNSS phase: error held at N(0, 5m) per axis; INS phase: Gaussian random walk per step; TRN correction: eligible fix locations reset error to N(0, 25m)
+- `run(correction_mode)`: 'none' | 'trn_only' | 'vio_plus_trn' (VIO reduces DRIFT_PSD by 30%)
+- `_precompute_fix_locations()`: assesses terrain suitability at trn_interval_m intervals using HillshadeGenerator + TerrainSuitabilityScorer; ACCEPT/CAUTION → eligible
+- `MonteCarloResult` dataclass: checkpoints_km, p5/p50/p99/mean_drift_m, corrections_accepted_mean, corrections_suppressed_mean, fix_eligibility
+- `compare()`: P50/P99 reduction percentages between two result objects
+
+### Monte Carlo N=300 Results (SHIMLA_LOCAL 55km, seed=42)
+
+| km | P5 no-correction | P99 no-correction | P5 TRN | P99 TRN | P99 reduction |
+|---|---|---|---|---|---|
+| 10 | 7.0 m | 58.9 m | 8.2 m | 75.4 m | — (TRN noise floor > INS drift at 5 km denial; expected) |
+| 30 | 11.8 m | 131.2 m | 8.8 m | 70.5 m | 46.3% |
+| 55 | 21.2 m | 182.5 m | 9.6 m | 77.1 m | 57.7% |
+
+**Note on km 10 TRN anomaly:** At km 10 (only 5 km of GNSS denial), accumulated INS drift σ ≈ 20 m per axis. TRN correction resets error to N(0, 25 m). Since σ_TRN > accumulated drift at km 10, correction *increases* P99. This is physically correct: TRN corrections are net beneficial at km 30+ where accumulated drift exceeds 25 m. The Monte Carlo correctly captures this regime boundary.
+
+### Gate Tests — tests/test_gate4_extended.py (19 tests)
+
+| Gate | Tests | Result |
+|---|---|---|
+| NAV-09: Multi-tile DEM stitching | 4 | PASS |
+| NAV-10: Corridor definition | 6 | PASS |
+| NAV-11: Monte Carlo envelopes (N=10 CI, master_seed=42) | 6 | PASS |
+| NAV-12: Terrain zone characterisation | 3 | PASS |
+| **TOTAL** | **19** | **19/19 PASS** |
+
+**NAV-12 terrain zone findings:**
+- Zone 1 (0–60 km): SHIMLA-1 tile loaded; best score 0.57–0.58 (CAUTION). SHIMLA_MANALI corridor traces Sutlej valley axis — lower texture variance than Shimla ridge. CAUTION is usable for TRN corrections.
+- Zones 2–3 (60–180 km): Out of tile (north bound 31.44°N) → SUPPRESS. OI pending: Manali COP30 tile admission for full 3-zone coverage.
+- Variance across 13 km-spaced samples: > 0.02 (non-trivial with single-tile coverage).
+
+**NAV-11 fix:** HillshadeGenerator.generate() required `gsd_m` positional argument — initial omission in _precompute_fix_locations() fixed before first passing run.
+
+### Live SITL VIO (Step 4)
+**SKIP** — Gazebo not available in this session. Will be validated at next SITL opportunity.
+
+### SIL Baseline
+- Certified baseline: **406/406** (run_certified_baseline.sh — 191.4 s)
+- Gate 4: **19/19** (test_gate4_extended.py — 0.45 s)
+- **Total: 425/425** — zero regressions
+
+### Commit
+`968247f` — feat(nav): Gate 4 — 180km Shimla-Manali corridor, Monte Carlo N=300 drift envelopes, DEMLoader multi-tile stitching, NAV-09 through NAV-12 PASS
+
+### Open Items Raised
+None new. Existing OI regarding Manali COP30 tile admission remains in programme backlog (Zones 2–3 SUPPRESS with single-tile coverage).
+
+Next: Deputy 1 Gate 4 acceptance review; Gate 5 prompt pending.

@@ -61,8 +61,8 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
-**Certified baseline runner:** `run_certified_baseline.sh` (406) — use before every gate commit and handoff  
-**Total regression baseline:** 406 tests
+**Certified baseline runner:** `run_certified_baseline.sh` (406) + `test_gate4_extended.py` (19) — use before every gate commit and handoff  
+**Total regression baseline:** 425 tests (406 certified + 19 Gate 4)
 
 ---
 
@@ -97,6 +97,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | SB-5 Gate 1 — Real DEM Ingest + TRN Foundation | ✅ COMPLETE | DEMLoader (rasterio GLO-30), HillshadeGenerator (Lambertian + multi-dir, CAS Eq.3), TerrainSuitabilityScorer (texture/relief/GSD → ACCEPT/CAUTION/SUPPRESS), PhaseCorrelationTRN (10-step pipeline, 4 statuses, structured event log). SHIMLA-1 DEM loaded: 1960 m elevation at Shimla, score=0.643 ACCEPT. Self-match confidence=1.0000. 5 interface contracts committed (dem/trn/imu/eo_day/eo_thermal). SIL 314/314 — zero regressions. rasterio 1.4.4 installed. | prior session |
 | SB-5 Gate 2 — Gazebo Heightmap + Camera Pipeline + VIO + TRN Drift Reduction | ✅ COMPLETE | NAV-01..04 PASS (9/9 gate tests). Critical bug fix: PhaseCorrelationTRN Step 8 north correction sign inverted (+row_offset convention). TRN drift reduction: 37.17 m → 23.63 m over 35.5 km Shimla corridor. New modules: shimla_heightmap_generator.py, shimla_terrain.sdf, nadir_camera_bridge.py, vio_frame_processor.py. Interface contracts updated (trn_contract.yaml Gate 2 COMPLETE, eo_day_contract.yaml Gate 2 COMPLETE). SIL 323/323 — zero regressions. opencv-python-headless 4.13.0 installed. | `66c2643` |
 | SB-5 Gate 3 — Confidence-Aware Fusion + Degraded State Handling | ✅ COMPLETE | NAV-05..08 PASS (18/18 gate tests). update_trn() added to ESKF (Deputy 1 unfreeze authorised; re-frozen post-commit). NavigationManager fusion coordinator: GNSS/VIO/TRN confidence-weighted ESKF injection, nav_confidence scoring (weights: GNSS 1.0, VIO 0.7, TRN 0.5). NAV_TRN_ONLY FSM state (ST-03B) added. Confidence-aware SHM trigger: SHM_ENTRY_LOW_NAV_CONFIDENCE fires at nav_confidence < 0.20. Camera→VIO pipeline wired (Gate 2 open finding closed). Gate 3 drift table: 50 km Shimla, seed=42, 47–70% TRN reduction at 9 fixes. config/tunable_mission.yaml created. SIL 341/341 (119 S5 + 68 S8 + 90 BCMP2 + 64 integration = 341). | `772cbfe` |
+| SB-5 Gate 4 — Extended Corridor + Monte Carlo Drift Envelopes | ✅ COMPLETE | NAV-09..12 PASS (19/19 gate tests). New infrastructure: DEMLoader.from_directory() multi-tile rasterio.merge stitching (HIL production path); MissionCorridor dataclass with position_at_km() Haversine interpolation; SHIMLA_MANALI (8 WPs, 180 km, gnss_denial_start=10 km) and SHIMLA_LOCAL (55 km). MonteCarloNavEvaluator AD-16 methodology: N=300 seeds, DRIFT_PSD=1.5 m/√s per axis, σ_TRN=25 m. Monte Carlo N=300 result: P99 at 55 km = 77.1 m (TRN) vs 182.5 m (no correction) — 57.7% P99 reduction. Terrain: Zone 1 CAUTION (score 0.57–0.58), Zones 2–3 SUPPRESS (out-of-tile). OI pending Manali COP30 tile admission. Live SITL VIO: SKIP (Gazebo not available). SIL 406/406 certified + 19 Gate 4 = 425 total. | `968247f` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -134,7 +135,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | S9 arch regression | test_s9_nav01_pass | 13 |
 | Gate 2 navigation | test_gate2_navigation | 9 |
 | Gate 3 fusion | test_gate3_fusion | 18 |
-| **TOTAL** | | **406** |
+| Gate 4 extended corridor | test_gate4_extended | 19 |
+| **TOTAL** | | **425** |
 
 **Excluded from baseline (scope/CI reasons):**
 
@@ -167,6 +169,16 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | km 60 | 5 m | 19 m | 80 m |
 | km 100 | 12 m | 96 m | 350 m |
 | km 120 | 15 m | 155 m | 650 m |
+
+**Gate 4 Monte Carlo N=300 — SHIMLA_LOCAL 55km (seed=42, QA-031):**
+
+| km | P5 no-correction | P99 no-correction | P5 TRN | P99 TRN | P99 reduction |
+|---|---|---|---|---|---|
+| 10 | 7.0 m | 58.9 m | 8.2 m | 75.4 m | — (TRN noise floor > accumulated drift at 5 km denial) |
+| 30 | 11.8 m | 131.2 m | 8.8 m | 70.5 m | 46.3% |
+| 55 | 21.2 m | 182.5 m | 9.6 m | 77.1 m | 57.7% |
+
+**Product claim:** MicroMind maintains position error below 77 m in 99% of missions at 55 km GNSS-denied (TRN active). DRIFT_PSD=1.5 m/√s, σ_TRN=25 m, trn_interval=5 km, speed=100 km/h.
 
 ---
 
