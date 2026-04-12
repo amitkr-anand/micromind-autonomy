@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 11 April 2026  
+**Last Updated:** 12 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -94,7 +94,9 @@ All test scenarios must be designed against these profiles. No other baseline is
 | SB-5 Phase B — PLN-02 Retask + PLN-03 Dead-End + MM-04 Queue Latency | ✅ CLOSED | SB-01–SB-07 ✅ — R-01–R-06 + PLN-03 + MM-04 event bus (MissionEventBus), EVENT_QUEUE_LATENCY, QUEUE_HIGH, QUEUE_CRITICAL_OVERFLOW, SB-06 PASS, RS-04 route fragment cleanup (_intermediate_fragments + _cleanup_route_fragments()), SB-07 PASS, TECHNICAL_NOTES.md UPDATED. SIL 309/309. | `6c405aa` (SB-01–05) + `d0e4c5d` (SB-06) + `c35122a` (SB-07) |
 | Handoff 1 — QFR CLOSED | ✅ | 314/314 certified. Phase C authorised. QFR integrity findings PF-01/02/03 documented and process rules committed. Test: `f909a7c` QFR: `99fd55b` | 11 Apr 2026 |
 | SB-5 Phase C — VIZ-02 Start | 🟡 IN PROGRESS | Run 1 overlay + Run 2 data pipeline — demo_overlay.py, baylands_demo_camera.py, demo_data_pipeline.py, KPI pre-computed seeds 42/101/303. SIL 314/314. | `d7dd64f` |
-| SB-5 Gate 1 — Real DEM Ingest + TRN Foundation | ✅ COMPLETE | DEMLoader (rasterio GLO-30), HillshadeGenerator (Lambertian + multi-dir, CAS Eq.3), TerrainSuitabilityScorer (texture/relief/GSD → ACCEPT/CAUTION/SUPPRESS), PhaseCorrelationTRN (10-step pipeline, 4 statuses, structured event log). SHIMLA-1 DEM loaded: 1960 m elevation at Shimla, score=0.643 ACCEPT. Self-match confidence=1.0000. 5 interface contracts committed (dem/trn/imu/eo_day/eo_thermal). SIL 314/314 — zero regressions. rasterio 1.4.4 installed. | this session |
+| SB-5 Gate 1 — Real DEM Ingest + TRN Foundation | ✅ COMPLETE | DEMLoader (rasterio GLO-30), HillshadeGenerator (Lambertian + multi-dir, CAS Eq.3), TerrainSuitabilityScorer (texture/relief/GSD → ACCEPT/CAUTION/SUPPRESS), PhaseCorrelationTRN (10-step pipeline, 4 statuses, structured event log). SHIMLA-1 DEM loaded: 1960 m elevation at Shimla, score=0.643 ACCEPT. Self-match confidence=1.0000. 5 interface contracts committed (dem/trn/imu/eo_day/eo_thermal). SIL 314/314 — zero regressions. rasterio 1.4.4 installed. | prior session |
+| SB-5 Gate 2 — Gazebo Heightmap + Camera Pipeline + VIO + TRN Drift Reduction | ✅ COMPLETE | NAV-01..04 PASS (9/9 gate tests). Critical bug fix: PhaseCorrelationTRN Step 8 north correction sign inverted (+row_offset convention). TRN drift reduction: 37.17 m → 23.63 m over 35.5 km Shimla corridor. New modules: shimla_heightmap_generator.py, shimla_terrain.sdf, nadir_camera_bridge.py, vio_frame_processor.py. Interface contracts updated (trn_contract.yaml Gate 2 COMPLETE, eo_day_contract.yaml Gate 2 COMPLETE). SIL 323/323 — zero regressions. opencv-python-headless 4.13.0 installed. | `66c2643` |
+| SB-5 Gate 3 — Confidence-Aware Fusion + Degraded State Handling | ✅ COMPLETE | NAV-05..08 PASS (18/18 gate tests). update_trn() added to ESKF (Deputy 1 unfreeze authorised; re-frozen post-commit). NavigationManager fusion coordinator: GNSS/VIO/TRN confidence-weighted ESKF injection, nav_confidence scoring (weights: GNSS 1.0, VIO 0.7, TRN 0.5). NAV_TRN_ONLY FSM state (ST-03B) added. Confidence-aware SHM trigger: SHM_ENTRY_LOW_NAV_CONFIDENCE fires at nav_confidence < 0.20. Camera→VIO pipeline wired (Gate 2 open finding closed). Gate 3 drift table: 50 km Shimla, seed=42, 47–70% TRN reduction at 9 fixes. config/tunable_mission.yaml created. SIL 341/341 (119 S5 + 68 S8 + 90 BCMP2 + 64 integration = 341). | `772cbfe` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |

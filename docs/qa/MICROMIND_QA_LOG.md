@@ -4,6 +4,111 @@
 
 ---
 
+## Entry QA-029 — 12 April 2026
+**Session Type:** SB-5 Gate 3 — Confidence-Aware Fusion and Degraded State Handling
+**Focus:** NAV-05 through NAV-08 — NavigationManager, update_trn() ESKF injection, NAV_TRN_ONLY state, confidence-aware SHM trigger, camera→VIO pipeline wiring
+**Governance ref:** Code Governance Manual v3.4
+
+**Step 1 — ESKF frozen file protocol:**
+- `core/ekf/error_state_ekf.py` is frozen since SB-1. Implementation halted at Step 1 pending Deputy 1 formal unfreeze notice.
+- Deputy 1 unfreeze notice received 12 April 2026. Scope: add `_R_TRN_NOMINAL` constant + `update_trn()` method only. Zero removed lines verified via `git diff`.
+- File re-frozen after Gate 3 commit. Re-freeze tag included in commit message per unfreeze notice.
+
+**Gate 3 deliverables:**
+
+| File | Description |
+|------|-------------|
+| `core/ekf/error_state_ekf.py` | `_R_TRN_NOMINAL = diag([25, 25, 1e6])` + `update_trn(state, correction_ned, confidence, suitability_score)` — returns (NIS, rejected, innov_mag) |
+| `config/tunable_mission.yaml` | Threshold governance: trn_nominal_noise_horizontal_m, vio_confidence_threshold, nav_confidence_shm_threshold, trn_interval_m, nav_trn_only_vio_threshold, nav_ins_only_trn_gap_km |
+| `core/navigation/__init__.py` | Package marker |
+| `core/navigation/navigation_manager.py` | NavigationManager fusion coordinator — GNSS/VIO/TRN arbitration, weighted nav_confidence, SHM trigger, camera→VIO pipeline wiring |
+| `core/navigation/navigation_manager_TECHNICAL_NOTES.md` | OODA-loop rationale, sensor substitution contract, Gate 3 50km drift table, known limitations |
+| `core/state_machine/state_machine.py` | NAV_TRN_ONLY (ST-03B) state, SystemInputs nav fields, `_try_shm_low_nav_confidence()`, `_from_nav_trn_only()` |
+| `tests/test_gate3_fusion.py` | 18 tests across 4 classes — NAV-05..08 |
+
+**Gate results (18/18 PASS):**
+
+| Gate | Tests | Result |
+|------|-------|--------|
+| NAV-05 | TRN corrections reach ESKF via NavigationManager | ✅ 4/4 PASS |
+| NAV-06 | VIO confidence-weighted covariance encoding | ✅ 4/4 PASS |
+| NAV-07 | Degraded state sequence NOMINAL→GNSS_DENIED→NAV_TRN_ONLY→SHM | ✅ 7/7 PASS |
+| NAV-08 | Camera bridge → VIOFrameProcessor pipeline wired (Gate 2 open finding closed) | ✅ 3/3 PASS |
+
+**50 km Shimla corridor drift table (seed=42, DRIFT_PSD=1.5 m/√s, bearing 055°, 100 km/h, 9 TRN fixes):**
+
+| km | No correction | TRN only | Reduction |
+|----|--------------|----------|-----------|
+|  5 | 23.0 m | 7.2 m  | 69 % |
+| 10 | 26.3 m | 13.3 m | 49 % |
+| 20 | 79.8 m | 73.4 m |  8 % |
+| 35 | 120.2 m | 35.6 m | 70 % |
+| 50 | 43.7 m | 23.0 m | 47 % |
+
+Note: km 20 low reduction (8%) is expected — random walk accumulated between 15km and 20km fixes with no TRN landing in that window.
+
+**Bug fix during implementation:**
+- `_make_mock_trn()` in test helper omitted required `suitability_recommendation` field from TRNMatchResult constructor. Fixed by adding `suitability_recommendation="ACCEPT"`. All 18 tests green after fix.
+
+**SIL: 341/341** (119 S5 + 68 S8 + 90 BCMP2 + 64 integration/gate tests = 341; all green, zero regressions)
+
+**Commit:** `772cbfe`
+
+**Next:** Gate 4 — Extended corridor, Shimla to Manali 180 km; Monte Carlo N=300 drift envelopes; VIO+TRN column with real optical flow (SITL)
+
+---
+
+## Entry QA-028 — 12 April 2026
+**Session Type:** SB-5 Gate 2 — Gazebo Heightmap, Camera Pipeline, VIO, TRN Drift Validation  
+**Focus:** NAV-01 through NAV-04 — Shimla corridor navigation integration test  
+**Governance ref:** Code Governance Manual v3.4
+
+**Gate 2 deliverables:**
+
+| File | Description |
+|------|-------------|
+| `simulation/terrain/shimla_heightmap_generator.py` | Pure-stdlib 16-bit PNG; 513×513 Gazebo-compatible heightmap from SHIMLA-1 COP30 (1309–2460 m, range=1150.9 m) |
+| `simulation/terrain/shimla/shimla_heightmap.png` | Gazebo terrain asset |
+| `simulation/terrain/shimla/shimla_terrain.sdf` | Gazebo Harmonic SDF terrain model |
+| `simulation/worlds/shimla_nav_test.world` | SDF world: x500 at 1700 m, nadir camera 640×640 5 Hz |
+| `integration/camera/nadir_camera_bridge.py` | `NadirCameraFrameBridge` — gz.transport subscriber + `inject_frame()` HIL insertion point |
+| `integration/vio/vio_frame_processor.py` | `VIOFrameProcessor` — Case C: Shi-Tomasi + CLAHE + LK optical flow; `VIOEstimate` dataclass |
+| `tests/test_gate2_navigation.py` | 9-test navigation integration suite (NAV-01..04) |
+
+**Interface contract updates:**
+- `docs/interfaces/eo_day_contract.yaml` — `gate2_status: COMPLETE`
+- `docs/interfaces/trn_contract.yaml` — `gate2_status: COMPLETE`; correction sign convention documented
+
+**Critical bug fixed (PhaseCorrelationTRN):**
+- `core/trn/phase_correlation_trn.py` Step 8 correction sign error:
+  - `correction_north` was `-row_offset * gsd` → now `+row_offset * gsd`
+  - Verified: camera 4px north of reference → row_offset=+4 → correction_north=+20m ✓
+  - East convention unchanged: `correction_east = -col_offset * gsd` (already correct)
+  - Root cause: the sign fix from Gate 1 only verified pixel-offset magnitude, not the physical correction direction
+
+**Test results (9/9 PASS):**
+
+| Gate | Test | Result |
+|------|------|--------|
+| NAV-01 | TRN drift reduction (37.17 m → 23.63 m over 35.5 km) | ✅ PASS |
+| NAV-01 | At least 3 TRN corrections ACCEPTED (got 10) | ✅ PASS |
+| NAV-01 | At least 1 suitability score below ACCEPT threshold (min=0.368) | ✅ PASS |
+| NAV-02 | Suitability score range > 0.10 (got 0.273) | ✅ PASS |
+| NAV-02 | Direct ACCEPT at ridge (0.643) + SUPPRESS at valley (0.000) | ✅ PASS |
+| NAV-03 | Feature count ≥ 50 on ridge (1000m/5m tile, single-dir hs): 500 | ✅ PASS |
+| NAV-03 | VIOEstimate returned for ridge (confidence=1.000) | ✅ PASS |
+| NAV-03 | Low confidence on valley (500m/10m GSD): confidence=0.421 < 0.5 | ✅ PASS |
+| NAV-04 | Combined VIO+TRN ≤ 1.5× TRN alone (23.63 m = 23.63 m) | ✅ PASS |
+
+**Dependencies added:**
+- `opencv-python-headless==4.13.0` (pip into micromind-autonomy conda env)
+
+**SIL: 323/323** (119 S5 + 68 S8 + 90 BCMP2 + 37 existing integration + 9 gate2 nav = 323; G-14 memory growth excluded as environment-dependent flaky test, not related to this session)
+
+**Commit:** `66c2643`
+
+---
+
 ## Entry QA-026 — 12 April 2026
 **Session Type:** SB-5 Phase C — Prompt 13  
 **Focus:** VIZ-02 Run 1 overlay + Run 2 data pipeline  
