@@ -22,8 +22,9 @@ import math
 
 import numpy as np
 import rasterio
+from rasterio.coords import BoundingBox
 from rasterio.crs import CRS
-from rasterio.transform import rowcol, xy
+from rasterio.transform import array_bounds, rowcol, xy
 from rasterio.warp import reproject, Resampling
 
 
@@ -229,3 +230,94 @@ class DEMLoader:
             self._bounds.bottom <= lat <= self._bounds.top
             and self._bounds.left  <= lon <= self._bounds.right
         )
+
+    # ── Multi-tile constructor ─────────────────────────────────────────────────
+
+    @classmethod
+    def from_directory(cls, terrain_dir: str) -> "DEMLoader":
+        """
+        Load and merge all GeoTIFF files in terrain_dir into a single DEMLoader.
+
+        Production path: at HIL the terrain package is a directory of tiles
+        covering the full mission corridor. from_directory() loads them all
+        without needing to know how many tiles are present.
+
+        Uses rasterio.merge.merge() for multi-tile stitching.
+
+        Raises FileNotFoundError if terrain_dir contains no .tif files.
+        Raises ValueError if any tile CRS is not EPSG:4326.
+        Raises ValueError if tiles have mismatched CRS.
+        """
+        import glob
+        import os
+        from rasterio.merge import merge
+
+        tif_files = sorted(glob.glob(os.path.join(terrain_dir, "*.tif")))
+        if not tif_files:
+            raise FileNotFoundError(
+                f"No .tif files found in terrain directory: {terrain_dir}"
+            )
+
+        # Single tile: fast path — delegate to __init__
+        if len(tif_files) == 1:
+            return cls(tif_files[0])
+
+        # Multi-tile: verify CRS compatibility and merge
+        datasets = []
+        try:
+            ref_epsg = None
+            for path in tif_files:
+                ds = rasterio.open(path)
+                if ds.crs is None:
+                    raise ValueError(f"DEM tile has no CRS — expected EPSG:{_WGS84_EPSG}: {path}")
+                epsg = ds.crs.to_epsg()
+                if epsg != _WGS84_EPSG:
+                    raise ValueError(
+                        f"DEM tile CRS is EPSG:{epsg} — expected EPSG:{_WGS84_EPSG}: {path}"
+                    )
+                if ref_epsg is None:
+                    ref_epsg = epsg
+                elif epsg != ref_epsg:
+                    raise ValueError(
+                        f"CRS mismatch between tiles: {path} (EPSG:{epsg}) vs "
+                        f"first tile (EPSG:{ref_epsg})"
+                    )
+                datasets.append(ds)
+
+            merged_data, merged_transform = merge(datasets)
+            nodata = datasets[0].nodata
+            crs    = datasets[0].crs
+
+        finally:
+            for ds in datasets:
+                ds.close()
+
+        # Build DEMLoader instance from merged in-memory data
+        instance = cls.__new__(cls)
+        instance._elevation = merged_data[0].astype(np.float32)
+        instance._transform = merged_transform
+        instance._nodata    = nodata
+        instance._crs       = crs
+
+        h, w = instance._elevation.shape
+        instance._height = h
+        instance._width  = w
+
+        # Compute bounds from merged array dimensions + transform
+        west, south, east, north = array_bounds(h, w, merged_transform)
+        instance._bounds = BoundingBox(west, south, east, north)
+
+        # Replace nodata with NaN
+        if instance._nodata is not None:
+            instance._elevation[instance._elevation == instance._nodata] = float("nan")
+
+        # Approximate resolution
+        lat_mid = (instance._bounds.top + instance._bounds.bottom) / 2.0
+        deg_per_pixel_x = abs(merged_transform.a)
+        deg_per_pixel_y = abs(merged_transform.e)
+        m_per_deg_lon   = _M_PER_DEG_LAT * math.cos(math.radians(lat_mid))
+        instance._resolution_m = (
+            deg_per_pixel_x * m_per_deg_lon + deg_per_pixel_y * _M_PER_DEG_LAT
+        ) / 2.0
+
+        return instance
