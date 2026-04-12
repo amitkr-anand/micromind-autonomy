@@ -94,6 +94,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | SB-5 Phase B — PLN-02 Retask + PLN-03 Dead-End + MM-04 Queue Latency | ✅ CLOSED | SB-01–SB-07 ✅ — R-01–R-06 + PLN-03 + MM-04 event bus (MissionEventBus), EVENT_QUEUE_LATENCY, QUEUE_HIGH, QUEUE_CRITICAL_OVERFLOW, SB-06 PASS, RS-04 route fragment cleanup (_intermediate_fragments + _cleanup_route_fragments()), SB-07 PASS, TECHNICAL_NOTES.md UPDATED. SIL 309/309. | `6c405aa` (SB-01–05) + `d0e4c5d` (SB-06) + `c35122a` (SB-07) |
 | Handoff 1 — QFR CLOSED | ✅ | 314/314 certified. Phase C authorised. QFR integrity findings PF-01/02/03 documented and process rules committed. Test: `f909a7c` QFR: `99fd55b` | 11 Apr 2026 |
 | SB-5 Phase C — VIZ-02 Start | 🟡 IN PROGRESS | Run 1 overlay + Run 2 data pipeline — demo_overlay.py, baylands_demo_camera.py, demo_data_pipeline.py, KPI pre-computed seeds 42/101/303. SIL 314/314. | `d7dd64f` |
+| SB-5 Gate 1 — Real DEM Ingest + TRN Foundation | ✅ COMPLETE | DEMLoader (rasterio GLO-30), HillshadeGenerator (Lambertian + multi-dir, CAS Eq.3), TerrainSuitabilityScorer (texture/relief/GSD → ACCEPT/CAUTION/SUPPRESS), PhaseCorrelationTRN (10-step pipeline, 4 statuses, structured event log). SHIMLA-1 DEM loaded: 1960 m elevation at Shimla, score=0.643 ACCEPT. Self-match confidence=1.0000. 5 interface contracts committed (dem/trn/imu/eo_day/eo_thermal). SIL 314/314 — zero regressions. rasterio 1.4.4 installed. | this session |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |

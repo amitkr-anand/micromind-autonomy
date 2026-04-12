@@ -1,0 +1,22 @@
+sensor_id: TRN_CAMERA
+description: >
+  Nadir camera frame for terrain-relative navigation matching
+
+current_source:
+  type: synthetic
+  method: Gazebo_rendered_frame
+  note: >
+    Gate 2 will connect Gazebo camera output to this interface.
+    Currently tested with DEM-rendered tiles only.
+
+real_replacement:
+  type: EO_camera_nadir
+  format: uint8_numpy_array
+  size_pixels: configurable
+  rate_hz: 1_to_5
+  note: >
+    Real EO camera frame. Same numpy array interface. No architecture change.
+
+interface_class: core/trn/phase_correlation_trn.py PhaseCorrelationTRN.match()
+interface_param: camera_tile
+breaking_change_at_HIL: false

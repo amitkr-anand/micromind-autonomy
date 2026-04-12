@@ -1,0 +1,25 @@
+sensor_id: DEM
+description: >
+  Digital Elevation Model — terrain elevation data for TRN corrections
+  and route planning
+
+current_source:
+  type: GeoTIFF_file
+  format: Copernicus_GLO30
+  resolution_m: 30
+  crs: EPSG_4326
+  vertical_datum: EGM2008_EPSG3855
+  source: OpenTopography
+  path: data/terrain/<corridor_name>/*.tif
+
+real_replacement:
+  type: GeoTIFF_file
+  format: Cartosat_or_equivalent
+  resolution_m: 30_or_better
+  crs: EPSG_4326
+  delivery: mission_data_card
+  note: >
+    Identical file format. Only path changes at HIL. Architecture unchanged.
+
+interface_class: core/trn/dem_loader.py DEMLoader
+breaking_change_at_HIL: false

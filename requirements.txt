@@ -1,6 +1,7 @@
 numpy>=1.24
 matplotlib>=3.7
 scipy>=1.10
+rasterio>=1.4       # NAV-02 DEM loader (core/trn/dem_loader.py) — added Gate 1
 # Sprint S3 — add before dashboard work:
 # plotly>=5.0
 # dash>=2.0

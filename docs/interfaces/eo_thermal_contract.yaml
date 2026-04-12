@@ -1,0 +1,24 @@
+sensor_id: EO_THERMAL
+description: >
+  Thermal/LWIR camera — primary sensing in night mode, supplementary in day mode
+
+current_source:
+  type: not_implemented
+  note: >
+    Addendum v2 defines night operations requirement. Architecture must
+    accommodate this channel. Implementation deferred to phase when thermal
+    simulation is added.
+
+real_replacement:
+  type: LWIR_camera_nadir
+  format: uint16_numpy_array_or_equivalent
+  rate_hz: 25
+  note: >
+    Phase correlation matching against DEM thermal emission model reference
+    tiles. Same interface as EO_DAY TRN path. CAS paper frequency-domain
+    theory applies to cross-spectral matching.
+
+interface_class: core/trn/phase_correlation_trn.py PhaseCorrelationTRN.match()
+interface_param: camera_tile
+breaking_change_at_HIL: false
+implementation_gate: thermal_simulation

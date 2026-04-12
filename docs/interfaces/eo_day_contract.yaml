@@ -1,0 +1,21 @@
+sensor_id: EO_DAY
+description: >
+  Day electro-optical camera — primary VIO source in day mode
+
+current_source:
+  type: synthetic
+  method: injected_VIO_vectors
+  note: >
+    Gate 2 replaces with Gazebo camera rendered frames fed to OpenVINS.
+
+real_replacement:
+  type: RGB_camera_nadir
+  format: ROS2_sensor_msgs_Image_or_direct
+  rate_hz: 30
+  resolution: 720p_minimum
+  note: >
+    OpenVINS processes real frames. ESKF receives OpenVINS output.
+    No architecture change.
+
+interface_class: core/ekf/error_state_ekf.py ErrorStateEKF.update_vio()
+breaking_change_at_HIL: false

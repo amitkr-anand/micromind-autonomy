@@ -1,0 +1,24 @@
+sensor_id: IMU
+description: >
+  Inertial measurement unit — accelerometer and gyroscope data for ESKF propagation
+
+current_source:
+  type: synthetic
+  method: STIM300_noise_model_on_trajectory
+  rate_hz: 200
+  arw_deg_per_sqrt_hr: 0.15
+
+real_replacement:
+  type: STIM300_or_PX4_IMU
+  message: MAVLink_HIGHRES_IMU
+  rate_hz: 200
+  field_mapping:
+    xacc: body_frame_accel_x_ms2
+    yacc: body_frame_accel_y_ms2
+    zacc: body_frame_accel_z_ms2
+    xgyro: body_frame_gyro_x_rads
+    ygyro: body_frame_gyro_y_rads
+    zgyro: body_frame_gyro_z_rads
+
+interface_class: core/ins/mechanisation.py ins_propagate()
+breaking_change_at_HIL: false

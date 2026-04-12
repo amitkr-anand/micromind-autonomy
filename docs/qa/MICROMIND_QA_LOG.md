@@ -44,6 +44,66 @@
 
 ---
 
+## Entry QA-027 — 12 April 2026
+**Session Type:** SB-5 Gate 1 — Real DEM Ingest and TRN Foundation  
+**Focus:** NAV-02 terrain intelligence layer — DEMLoader, HillshadeGenerator, TerrainSuitabilityScorer, PhaseCorrelationTRN, interface contracts  
+**Governance ref:** Code Governance Manual v3.4
+
+**Step 0 findings:**
+- (a) ESKF TRN injection point: `update_vio(state, pos_ned, cov_pos_ned)` at `core/ekf/error_state_ekf.py:208`. `pos_ned` = absolute NED 3-vector; `cov_pos_ned` = 3×3 covariance. Innovation computed as `pos_ned − state.p`.
+- (b) `orthophoto_matching_stub.py` at `core/ins/` returns `OMCorrection` with `correction_north_m`, `correction_east_m` (Gaussian SIL residuals), `match_confidence`, `r_matrix` (2×2 diag [81,81] m²), `correction_applied`, `consecutive_suppressed_count`, `om_last_fix_km_ago`, `sigma_terrain`.
+- (c) Terrain suitability score: **No** — only `sigma_terrain` routing through `_mu_confidence()` in stub.
+- (d) TRN injection point: `eskf.update_vio()` — caller converts correction deltas to absolute NED position by offsetting `state.p`.
+
+**New files created:**
+- `core/trn/__init__.py`
+- `core/trn/dem_loader.py` — NAV-02 DEMLoader; rasterio GeoTIFF, bilinear interp, tile extraction via scipy zoom
+- `core/trn/dem_loader_TECHNICAL_NOTES.md`
+- `core/trn/hillshade_generator.py` — Lambertian + multi-directional hillshade (CAS Eq. 3)
+- `core/trn/hillshade_TECHNICAL_NOTES.md`
+- `core/trn/terrain_suitability.py` — TerrainSuitabilityScorer: texture variance, relief magnitude, GSD validity → ACCEPT/CAUTION/SUPPRESS
+- `core/trn/phase_correlation_trn.py` — PhaseCorrelationTRN: full 10-step pipeline, structured event log, 4 TRNMatchResult statuses
+- `docs/interfaces/dem_contract.yaml`
+- `docs/interfaces/trn_contract.yaml`
+- `docs/interfaces/imu_contract.yaml`
+- `docs/interfaces/eo_day_contract.yaml`
+- `docs/interfaces/eo_thermal_contract.yaml`
+- `data/terrain/shimla_corridor/SHIMLA-1_COP30.tif` — real Copernicus GLO-30 DEM (copied from Downloads)
+
+**Dependencies added:**
+- `rasterio==1.4.4` (pip into micromind-autonomy conda env)
+- `scipy` (already available, confirmed)
+
+**DEM validation (SHIMLA-1):**
+- Bounds: N=31.441°, S=30.928°, E=77.679°, W=76.597°, resolution≈28.7 m
+- Elevation at Shimla (31.1°N, 77.17°E): 1960.1 m ✓
+- Tile (500 m/5 m GSD = 100×100): min=1858.9 m, max=2080.5 m ✓
+- Suitability at Shimla: score=0.643, ACCEPT (texture_variance=226.1, relief=221.6 m) ✓
+- Featureless flat tile: score=0.0, SUPPRESS ✓
+
+**Phase correlation validation:**
+- Self-matching (camera = reference): status=ACCEPTED, confidence=1.0000, correction=(0,0) m ✓
+- Outside coverage (Delhi): OUTSIDE_COVERAGE ✓
+- Featureless terrain: SUPPRESSED ✓
+- Noise tile: REJECTED, confidence=0.046 ✓
+- Event log: TRN_CORRECTION_ACCEPTED (INFO), TRN_CORRECTION_SUPPRESSED (INFO), TRN_CORRECTION_REJECTED (WARNING) — all 4 mandatory fields present ✓
+
+**Phase correlation fix:**
+- Initial peak normalization divided by N² (wrong) → fixed to use raw IFT max (numpy.fft.ifft2 normalises by 1/N² internally; peak = 1.0 for perfect match)
+- Single-direction hillshade used for suitability texture scoring (Laplacian variance); multi-directional used for correlation reference (illumination-invariant per CAS §3.2)
+
+**SIL: 314/314** (119 S5 + 68 S8 + 90 BCMP2 + 37 integration = 314 — no regressions)
+
+**Deviations from brief:**
+- `rasterio` and `scipy` not previously in conda env — installed this session. OI-13 (pyyaml/lark absent) pattern.
+- `core/trn/` directory created (did not exist).
+- `docs/interfaces/` directory created (did not exist).
+- SHIMLA-1 DEM file copied from `/home/mmuser/Downloads/DEM MODELS/SHIMLA-1/rasters_COP30/output_hh.tif`.
+
+**Next:** SB-5 Gate 1 Step 6 validation complete. Awaiting Gate 2 (Gazebo camera tile feed).
+
+---
+
 ## Entry QA-025 — 11 April 2026
 **Session Type:** Handoff 1 final closure  
 **Focus:** QFR integrity resolution + Phase C authorisation  
