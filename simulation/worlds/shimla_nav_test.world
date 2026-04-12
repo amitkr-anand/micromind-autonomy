@@ -1,0 +1,150 @@
+<?xml version="1.0" ?>
+<!--
+  shimla_nav_test.world
+  MicroMind Navigation Test World — Shimla Corridor
+
+  Purpose: Real-terrain navigation test environment.
+           Shimla GLO-30 DEM loaded as Gazebo heightmap.
+           One x500 quadrotor with nadir camera at 1700 m AGL
+           (above mean Shimla terrain ~1400 m).
+
+  Terrain:
+    Centre:     31.104°N  77.173°E (Shimla city centre)
+    Physical:   10000 m × 10000 m
+    Elevation:  1309 m — 2460 m (1151 m range)
+    Heightmap:  simulation/terrain/shimla/shimla_heightmap.png
+
+  Sun:
+    Azimuth 135°, elevation 45° — typical mid-morning,
+    Indian subcontinent (matches HillshadeGenerator defaults).
+
+  Camera:
+    Nadir-pointing (pitch = π/2), 60° FOV, 640×640, 5 Hz.
+    Topic: /nadir_camera/image
+    Sensor substitution contract: docs/interfaces/eo_day_contract.yaml
+
+  Req IDs: NAV-02, NAV-03, AD-01, AD-17
+-->
+<sdf version="1.8">
+  <world name="shimla_nav_test">
+
+    <!-- Physics -->
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <!-- Required plugins -->
+    <plugin filename="gz-sim-physics-system"
+            name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-sensors-system"
+            name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system"
+            name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system"
+            name="gz::sim::systems::UserCommands"/>
+
+    <!-- Lighting — mid-morning Indian subcontinent -->
+    <!-- Azimuth 135° (SE), elevation 45° -->
+    <light type="directional" name="sun">
+      <!-- direction = unit vector in world frame toward the sun source -->
+      <!-- azimuth 135° from north CW → sun_x = sin(135°)=0.707, sun_y = cos(135°)=-0.707 -->
+      <!-- elevation 45° → z = sin(45°)=0.707, horizontal component *= cos(45°)=0.707 -->
+      <direction>0.5 -0.5 -0.707</direction>
+      <diffuse>0.9 0.9 0.9 1</diffuse>
+      <specular>0.3 0.3 0.3 1</specular>
+      <cast_shadows>true</cast_shadows>
+    </light>
+
+    <!-- Ambient -->
+    <scene>
+      <ambient>0.4 0.4 0.4 1.0</ambient>
+      <background>0.7 0.8 0.9 1.0</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <!-- Shimla Terrain Heightmap -->
+    <!-- Resource path must include simulation/terrain/shimla/ -->
+    <!-- Set GZ_SIM_RESOURCE_PATH=<repo>/simulation/terrain/shimla before launch -->
+    <model name="shimla_terrain">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <heightmap>
+              <uri>file://shimla_heightmap.png</uri>
+              <size>10000.0 10000.0 1150.9</size>
+              <pos>0 0 1309.1</pos>
+            </heightmap>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <heightmap>
+              <uri>file://shimla_heightmap.png</uri>
+              <size>10000.0 10000.0 1150.9</size>
+              <pos>0 0 1309.1</pos>
+              <texture>
+                <diffuse>file://media/materials/textures/dirt_diffusespecular.png</diffuse>
+                <normal>file://media/materials/textures/flat_normal.png</normal>
+                <size>10</size>
+              </texture>
+            </heightmap>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+
+    <!-- x500 quadrotor with nadir camera -->
+    <!-- Spawned at Shimla city centre at 1700 m altitude (~300 m AGL) -->
+    <model name="x500_0">
+      <pose>0 0 1700 0 0 0</pose>
+
+      <!-- Minimal quadrotor body -->
+      <link name="base_link">
+        <inertial>
+          <mass>2.0</mass>
+          <inertia>
+            <ixx>0.02</ixx><iyy>0.02</iyy><izz>0.04</izz>
+            <ixy>0</ixy><ixz>0</ixz><iyz>0</iyz>
+          </inertia>
+        </inertial>
+
+        <collision name="body_col">
+          <geometry><box><size>0.47 0.47 0.11</size></box></geometry>
+        </collision>
+
+        <visual name="body_vis">
+          <geometry><box><size>0.47 0.47 0.11</size></box></geometry>
+          <material><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+
+        <!-- Nadir camera sensor -->
+        <!-- pitch = π/2 rad = 1.5708 rad to point camera downward -->
+        <sensor name="nadir_camera" type="camera">
+          <pose>0 0 -0.1 0 1.5708 0</pose>
+          <camera>
+            <horizontal_fov>1.0472</horizontal_fov>
+            <!-- 60 degrees = 1.0472 rad -->
+            <image>
+              <width>640</width>
+              <height>640</height>
+              <format>R8G8B8</format>
+            </image>
+            <clip>
+              <near>0.1</near>
+              <far>1000</far>
+            </clip>
+          </camera>
+          <update_rate>5</update_rate>
+          <topic>/nadir_camera/image</topic>
+          <always_on>true</always_on>
+        </sensor>
+
+      </link>
+    </model>
+
+  </world>
+</sdf>

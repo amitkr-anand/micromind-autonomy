@@ -249,10 +249,10 @@ class PhaseCorrelationTRN:
             )
 
         # Step 8 — pixel offset → metres
-        # Positive row_offset = image moved down = camera is north of estimate
-        # Positive col_offset = image moved right = camera is east of estimate
-        # Sign convention: correction is added to INS estimate to move toward truth
-        correction_north_m = float(-row_offset * gsd_m)
+        # Row convention: camera north of estimate → scene shifts DOWN → positive row_offset
+        # Col convention: camera east of estimate → scene shifts LEFT → negative col_offset
+        # Both corrections move the INS estimate toward the camera's true position.
+        correction_north_m = float(+row_offset * gsd_m)
         correction_east_m  = float(-col_offset * gsd_m)
 
         # Step 9 — log accepted

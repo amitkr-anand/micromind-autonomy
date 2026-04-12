@@ -1,0 +1,198 @@
+"""
+simulation/terrain/shimla_heightmap_generator.py
+MicroMind / NanoCorteX — DEM to Gazebo Heightmap Converter
+
+Converts Copernicus GLO-30 GeoTIFF into a Gazebo-compatible heightmap PNG.
+
+Gazebo heightmap requirements:
+  - PNG format, 16-bit or 8-bit grayscale
+  - Square dimensions: 2^n + 1 pixels (e.g. 129, 257, 513, 1025)
+  - Accompanies an SDF snippet specifying physical size in metres
+
+References:
+    SRS v1.3 NAV-02
+    Gazebo SDF heightmap documentation (sdformat.org)
+    core/trn/dem_loader.py
+"""
+from __future__ import annotations
+
+import os
+import struct
+import zlib
+from typing import Optional
+
+import numpy as np
+
+from core.trn.dem_loader import DEMLoader
+
+
+def _write_png_16bit_grayscale(array_uint16: np.ndarray, path: str) -> None:
+    """
+    Write a 2D uint16 array as a 16-bit grayscale PNG without requiring Pillow.
+    Uses only stdlib (struct, zlib).
+    """
+    height, width = array_uint16.shape
+
+    def _chunk(chunk_type: bytes, data: bytes) -> bytes:
+        c = chunk_type + data
+        crc = zlib.crc32(c) & 0xFFFFFFFF
+        return struct.pack(">I", len(data)) + c + struct.pack(">I", crc)
+
+    # PNG signature
+    signature = b'\x89PNG\r\n\x1a\n'
+
+    # IHDR: width, height, bit depth=16, colour type=0 (grayscale), compression=0, filter=0, interlace=0
+    ihdr_data = struct.pack(">IIBBBBB", width, height, 16, 0, 0, 0, 0)
+    ihdr = _chunk(b'IHDR', ihdr_data)
+
+    # IDAT: each row is preceded by filter byte 0 (None)
+    raw_rows = []
+    for row in array_uint16:
+        # Big-endian 16-bit: each pixel = 2 bytes
+        row_bytes = b'\x00' + row.astype('>u2').tobytes()
+        raw_rows.append(row_bytes)
+    raw_data = b''.join(raw_rows)
+    compressed = zlib.compress(raw_data, level=6)
+    idat = _chunk(b'IDAT', compressed)
+
+    # IEND
+    iend = _chunk(b'IEND', b'')
+
+    with open(path, 'wb') as f:
+        f.write(signature + ihdr + idat + iend)
+
+
+def generate_gazebo_heightmap(
+    dem_path: str,
+    output_dir: str,
+    centre_lat: float,
+    centre_lon: float,
+    size_m: float,
+    output_pixels: int = 513,
+) -> dict:
+    """
+    Convert a GeoTIFF DEM into a Gazebo-compatible heightmap.
+
+    Parameters
+    ----------
+    dem_path       : path to GeoTIFF DEM (Copernicus GLO-30 or equivalent)
+    output_dir     : directory to write heightmap PNG and SDF snippet
+    centre_lat     : tile centre latitude (WGS-84 degrees)
+    centre_lon     : tile centre longitude (WGS-84 degrees)
+    size_m         : physical tile size in metres (square)
+    output_pixels  : output PNG dimensions (must be 2^n + 1: 129/257/513/1025)
+
+    Returns
+    -------
+    dict with keys:
+        centre_lat, centre_lon, size_m, min_elev_m, max_elev_m,
+        output_pixels, heightmap_path, sdf_snippet_path
+
+    Raises
+    ------
+    ValueError   if output_pixels is not a valid Gazebo heightmap size (2^n + 1)
+    """
+    # Validate output_pixels
+    valid_sizes = {129, 257, 513, 1025, 2049}
+    if output_pixels not in valid_sizes:
+        raise ValueError(
+            f"output_pixels must be 2^n+1 (one of {sorted(valid_sizes)}), "
+            f"got {output_pixels}"
+        )
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Step 1 — load DEM
+    loader = DEMLoader(dem_path)
+
+    # Step 2 — extract tile
+    gsd_m = size_m / output_pixels
+    elevation_tile = loader.get_tile(centre_lat, centre_lon, size_m, gsd_m)
+
+    # Step 3 — resample check: get_tile already returns (output_pixels, output_pixels)
+    # (actual shape may be ±1 due to integer rounding; resize to exact target)
+    if elevation_tile.shape != (output_pixels, output_pixels):
+        from scipy.ndimage import zoom
+        zr = output_pixels / elevation_tile.shape[0]
+        zc = output_pixels / elevation_tile.shape[1]
+        elevation_tile = zoom(elevation_tile, (zr, zc), order=1)
+
+    # Replace NaN with tile mean (edge fill)
+    valid_mask = ~np.isnan(elevation_tile)
+    if not valid_mask.any():
+        raise ValueError("Extracted tile contains only NaN — centre outside DEM bounds")
+    tile_mean = float(np.mean(elevation_tile[valid_mask]))
+    elevation_tile = np.where(valid_mask, elevation_tile, tile_mean)
+
+    # Step 4 — normalise to [0, 65535]
+    min_elev_m = float(np.min(elevation_tile))
+    max_elev_m = float(np.max(elevation_tile))
+    elev_range  = max_elev_m - min_elev_m
+
+    if elev_range < 1.0:
+        # Flat tile — avoid divide-by-zero; set range to 1 m for safe normalisation
+        elev_range = 1.0
+
+    normalised = (elevation_tile - min_elev_m) / elev_range
+    heightmap_u16 = (normalised * 65535.0).clip(0, 65535).astype(np.uint16)
+
+    # Step 5 — save as 16-bit PNG
+    heightmap_path = os.path.join(output_dir, "shimla_heightmap.png")
+    _write_png_16bit_grayscale(heightmap_u16, heightmap_path)
+
+    # Step 6 — write Gazebo SDF snippet
+    elev_height = max_elev_m - min_elev_m
+    sdf_snippet = f"""<!-- Shimla Heightmap Terrain Snippet
+     Generated by shimla_heightmap_generator.py
+     Centre: {centre_lat:.6f}N  {centre_lon:.6f}E
+     Physical size: {size_m:.0f} m x {size_m:.0f} m
+     Elevation range: {min_elev_m:.1f} m — {max_elev_m:.1f} m -->
+<heightmap>
+  <uri>file://shimla_heightmap.png</uri>
+  <size>{size_m} {size_m} {elev_height:.1f}</size>
+  <pos>0 0 {min_elev_m:.1f}</pos>
+</heightmap>
+"""
+    sdf_snippet_path = os.path.join(output_dir, "shimla_terrain.sdf")
+    with open(sdf_snippet_path, "w") as f:
+        f.write(sdf_snippet)
+
+    # Step 7 — return metadata
+    return {
+        "centre_lat":       centre_lat,
+        "centre_lon":       centre_lon,
+        "size_m":           size_m,
+        "min_elev_m":       min_elev_m,
+        "max_elev_m":       max_elev_m,
+        "elev_range_m":     elev_height,
+        "output_pixels":    output_pixels,
+        "heightmap_path":   heightmap_path,
+        "sdf_snippet_path": sdf_snippet_path,
+    }
+
+
+if __name__ == "__main__":
+    import sys
+    import glob
+
+    dem_files = glob.glob("data/terrain/shimla_corridor/*.tif")
+    if not dem_files:
+        print("ERROR: No DEM file found in data/terrain/shimla_corridor/")
+        sys.exit(1)
+
+    meta = generate_gazebo_heightmap(
+        dem_path=dem_files[0],
+        output_dir="simulation/terrain/shimla",
+        centre_lat=31.104,
+        centre_lon=77.173,
+        size_m=10_000.0,
+        output_pixels=513,
+    )
+
+    print(f"Heightmap generated: Y")
+    print(f"Min elevation in tile: {meta['min_elev_m']:.1f} m")
+    print(f"Max elevation in tile: {meta['max_elev_m']:.1f} m")
+    print(f"Elevation range:       {meta['elev_range_m']:.1f} m")
+    print(f"Output PNG size:       {meta['output_pixels']}x{meta['output_pixels']} pixels")
+    print(f"File path:             {meta['heightmap_path']}")
+    print(f"SDF snippet:           {meta['sdf_snippet_path']}")

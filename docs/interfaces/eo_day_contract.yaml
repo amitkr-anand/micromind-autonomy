@@ -3,10 +3,13 @@ description: >
   Day electro-optical camera — primary VIO source in day mode
 
 current_source:
-  type: synthetic
-  method: injected_VIO_vectors
+  type: SIL_simulation
+  method: DEM_hillshade_tile_VIOFrameProcessor
+  gate2_status: COMPLETE
   note: >
-    Gate 2 replaces with Gazebo camera rendered frames fed to OpenVINS.
+    Gate 2 complete. NadirCameraFrameBridge (Gazebo gz.transport) delivers frames to
+    VIOFrameProcessor (Shi-Tomasi + CLAHE + Lucas-Kanade optical flow, Case C: OpenVINS
+    not available). VIOEstimate produced at each frame. NAV-03 PASS.
 
 real_replacement:
   type: RGB_camera_nadir

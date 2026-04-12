@@ -3,11 +3,14 @@ description: >
   Nadir camera frame for terrain-relative navigation matching
 
 current_source:
-  type: synthetic
-  method: Gazebo_rendered_frame
+  type: SIL_simulation
+  method: DEM_multidirectional_hillshade_tile
+  gate2_status: COMPLETE
   note: >
-    Gate 2 will connect Gazebo camera output to this interface.
-    Currently tested with DEM-rendered tiles only.
+    Gate 2 complete. PhaseCorrelationTRN validated on real SHIMLA-1 COP30 DEM.
+    Multi-directional hillshade (illumination-invariant) used as correlation reference.
+    Correction sign convention verified: +row_offset → north correction, -col_offset → east.
+    NAV-01 TRN drift reduction: 37.17m → 23.63m over 35.5km Shimla corridor. NAV-02 PASS.
 
 real_replacement:
   type: EO_camera_nadir
