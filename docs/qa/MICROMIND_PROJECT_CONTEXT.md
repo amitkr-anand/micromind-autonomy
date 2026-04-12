@@ -61,12 +61,12 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
-**Integration RC tests:** 7 additional (4 RC-11 + 2 RC-7 + 1 RC-8)  
-**Total regression baseline:** 290 tests
+**Certified baseline runner:** `run_certified_baseline.sh` (406) — use before every gate commit and handoff  
+**Total regression baseline:** 406 tests
 
 ---
 
-## 6. Current Programme State (11 April 2026)
+## 6. Current Programme State (12 April 2026)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -113,6 +113,39 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ### OpenVINS Validation
 Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) across EuRoC MH_03 + V1_01. Zero FM events. **Outdoor and km-scale validation PENDING (L1, L3 limitations).**
+
+---
+
+### SIL Baseline Definition (Certified 12 April 2026 — QA-030)
+
+| Suite | Files | Count |
+|---|---|---|
+| S5 runner | test_s5_dmrl, test_s5_l10s_se, test_s5_bcmp1_runner, test_sprint_c_om_stub | 119 |
+| S8 runner | test_s8a, test_s8b, test_s8c, test_s8e | 68 |
+| BCMP2 runner | test_bcmp2_at1, test_bcmp2_sb2, test_bcmp2_at2, test_bcmp2_at3_5 | 90 |
+| AT-6 | test_bcmp2_at6 (excl. G-14) | 16 |
+| S6 | test_s6_zpi_cems | 36 |
+| Pre-HIL RC | test_prehil_rc11, test_prehil_rc7, test_prehil_rc8 | 7 |
+| S5 adversarial | test_s5_l10s_se_adversarial | 6 |
+| SB-5 Phase A | test_sb5_phase_a | 7 |
+| SB-5 Phase B | test_sb5_phase_b | 9 |
+| SB-5 EC01 | test_sb5_ec01 | 3 |
+| Deputy 2 adversarial | test_sb5_adversarial_d2 | 5 |
+| S9 arch regression | test_s9_nav01_pass | 13 |
+| Gate 2 navigation | test_gate2_navigation | 9 |
+| Gate 3 fusion | test_gate3_fusion | 18 |
+| **TOTAL** | | **406** |
+
+**Excluded from baseline (scope/CI reasons):**
+
+| File | Count | Reason |
+|---|---|---|
+| test_s_nep_04a_interface | 19 | nep-vio-sandbox scope |
+| test_s_nep_08 | 30 | nep-vio-sandbox scope |
+| test_s_nep_09 | 21 | nep-vio-sandbox scope |
+| test_sprint_s1–s4_acceptance | 34 | Superseded by later sprint gates |
+
+**G-14 exclusion note:** `test_G14_memory_growth_slope` requires `AT6_ENDURANCE_HOURS >= 1.0` to produce valid regression evidence. Excluded from CI baseline. Run manually as overnight dedicated endurance test. Last confirmed pass: SB-5 closure (1483 missions, 1.135 MB/hr slope).
 
 ---
 

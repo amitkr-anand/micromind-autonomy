@@ -4,6 +4,81 @@
 
 ---
 
+## Entry QA-030 — 12 April 2026
+**Session Type:** Housekeeping — SIL baseline reconciliation and certification
+**Focus:** Admit AT-6 (excl. G-14), S6, S9 arch gates to certified baseline; create run_certified_baseline.sh
+**Governance ref:** Code Governance Manual v3.4
+
+### Background
+
+Deputy 1 last confirmed baseline: 327/327 (119 S5 + 68 S8 + 90 BCMP2 + 50 integration).  
+Agent 2 QA-029 cited: 341/341 (119 S5 + 68 S8 + 90 BCMP2 + 64 integration).  
+Discrepancy: 14 tests. Full reconciliation performed — see below.
+
+### Reconciliation findings
+
+**Three runners (both sides agreed):** S5=119, S8=68, BCMP2=90 → 277.
+
+**Deputy 1's integration bucket (50):** 37 Handoff-1 gates + 13 (`test_s9_nav01_pass.py` — S9 arch regression gates, present since `a6c6eb3`, not counted by QA log).
+
+**Agent 2's integration bucket (64):** 37 Handoff-1 + 9 (Gate 2, `66c2643`) + 18 (Gate 3, `772cbfe`) — did not count `test_s9_nav01_pass.py`.
+
+**Net difference:** +9 Gate 2 + 18 Gate 3 − 13 S9 = +14 ✓.
+
+**Files in tests/ excluded from both SIL counts:**
+
+| File | Count | Reason |
+|---|---|---|
+| test_bcmp2_at6.py | 17 | AT-6 not in run_bcmp2_tests.py; never formally admitted |
+| test_s6_zpi_cems.py | 36 | Checked manually; not in any runner |
+| test_s9_nav01_pass.py | 13 | S9 arch regression; Deputy 1 counted it, QA log did not |
+| test_s_nep_04a/08/09 | 70 | nep-vio-sandbox scope |
+| test_sprint_s1–s4 | 34 | Superseded sprint acceptance gates |
+
+### Deputy 1 ruling (12 April 2026)
+
+- `test_s9_nav01_pass.py` (13): **ADMITTED**
+- `test_bcmp2_at6.py` (17, excl. G-14): **ADMITTED** — 16 tests in baseline
+- `test_s6_zpi_cems.py` (36): **ADMITTED**
+- G-14 (`test_G14_memory_growth_slope`): **EXCLUDED from CI baseline**
+  - Reason: requires `AT6_ENDURANCE_HOURS >= 1.0` for valid regression evidence; produces spurious slope (~39 MB/hr) in 125s CI runs due to noisy short-window linear fit over 8 samples (actual RSS change: ~2.3 MB)
+  - Last confirmed pass: SB-5 closure (1483 missions, 1.135 MB/hr slope)
+  - Run manually as overnight dedicated endurance test only
+
+### Step 1 verification (pre-admission run)
+
+`python -m pytest tests/test_bcmp2_at6.py tests/test_s6_zpi_cems.py tests/test_s9_nav01_pass.py -v`
+
+| Result | Count |
+|---|---|
+| PASS | 65 |
+| FAIL | 1 (G-14 only — expected, CI run duration) |
+| Deselected (G-14 excluded) | 1 |
+
+All 65 non-G-14 tests green. ✅
+
+### Step 3 — Full certified baseline run (406 tests)
+
+| Suite | Result |
+|---|---|
+| run_s5_tests.py | ✅ 119/119 |
+| run_s8_tests.py | ✅ 68/68 |
+| run_bcmp2_tests.py | ✅ 90/90 |
+| Integration + gates (excl. G-14) | ✅ 129/129 (1 deselected) |
+| **Total** | **✅ 406/406** |
+
+### Artefacts created
+
+- `run_certified_baseline.sh` — new CI baseline runner (406 tests, G-14 excluded via `-k "not test_G14_memory_growth_slope"`)
+- `docs/qa/MICROMIND_PROJECT_CONTEXT.md` — Section 5 updated (certified baseline runner added), Section 6 SIL Baseline Definition table added
+
+### Previous cited baseline: 341 (QA-029) / 327 (Deputy 1)
+### Corrected certified baseline: **406/406** ✅
+
+**Next:** Gate 4 — Shimla→Manali 180 km extended corridor, Monte Carlo N=300 drift envelopes
+
+---
+
 ## Entry QA-029 — 12 April 2026
 **Session Type:** SB-5 Gate 3 — Confidence-Aware Fusion and Degraded State Handling
 **Focus:** NAV-05 through NAV-08 — NavigationManager, update_trn() ESKF injection, NAV_TRN_ONLY state, confidence-aware SHM trigger, camera→VIO pipeline wiring
