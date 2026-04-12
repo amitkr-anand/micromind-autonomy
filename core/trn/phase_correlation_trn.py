@@ -299,7 +299,7 @@ class PhaseCorrelationTRN:
         F1 = np.fft.fft2(ref_f)
         F2 = np.fft.fft2(qry_f)
 
-        cross_power = F1 * np.conj(F2)
+        cross_power = F2 * np.conj(F1)   # Q = F_query · conj(F_ref) → peak at +shift
         magnitude   = np.abs(cross_power)
         # Avoid division by zero on zero-frequency component or flat tiles
         magnitude   = np.where(magnitude < 1e-12, 1e-12, magnitude)
