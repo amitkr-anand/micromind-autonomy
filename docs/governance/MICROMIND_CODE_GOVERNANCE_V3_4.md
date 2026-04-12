@@ -1,10 +1,10 @@
 # MICROMIND CODE GOVERNANCE MANUAL
 
-**Version 3.2 — Two-Deputy Sovereign Engineering Baseline**  
+**Version 3.4 — Handoff Execution Protocol & Adversarial QA Standard**  
 **Classification:** Programme Confidential / Project MicroMind Internal  
-**Authority:** TASL-MM-GOV-3.2  
-**Effective Date:** 10 April 2026  
-**Supersedes:** v3.1
+**Authority:** TASL-MM-GOV-3.4  
+**Effective Date:** 12 April 2026  
+**Supersedes:** v3.3
 
 ---
 
