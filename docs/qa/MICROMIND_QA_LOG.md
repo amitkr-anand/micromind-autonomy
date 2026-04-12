@@ -36,7 +36,7 @@
 **SIL: 314/314** (119 S5 + 68 S8 + 90 BCMP-2 + 37 integration = 314; all runners green)  
 **No test suite impact** — new files in `simulation/` and `docs/qa/` only.
 
-**Commit:** TBD
+**Commit:** `d7dd64f`
 
 **OI-31: CLOSED** — design decisions recorded in `simulation/demo/TECHNICAL_NOTES.md`
 
