@@ -54,6 +54,7 @@ class NCState(str, Enum):
     NOMINAL         = "NOMINAL"         # ST-01
     EW_AWARE        = "EW_AWARE"        # ST-02
     GNSS_DENIED     = "GNSS_DENIED"     # ST-03
+    NAV_TRN_ONLY    = "ST-03B"          # ST-03B: GNSS denied, VIO below threshold
     SILENT_INGRESS  = "SILENT_INGRESS"  # ST-04
     SHM_ACTIVE      = "SHM_ACTIVE"      # ST-05
     ABORT           = "ABORT"           # ST-06
@@ -83,6 +84,14 @@ class SystemInputs:
     # Navigation readiness
     vio_feature_count:      int      = 100      # ≥20 required for GNSS_DENIED
     trn_correlation_valid:  bool     = True
+
+    # Navigation confidence (Gate 3 — NavigationManager outputs)
+    vio_confidence:         float    = 0.0      # VIO confidence 0.0–1.0
+    trn_active:             bool     = False    # TRN accepted correction this cycle
+    trn_confidence:         float    = 0.0      # TRN phase correlation confidence
+    last_trn_km:            float    = 0.0      # Mission km of last TRN fix
+    mission_km:             float    = 0.0      # Current mission distance (km)
+    nav_confidence:         float    = 1.0      # Unified positional confidence 0.0–1.0
 
     # Mission envelope / geometry
     terminal_zone_entered:  bool     = False    # crossed per signed envelope
@@ -142,7 +151,10 @@ class NanoCorteXFSM:
         result = fsm.evaluate(inputs)    # called each simulation tick
     """
 
-    NFR_002_LIMIT_MS = 2000.0   # maximum allowed transition time (ms)
+    NFR_002_LIMIT_MS = 2000.0           # maximum allowed transition time (ms)
+    # Gate 3 — confidence-based SHM entry threshold.
+    # Source: config/tunable_mission.yaml  nav_confidence_shm_threshold: 0.20
+    NAV_CONFIDENCE_SHM_THRESHOLD = 0.20
 
     def __init__(
         self,
@@ -200,11 +212,26 @@ class NanoCorteXFSM:
             if result:
                 return result
 
+        # --- Global priority: confidence-based SHM entry (Gate 3 — EC-09/EC-10)
+        # Fires from any nav-active state when all correction sources fail.
+        # Prevents flying on unconstrained INS drift without safety response.
+        # Source: config/tunable_mission.yaml  nav_confidence_shm_threshold: 0.20
+        _nav_states = (
+            NCState.GNSS_DENIED,
+            NCState.NAV_TRN_ONLY,
+            NCState.SILENT_INGRESS,
+        )
+        if self._state in _nav_states:
+            result = self._try_shm_low_nav_confidence(inputs)
+            if result:
+                return result
+
         # --- State-specific transitions
         dispatch: Dict[NCState, Callable] = {
             NCState.NOMINAL:        self._from_nominal,
             NCState.EW_AWARE:       self._from_ew_aware,
             NCState.GNSS_DENIED:    self._from_gnss_denied,
+            NCState.NAV_TRN_ONLY:   self._from_nav_trn_only,
             NCState.SILENT_INGRESS: self._from_silent_ingress,
             NCState.SHM_ACTIVE:     self._from_shm_active,
             NCState.ABORT:          self._from_abort,
@@ -227,6 +254,38 @@ class NanoCorteXFSM:
         if inputs.key_mismatch or inputs.tamper_detected:
             trigger = "KEY_MISMATCH" if inputs.key_mismatch else "TAMPER_DETECTED"
             return self._transition(NCState.MISSION_FREEZE, trigger, guards, inputs)
+        return None
+
+    # ------------------------------------------------------------------
+    # Global guard: low nav confidence → SHM_ACTIVE (Gate 3 — EC-09/EC-10)
+    # ------------------------------------------------------------------
+
+    def _try_shm_low_nav_confidence(self, inputs: SystemInputs) -> Optional[TransitionResult]:
+        """
+        Fires from GNSS_DENIED, NAV_TRN_ONLY, or SILENT_INGRESS when
+        nav_confidence collapses below NAV_CONFIDENCE_SHM_THRESHOLD.
+
+        Closes the gap where a vehicle with no GNSS, failed VIO, and no TRN
+        for >15km would fly on unconstrained INS drift with no safety response.
+
+        Source: config/tunable_mission.yaml  nav_confidence_shm_threshold: 0.20
+        Ref: SRS v1.3 EC-09, EC-10
+        """
+        if inputs.nav_confidence < self.NAV_CONFIDENCE_SHM_THRESHOLD:
+            guards = [
+                GuardEvaluation(
+                    f"nav_confidence < {self.NAV_CONFIDENCE_SHM_THRESHOLD}",
+                    True,
+                    inputs.nav_confidence,
+                    self.NAV_CONFIDENCE_SHM_THRESHOLD,
+                )
+            ]
+            return self._transition(
+                NCState.SHM_ACTIVE,
+                "SHM_ENTRY_LOW_NAV_CONFIDENCE",
+                guards,
+                inputs,
+            )
         return None
 
     # ------------------------------------------------------------------
@@ -311,6 +370,64 @@ class NanoCorteXFSM:
         if inputs.terminal_zone_entered:
             return self._transition(NCState.SILENT_INGRESS, "TERMINAL_ZONE_BOUNDARY",
                                     guards_si, inputs)
+
+        # GNSS_DENIED → NAV_TRN_ONLY: VIO confidence below threshold, TRN still valid
+        # Source: config/tunable_mission.yaml  nav_trn_only_vio_threshold: 0.15
+        _VIO_THRESHOLD = 0.15
+        vio_degraded = inputs.vio_confidence < _VIO_THRESHOLD
+        guards_trn = [
+            GuardEvaluation(
+                f"vio_confidence < {_VIO_THRESHOLD}",
+                vio_degraded,
+                inputs.vio_confidence,
+                _VIO_THRESHOLD,
+            ),
+            GuardEvaluation("trn_active", inputs.trn_active, inputs.trn_active, True),
+        ]
+        if vio_degraded and inputs.trn_active:
+            return self._transition(NCState.NAV_TRN_ONLY, "NAV_DEGRADED_TRN_ONLY",
+                                    guards_trn, inputs)
+
+        return None
+
+    # ------------------------------------------------------------------
+    # ST-03B NAV_TRN_ONLY transitions
+    # ------------------------------------------------------------------
+
+    def _from_nav_trn_only(self, inputs: SystemInputs) -> Optional[TransitionResult]:
+        # NAV_TRN_ONLY → ABORT: corridor violation
+        if inputs.corridor_violation:
+            guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
+
+        # NAV_TRN_ONLY → SILENT_INGRESS: terminal zone boundary crossed
+        if inputs.terminal_zone_entered:
+            guards = [GuardEvaluation("terminal_zone_entered", True, True, True)]
+            return self._transition(NCState.SILENT_INGRESS, "TERMINAL_ZONE_BOUNDARY",
+                                    guards, inputs)
+
+        # NAV_TRN_ONLY → INS_ONLY (→ SHM via confidence guard):
+        # TRN inactive AND gap > 15km. Handled by _try_shm_low_nav_confidence
+        # when nav_confidence collapses. No separate INS_ONLY FSM state —
+        # nav_confidence < 0.20 is the authoritative SHM trigger.
+        # Source: config/tunable_mission.yaml  nav_ins_only_trn_gap_km: 15.0
+        _TRN_GAP_KM = 15.0
+        ins_only = (
+            not inputs.trn_active and
+            (inputs.mission_km - inputs.last_trn_km) > _TRN_GAP_KM
+        ) if hasattr(inputs, 'mission_km') else False
+        if ins_only:
+            guards = [
+                GuardEvaluation("trn_active", False, False, True),
+                GuardEvaluation(
+                    f"trn_gap > {_TRN_GAP_KM} km",
+                    ins_only,
+                    inputs.mission_km - inputs.last_trn_km if hasattr(inputs, 'mission_km') else 0.0,
+                    _TRN_GAP_KM,
+                ),
+            ]
+            return self._transition(NCState.SHM_ACTIVE, "NAV_DEGRADED_INS_ONLY",
+                                    guards, inputs)
 
         return None
 

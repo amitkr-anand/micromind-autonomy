@@ -64,6 +64,11 @@ class ErrorStateEKF:
     # ── GNSS measurement noise (BIM-scaled) ─────────────────────────────
     _GNSS_R_NOMINAL = np.diag([2.5**2, 2.5**2, 5.0**2])   # m²
 
+    # ── TRN measurement noise (confidence-scaled) ────────────────────────
+    # 5 m 1-sigma horizontal; 1e6 vertical — TRN provides no vertical correction.
+    # Source: config/tunable_mission.yaml  trn_nominal_noise_horizontal_m: 5.0
+    _R_TRN_NOMINAL = np.diag([25.0, 25.0, 1e6])            # m²
+
     def __init__(self):
         self.x = np.zeros(15)
         self.P = np.zeros((15, 15))
@@ -156,6 +161,86 @@ class ErrorStateEKF:
         K = self.P @ H.T @ np.linalg.inv(S)
         self.x = self.x + K @ (z - H @ self.x)
         self.P = (np.eye(15) - K @ H) @ self.P
+
+    def update_trn(self, state, correction_ned, confidence, suitability_score):
+        """
+        NAV-02: TRN measurement update.
+        Injects terrain-relative position correction into the ESKF.
+
+        correction_ned    : (3,) array — [north_m, east_m, 0.0]
+                            TRN provides 2D correction only; vertical = 0.
+                            The correction IS the innovation: z = correction_ned
+                            (equivalent to: true_pos ≈ state.p + correction_ned)
+        confidence        : float [0.0, 1.0] — phase correlation peak value
+        suitability_score : float [0.0, 1.0] — terrain texture/relief quality
+
+        Combined weight:
+            w = confidence * suitability_score
+        Effective noise:
+            R_eff = R_TRN_NOMINAL / clip(w, 0.1, 1.0)
+        Same scaling pattern as update_gnss().
+
+        Rejects if w < 0.1 (combined confidence too low to be useful).
+
+        Returns: (NIS: float, rejected: bool, innov_mag: float)
+        """
+        w = float(confidence) * float(suitability_score)
+
+        # Lazy-init structured event log (cannot modify __init__ under unfreeze scope)
+        if not hasattr(self, '_trn_event_log'):
+            self._trn_event_log: list = []
+
+        if w < 0.1:
+            self._trn_event_log.append({
+                "event":        "TRN_ESKF_UPDATE",
+                "module_name":  "ErrorStateEKF",
+                "req_id":       "NAV-02",
+                "severity":     "INFO",
+                "payload": {
+                    "nis":               0.0,
+                    "rejected":          True,
+                    "confidence":        float(confidence),
+                    "suitability_score": float(suitability_score),
+                    "combined_weight":   float(w),
+                },
+            })
+            return 0.0, True, 0.0
+
+        correction_ned = np.asarray(correction_ned, dtype=np.float64).reshape(3)
+        innov_mag = float(np.linalg.norm(correction_ned))
+
+        H = np.zeros((3, 15))
+        H[0:3, 0:3] = np.eye(3)        # position observation
+
+        # Confidence-scaled measurement noise — same pattern as update_gnss
+        R_eff = self._R_TRN_NOMINAL / np.clip(w, 0.1, 1.0)
+
+        z = correction_ned              # TRN correction is the innovation directly
+        S = H @ self.P @ H.T + R_eff
+        try:
+            S_inv = np.linalg.inv(S)
+            nis = float(z @ S_inv @ z)
+        except np.linalg.LinAlgError:
+            return 0.0, True, innov_mag
+
+        K = self.P @ H.T @ S_inv
+        self.x = self.x + K @ (z - H @ self.x)
+        self.P = (np.eye(15) - K @ H) @ self.P
+
+        self._trn_event_log.append({
+            "event":        "TRN_ESKF_UPDATE",
+            "module_name":  "ErrorStateEKF",
+            "req_id":       "NAV-02",
+            "severity":     "INFO",
+            "payload": {
+                "nis":               round(nis, 6),
+                "rejected":          False,
+                "confidence":        float(confidence),
+                "suitability_score": float(suitability_score),
+                "combined_weight":   round(w, 4),
+            },
+        })
+        return nis, False, innov_mag
 
     def inject(self, state):
         """
