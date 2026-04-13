@@ -4,6 +4,64 @@
 
 ---
 
+## Entry QA-032 — 13 April 2026
+**Session Type:** Product Gate 5  
+**Focus:** Full 180km Shimla-Manali corridor, Monte Carlo N=300 envelopes, compound fault injection, pre-HIL navigation specification  
+**Governance ref:** Code Governance Manual v3.4  
+
+### Terrain
+- Both DEM tiles admitted: shimla_tile.tif (south, covers Shimla at 31.10°N) + manali_tile.tif (north, covers to 32.50°N)
+- DEMLoader.from_directory() stitches both tiles; merged north bound = 32.50°N
+- All 8 SHIMLA_MANALI waypoints valid (non-NaN, positive elevation)
+- terrain_zones annotations added to SHIMLA_MANALI: Shimla Ridge, Sutlej-Beas Gorge, Kullu-Manali Alpine
+
+### Terrain Suitability Profile (at 10km intervals)
+Zone 1 (0–60km) mean score: 0.503 — CAUTION/ACCEPT (forested ridge, good TRN signal)  
+Zone 2 (60–120km) mean score: 0.585 — CAUTION/ACCEPT (river gorge, variable)  
+Zone 3 (120–180km) mean score: 0.306 — CAUTION/SUPPRESS (alpine, localised SUPPRESS at km 150, 170)  
+Note: SUPPRESS at km 30, 150, 170 reflects valley floor texture loss — bridged by adjacent fixes.
+
+### Monte Carlo N=300 P99 at 180km
+- INS-only:   372.6 m  
+- TRN only:    76.2 m  
+- VIO+TRN:     76.2 m  
+- TRN reduction at 180km: 79.5%  
+- Full table: 30km (15.5%), 60km (58.7%), 90km (68.6%), 120km (71.7%), 150km (64.2%), 180km (79.5%)
+
+### Compound Fault Injection (Step 4 / NAV-16)
+Fault scenario: VIO confidence degraded km 60–75 (atmospheric obscuration per Addendum v2 §10.2), TRN suppressed km 120–135 (snow-covered alpine terrain per Addendum v2 §10.2).  
+- SHM triggered: **NO** — nav_confidence stays above 0.20 throughout  
+- NAV_TRN_ONLY entered at VIO degradation window: **YES**  
+- NAV_MODE_TRANSITION events logged: **YES** (≥2 transitions confirmed)  
+- System reached km 180: **YES**  
+- NOMINAL during GNSS-available phase: **YES**  
+
+### Gates
+- NAV-13: Merged DEM coverage — **PASS** (4/4 assertions)
+- NAV-14: Terrain suitability variation — **PASS** (2/2 assertions)
+- NAV-15: Monte Carlo 180km — **PASS** (5/5 assertions)
+- NAV-16: Compound fault survival — **PASS** (6/6 assertions)
+
+### Pre-HIL Specification
+`docs/qa/PREHIL_NAV_SPECIFICATION.md` created and committed.  
+Covers: navigation performance table, terrain observability profile, sensor substitution readiness, compound fault validation, open items before HIL, HIL acceptance criteria.
+
+### SIL
+- Certified baseline: **406/406** (run_certified_baseline.sh)
+- Gate 4: **19/19**
+- Gate 5: **17/17**
+- **Total: 442/442** — zero regressions
+
+### Commit
+`d332a79` — feat(nav): Gate 5 — 180km Shimla-Manali corridor, Monte Carlo N=300 full corridor, compound fault survival, pre-HIL specification — NAV-13 through NAV-16 PASS [re-freeze: none]
+
+### Open Items Raised
+None new. EF-01 (PX4 OFFBOARD failsafe), OI-37, OI-40, OI-41 remain open as documented.
+
+**Next:** Gate 6 — Jammu–Leh tactical corridor (pending DEM tiles)
+
+---
+
 ## Entry QA-030 — 12 April 2026
 **Session Type:** Housekeeping — SIL baseline reconciliation and certification
 **Focus:** Admit AT-6 (excl. G-14), S6, S9 arch gates to certified baseline; create run_certified_baseline.sh

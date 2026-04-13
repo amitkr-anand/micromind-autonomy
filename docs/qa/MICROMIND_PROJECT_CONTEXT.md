@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 12 April 2026  
+**Last Updated:** 13 April 2026  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -61,12 +61,12 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 **Environment:** Python 3.12.3 / Ubuntu 24.04.4 / micromind-node01  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
-**Certified baseline runner:** `run_certified_baseline.sh` (406) + `test_gate4_extended.py` (19) — use before every gate commit and handoff  
-**Total regression baseline:** 425 tests (406 certified + 19 Gate 4)
+**Certified baseline runner:** `run_certified_baseline.sh` (406) + `test_gate4_extended.py` (19) + `test_gate5_corridor.py` (17) — use before every gate commit and handoff  
+**Total regression baseline:** 442 tests (406 certified + 19 Gate 4 + 17 Gate 5)
 
 ---
 
-## 6. Current Programme State (12 April 2026)
+## 6. Current Programme State (13 April 2026)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -98,6 +98,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | SB-5 Gate 2 — Gazebo Heightmap + Camera Pipeline + VIO + TRN Drift Reduction | ✅ COMPLETE | NAV-01..04 PASS (9/9 gate tests). Critical bug fix: PhaseCorrelationTRN Step 8 north correction sign inverted (+row_offset convention). TRN drift reduction: 37.17 m → 23.63 m over 35.5 km Shimla corridor. New modules: shimla_heightmap_generator.py, shimla_terrain.sdf, nadir_camera_bridge.py, vio_frame_processor.py. Interface contracts updated (trn_contract.yaml Gate 2 COMPLETE, eo_day_contract.yaml Gate 2 COMPLETE). SIL 323/323 — zero regressions. opencv-python-headless 4.13.0 installed. | `66c2643` |
 | SB-5 Gate 3 — Confidence-Aware Fusion + Degraded State Handling | ✅ COMPLETE | NAV-05..08 PASS (18/18 gate tests). update_trn() added to ESKF (Deputy 1 unfreeze authorised; re-frozen post-commit). NavigationManager fusion coordinator: GNSS/VIO/TRN confidence-weighted ESKF injection, nav_confidence scoring (weights: GNSS 1.0, VIO 0.7, TRN 0.5). NAV_TRN_ONLY FSM state (ST-03B) added. Confidence-aware SHM trigger: SHM_ENTRY_LOW_NAV_CONFIDENCE fires at nav_confidence < 0.20. Camera→VIO pipeline wired (Gate 2 open finding closed). Gate 3 drift table: 50 km Shimla, seed=42, 47–70% TRN reduction at 9 fixes. config/tunable_mission.yaml created. SIL 341/341 (119 S5 + 68 S8 + 90 BCMP2 + 64 integration = 341). | `772cbfe` |
 | SB-5 Gate 4 — Extended Corridor + Monte Carlo Drift Envelopes | ✅ COMPLETE | NAV-09..12 PASS (19/19 gate tests). New infrastructure: DEMLoader.from_directory() multi-tile rasterio.merge stitching (HIL production path); MissionCorridor dataclass with position_at_km() Haversine interpolation; SHIMLA_MANALI (8 WPs, 180 km, gnss_denial_start=10 km) and SHIMLA_LOCAL (55 km). MonteCarloNavEvaluator AD-16 methodology: N=300 seeds, DRIFT_PSD=1.5 m/√s per axis, σ_TRN=25 m. Monte Carlo N=300 result: P99 at 55 km = 77.1 m (TRN) vs 182.5 m (no correction) — 57.7% P99 reduction. Terrain: Zone 1 CAUTION (score 0.57–0.58), Zones 2–3 SUPPRESS (out-of-tile). OI pending Manali COP30 tile admission. Live SITL VIO: SKIP (Gazebo not available). SIL 406/406 certified + 19 Gate 4 = 425 total. | `968247f` |
+| SB-5 Gate 5 — Full 180km Corridor + Monte Carlo N=300 + Compound Fault + Pre-HIL Spec | ✅ COMPLETE | NAV-13..16 PASS (17/17 gate tests). Both DEM tiles admitted (shimla_tile.tif + manali_tile.tif → merged north=32.50°N, all 8 WPs valid). Monte Carlo N=300: P99 TRN at 180km = 76.2m vs INS-only 372.6m (79.5% reduction). Terrain suitability profile: Zone 1 mean 0.503, Zone 2 mean 0.585, Zone 3 mean 0.306 (SUPPRESS at km 30, 150, 170 — valley floors). terrain_zones annotations added to SHIMLA_MANALI. Compound fault: VIO degraded km 60–75, TRN suppressed km 120–135 — SHM NOT triggered, NAV_TRN_ONLY correctly entered, km 180 reached. PREHIL_NAV_SPECIFICATION.md committed. SIL 406 certified + 19 Gate 4 + 17 Gate 5 = 442/442. | `d332a79` |
 
 ### nep-vio-sandbox
 | Sprint | Status | Gates |
@@ -117,7 +118,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 
 ---
 
-### SIL Baseline Definition (Certified 12 April 2026 — QA-030)
+### SIL Baseline Definition (Updated 13 April 2026 — QA-032)
 
 | Suite | Files | Count |
 |---|---|---|
@@ -136,7 +137,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | Gate 2 navigation | test_gate2_navigation | 9 |
 | Gate 3 fusion | test_gate3_fusion | 18 |
 | Gate 4 extended corridor | test_gate4_extended | 19 |
-| **TOTAL** | | **425** |
+| Gate 5 full corridor | test_gate5_corridor | 17 |
+| **TOTAL** | | **442** |
 
 **Excluded from baseline (scope/CI reasons):**
 
