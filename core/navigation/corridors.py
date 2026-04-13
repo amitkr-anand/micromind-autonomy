@@ -62,6 +62,9 @@ class MissionCorridor:
     gnss_denial_end_km    : Mission km at which GNSS denial ends.
                             -1.0 = denied to end of mission.
     description           : Human-readable corridor summary.
+    terrain_zones         : Optional list of terrain zone annotation dicts.
+                            Each dict: {name, km_start, km_end, character,
+                            expected_suitability, notes}.
     """
     name:                   str
     waypoints:              List[Tuple[float, float]]  # (lat, lon) WGS84
@@ -70,6 +73,7 @@ class MissionCorridor:
     gnss_denial_start_km:   float
     gnss_denial_end_km:     float   # -1.0 = denied to mission end
     description:            str
+    terrain_zones:          List[dict] = field(default_factory=list)
 
     def position_at_km(self, km: float) -> Tuple[float, float]:
         """
@@ -172,6 +176,41 @@ SHIMLA_MANALI = MissionCorridor(
         "Three terrain zones: forested ridge (0–60 km), "
         "river gorge (60–120 km), high alpine (120–180 km)."
     ),
+    terrain_zones=[
+        {
+            "name": "Shimla Ridge",
+            "km_start": 0,
+            "km_end": 60,
+            "character": "forested_ridge",
+            "expected_suitability": "ACCEPT",
+            "notes": (
+                "Dense Himalayan forest, high relief, strong TRN signal"
+            ),
+        },
+        {
+            "name": "Sutlej-Beas Gorge",
+            "km_start": 60,
+            "km_end": 120,
+            "character": "river_gorge",
+            "expected_suitability": "CAUTION",
+            "notes": (
+                "Narrow gorge, steep walls, river valley floor suppressed, "
+                "wall faces variable"
+            ),
+        },
+        {
+            "name": "Kullu-Manali Alpine",
+            "km_start": 120,
+            "km_end": 180,
+            "character": "high_alpine",
+            "expected_suitability": "ACCEPT",
+            "notes": (
+                "High relief, open terrain, strong TRN signal. "
+                "Snow cover may reduce reliability — noted as future "
+                "thermal sensing use case per Addendum v2"
+            ),
+        },
+    ],
 )
 
 SHIMLA_LOCAL = MissionCorridor(
