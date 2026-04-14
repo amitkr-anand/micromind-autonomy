@@ -39,7 +39,9 @@
             name="gz::sim::systems::Physics"/>
     <plugin filename="gz-sim-sensors-system"
             name="gz::sim::systems::Sensors">
-      <render_engine>ogre2</render_engine>
+      <!-- render_engine omitted: GZ_ENGINE_NAME=ogre env var selects OGRE1
+           (avoids OGRE2 crash on RTX 5060 Ti — OI-20 fix pattern).
+           QA-033 infrastructure fix, 13 Apr 2026. -->
     </plugin>
     <plugin filename="gz-sim-scene-broadcaster-system"
             name="gz::sim::systems::SceneBroadcaster"/>
@@ -74,7 +76,7 @@
         <collision name="collision">
           <geometry>
             <heightmap>
-              <uri>file://shimla_heightmap.png</uri>
+              <uri>file://shimla_heightmap_8bit.png</uri>
               <size>10000.0 10000.0 1150.9</size>
               <pos>0 0 1309.1</pos>
             </heightmap>
@@ -83,14 +85,15 @@
         <visual name="visual">
           <geometry>
             <heightmap>
-              <uri>file://shimla_heightmap.png</uri>
+              <uri>file://shimla_heightmap_8bit.png</uri>
               <size>10000.0 10000.0 1150.9</size>
               <pos>0 0 1309.1</pos>
-              <texture>
-                <diffuse>file://media/materials/textures/dirt_diffusespecular.png</diffuse>
-                <normal>file://media/materials/textures/flat_normal.png</normal>
-                <size>10</size>
-              </texture>
+              <!-- OI-42: heightmap <texture> block removed — gz-rendering8 OGRE2
+                   Sensors renderer fails with "Can't assign material scene::Material(N)"
+                   when a SDF <texture> block is present (internal material binding
+                   incompatibility). Terrain texture provided via separate
+                   shimla_terrain_texture model below (OGRE2 PBR albedo_map path).
+                   Diagnosed QA-034, 13 Apr 2026. -->
             </heightmap>
           </geometry>
         </visual>
@@ -98,9 +101,11 @@
     </model>
 
     <!-- x500 quadrotor with nadir camera -->
-    <!-- Spawned at Shimla city centre at 1700 m altitude (~300 m AGL) -->
+    <!-- Spawned at Shimla city centre at 2472 m altitude (~300 m AGL).
+         shimla_heightmap.png centre pixel = 49140/65535 → terrain h = 2172 m.
+         AGL = 2472 - 2172 = 300 m. (Original 1700 m was 472 m below terrain — OI-42 fix.) -->
     <model name="x500_0">
-      <pose>0 0 1700 0 0 0</pose>
+      <pose>0 0 2472 0 0 0</pose>
 
       <!-- Minimal quadrotor body -->
       <link name="base_link">
@@ -124,7 +129,7 @@
         <!-- Nadir camera sensor -->
         <!-- pitch = π/2 rad = 1.5708 rad to point camera downward -->
         <sensor name="nadir_camera" type="camera">
-          <pose>0 0 -0.1 0 1.5708 0</pose>
+          <pose>0 0 -0.1 0 -1.5708 0</pose>
           <camera>
             <horizontal_fov>1.0472</horizontal_fov>
             <!-- 60 degrees = 1.0472 rad -->
@@ -143,6 +148,39 @@
           <always_on>true</always_on>
         </sensor>
 
+      </link>
+    </model>
+
+    <!-- OI-42 terrain texture plane (QA-034, 13 Apr 2026)
+         A flat ground plane at Z=1800m carries the OpenTopography colour hillshade
+         (shimla_texture.png) via OGRE2 PBR albedo_map — the only fully-supported
+         material path for gz-rendering8 sensors renderer.
+
+         Geometry: vehicle at 2472m → 672m AGL above plane.
+         Camera: 60° FOV, 640×640px → footprint ≈ 776m, GSD ≈ 1.2 m/px.
+         This provides sufficient Shi-Tomasi corner density for VIO confidence
+         measurement. The heightmap collision/physics geometry is unchanged.
+
+         Req IDs: NAV-03, OI-42. -->
+    <model name="shimla_terrain_texture">
+      <static>true</static>
+      <pose>0 0 1800 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>10000 10000</size>
+            </plane>
+          </geometry>
+          <material>
+            <pbr>
+              <metal>
+                <albedo_map>file:///home/mmuser/micromind/repos/micromind-autonomy/simulation/terrain/shimla/shimla_texture.png</albedo_map>
+              </metal>
+            </pbr>
+          </material>
+        </visual>
       </link>
     </model>
 

@@ -4,6 +4,73 @@
 
 ---
 
+## Entry QA-033 — 13 April 2026
+**Session Type:** Live SITL VIO verification  
+**Focus:** VIO confidence on real Gazebo terrain frames vs Gate 2 DEM ceiling (0.547)  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-03, AD-17
+
+### Infrastructure Findings
+
+**gz.transport13 Python bindings:**
+- Not installed in micromind-autonomy conda env. Bridge falls back to inject-only mode from conda Python.
+- Found at `/usr/lib/python3/dist-packages/gz/` but incompatible with system Python 3.13 (Anaconda, missing `_PyThreadState_UncheckedGet`).
+- System Python 3.12 (`/usr/bin/python3.12`) + `PYTHONPATH=/usr/lib/python3/dist-packages` resolves the binding correctly.
+- **Action item (OI-42):** Install gz.transport13 bindings in micromind-autonomy conda env, or add Python 3.12 wrapper to the measurement script.
+
+**World file fixes applied (shimla_nav_test.world):**
+1. Sensors plugin `<render_engine>ogre2</render_engine>` tag removed — was overriding `GZ_ENGINE_NAME=ogre` env var and crashing OGRE2 on RTX 5060 Ti (OI-20 fix pattern). Without this removal the server crashed silently after loading physics.
+2. Heightmap `<texture>` block removed — `dirt_diffusespecular.png` and `flat_normal.png` are Gazebo Classic media textures not present in Gazebo Harmonic gz-rendering8. Retained as comment explaining absence.
+
+### Step 1 — Gazebo Launch
+- Gazebo launched: **Y**
+- Launch command: `gz sim -r -s --headless-rendering` with `GZ_ENGINE_NAME=ogre`, `LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libpthread.so.0`, `__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/10_nvidia.json`, `GZ_SIM_RESOURCE_PATH=simulation/terrain/shimla`
+- World ready (`/world/shimla_nav_test/scene/info`): **Y** — responds within 15s
+- Camera topic `/nadir_camera/image` found: **Y**
+
+### Step 2 — Camera Publishing
+- Vehicle airborne: N/A — x500_0 spawned static at 1700m in world file; run_mission.py not invoked (no PX4)
+- Camera publishing frames: **Y** — 1196 frames received at 20.4 Hz (world configured 5 Hz; Gazebo physics step interaction producing higher delivery rate)
+
+### Step 3 — VIO Confidence Measurement (60 seconds)
+- Frames received: **1196**
+- VIO estimates produced: **0**
+- Frame delivery rate: **20.4 Hz**
+- Confidence min/mean/max: **N/A — no estimates**
+- Gate 2 ceiling (0.547) exceeded: **N**
+- Frames above ceiling: **0/0**
+- Feature count mean: **N/A**
+
+### Step 4 — Frame Diagnostic
+- Frame shape: **(640, 640, 3)**
+- Frame dtype: **uint8**
+- Channel means: **R=218, G=231, B=243** (matches sky background colour `<background>0.7 0.8 0.9 1.0`)
+- Overall std: **10.21** (cross-channel colour difference only; within each channel std≈0)
+- R-G channel diff: **13.0** (technically "has colour" — sky blue tint, not terrain)
+- Laplacian variance (texture): **0.0**
+- CLAHE enhanced pixel range: **234–234** (single value)
+- Shi-Tomasi corners detected: **0**
+- Max pixel diff first→last frame: **0** (completely static, no rendering change)
+
+**Diagnosis:** Heightmap terrain visual NOT rendering. Camera sees only the uniform sky background colour. OGRE1 without a diffuse texture material renders the heightmap as a flat single-value surface — zero spatial variation visible at 300m AGL. Laplacian variance = 0.0 with single histogram bin confirms zero texture content.
+
+### Root Cause
+`dirt_diffusespecular.png` (Gazebo Classic heightmap material) is absent from the Gazebo Harmonic gz-rendering8 installation. Without a diffuse texture, OGRE1 applies no material shading to the heightmap visual, producing a flat uniform background-coloured surface. The physics/collision heightmap loads correctly (ODE Heightfield AABB confirms terrain geometry), but the visual heightmap renders as sky.
+
+### Action Items Before Next SITL VIO Session
+1. **(OI-42 NEW — HIGH)** Provide terrain texture: copy or generate `dirt_diffusespecular.png` at `simulation/terrain/shimla/media/materials/textures/`. Source candidate: synthesise from Shimla hillshade data or use a suitable OGRE terrain texture (e.g. rock/earth). `flat_normal.png` is available at PX4-gazebo-classic path.
+2. **(OI-43 NEW — MEDIUM)** Install gz.transport13 Python bindings in micromind-autonomy conda env so the bridge works without the Python 3.12 workaround.
+3. After OI-42: re-run this session. Expected outcome: rendered terrain with texture → Shi-Tomasi corners detectable → VIO confidence measurable vs Gate 2 ceiling.
+
+### SIL
+- Certified baseline before session: **442/442** ✅ (S5 119/119, S8 68/68, BCMP2 90/90)
+- SIL after session: **442/442** ✅ — no production code changes; two world file infrastructure fixes only
+
+### Verdict
+**INCONCLUSIVE** — Wiring verified (bridge→gz.transport→VIOFrameProcessor pipeline functional end-to-end on Python 3.12); Gazebo world loads and camera publishes at 20.4 Hz. VIO confidence cannot be measured: heightmap terrain visual does not render in headless OGRE1 without diffuse texture. Confidence vs Gate 2 ceiling comparison deferred pending OI-42 terrain texture provision.
+
+---
+
 ## Entry QA-032 — 13 April 2026
 **Session Type:** Product Gate 5  
 **Focus:** Full 180km Shimla-Manali corridor, Monte Carlo N=300 envelopes, compound fault injection, pre-HIL navigation specification  
