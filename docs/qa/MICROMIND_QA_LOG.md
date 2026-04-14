@@ -4,6 +4,78 @@
 
 ---
 
+## Entry QA-034 — 15 April 2026
+**Session Type:** Gate 6 pre-work — Cross-modal TRN framework + Blender frame pipeline  
+**Focus:** BlenderFrameIngestor, CrossModalEvaluator, OI-42 texture resolution, CM-01 through CM-04  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-02, AD-01, EC-13
+
+### Step 0 — Read-First Findings
+- **min_peak_value:** 0.15 (stored as `self._min_peak`, not `_min_peak_value`)
+- **tile_size_m / gsd_m in gate tests:** 500.0 m / 5.0 m (`_TILE_SIZE_M`, `_GSD_M` in test_gate2_navigation.py)
+- **match() signature:** accepts `camera_tile: np.ndarray` (pre-rendered frame) directly; reference hillshade generated internally
+- **HillshadeGenerator defaults:** azimuth=315° (NW), elevation=45° — azimuth does NOT match Blender sun (135° SE); elevation matches. Validation script explicitly sets azimuth=135.0 to match Blender.
+
+### New Modules Created
+| Module | Purpose |
+|---|---|
+| `core/trn/blender_frame_ingestor.py` | NAV-02: Load Blender PNG frames, compute GSD, validate frame quality |
+| `core/trn/cross_modal_evaluator.py` | NAV-02: Run PhaseCorrelationTRN on each frame; aggregate corridor stats + threshold calibration |
+| `scripts/validate_cross_modal_trn.py` | Run-on-arrival script for Programme Director |
+| `tests/test_gate6_cross_modal.py` | CM-01 through CM-04 gate tests (15 tests) |
+| `data/synthetic_imagery/shimla_corridor/README.md` | Staging directory documentation |
+
+### Blender Frames Received
+12 frames: frame_km000.png through frame_km055.png (5km intervals)  
+Shape: 640×640 RGB. All GOOD quality: lap_var=225–340, corners=1000 (capped).
+
+### Cross-Modal TRN Results (Real Blender Frames vs DEM Hillshade)
+Validation script run: `python scripts/validate_cross_modal_trn.py --frames data/synthetic_imagery/shimla_corridor/ --corridor shimla_local --altitude 150.0`
+
+**Finding:** All 12 frames REJECTED (not SUPPRESSED — terrain suitability CAUTION/ACCEPT). Peak values 0.09–0.11.
+- Suitability scores: 0.548–0.783 (ACCEPT/CAUTION) — terrain is suitable
+- Cross-modal peak range: 0.0903–0.1136 — below operational threshold 0.15
+- Suggested calibrated threshold (P10): **0.091**
+
+**Interpretation:** Cross-modal matching (RGB Blender vs DEM hillshade) produces lower peaks than self-match (1.0) or same-modality match. CAS paper predicts 0.3–0.7 for IR/hillshade pairs; RGB/hillshade pairs are more spectrally divergent and produce peaks in the 0.09–0.11 range. The calibration framework correctly identifies the distribution and suggests 0.091 as the operational cross-modal threshold. Decision on threshold update deferred to Programme Director.
+
+**TRN GSD note:** At 150m AGL (camera GSD=0.27m), the DEM (30m native) would be over-upsampled if used at camera GSD. CrossModalEvaluator automatically clamps TRN GSD to max(camera_gsd, dem_res × 0.5) = 14.35m to ensure reference has meaningful texture. This is the correct operational mode per CAS §2.
+
+### OI-42 Texture Fix
+- `shimla_texture.png` found at: `data/terrain/Shimla_Manali_Corridor/viz/viz.hh_hillshade-color.png`
+- File already at: `simulation/terrain/shimla/shimla_texture.png`
+- World file already has OI-42 terrain texture plane fix (QA-033 session)
+- **Verification:** Laplacian variance = 3642.4, Shi-Tomasi corners = 1000
+- **OI-42 status: RESOLVED**
+
+### Gate Tests — tests/test_gate6_cross_modal.py (15 tests)
+| Gate | Tests | Result |
+|---|---|---|
+| CM-01: BlenderFrameIngestor | 6 | PASS |
+| CM-02: CrossModalEvaluator end-to-end | 3 | PASS |
+| CM-03: GSD calculation | 4 | PASS |
+| CM-04: Threshold calibration | 2 | PASS |
+| **TOTAL** | **15** | **15/15 PASS** |
+
+**CM-02 note:** Proxy frames (DEM hillshade) tested at altitude=2771m (GSD≈5m, DEM-compatible). TRN threshold lowered to 0.03 for pipeline end-to-end validation. Real cross-modal threshold characterisation is from the Blender frame results above.
+
+### SIL Baseline
+- Certified baseline: **406/406** (run_certified_baseline.sh — ~191s)
+- Gate 4: **19/19** (test_gate4_extended.py)
+- Gate 5: **17/17** (test_gate5_corridor.py)
+- Gate 6 (new): **15/15** (test_gate6_cross_modal.py)
+- **Total: 442 + 15 = 457/457 — zero regressions**
+
+### Commit
+`0919615` — feat(nav): Gate 6 pre-work — cross-modal TRN evaluator, Blender frame ingestor, OI-42 texture fix, CM-01 through CM-04 PASS
+
+### Open Items
+- OI-42: RESOLVED (shimla_texture.png committed, world file has PBR plane fix, lap_var=3642, corners=1000)
+- OI-43: gz.transport13 conda env install — OPEN (not addressed this session)
+- NEW: Cross-modal threshold calibration finding — Blender RGB vs DEM hillshade peaks 0.09–0.11; suggested operational threshold 0.091 (vs current 0.15). Requires Programme Director decision before NAV-02 HIL.
+
+---
+
 ## Entry QA-033 — 13 April 2026
 **Session Type:** Live SITL VIO verification  
 **Focus:** VIO confidence on real Gazebo terrain frames vs Gate 2 DEM ceiling (0.547)  
