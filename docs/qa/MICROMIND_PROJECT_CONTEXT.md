@@ -66,7 +66,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ---
 
-## 6. Current Programme State (15 April 2026 — updated QA-034)
+## 6. Current Programme State (15 April 2026 — updated QA-035)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |

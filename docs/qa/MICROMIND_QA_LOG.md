@@ -4,6 +4,54 @@
 
 ---
 
+## Entry QA-035 — 15 April 2026
+**Session Type:** Gate 6 verification — Step 0 read-first report, module review, SIL re-run  
+**Focus:** Confirm Gate 6 pre-work state; re-run 457/457 SIL; deliver Step 0 findings  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-02, AD-01, EC-13
+
+### Step 0 — Read-First Findings (QA-035 verification)
+
+| Item | Finding |
+|---|---|
+| (a) `min_peak_value` in PhaseCorrelationTRN | **0.15** (`phase_correlation_trn.py:104`) |
+| (b) `tile_size_m` / `gsd_m` in gate tests | **500.0 m / 5.0 m/px** (`test_gate2_navigation.py:41–42`) |
+| (c) `match()` accepts pre-rendered frame? | **Yes** — `camera_tile: np.ndarray` is caller-supplied; reference hillshade generated internally. Signature: `match(camera_tile, lat_estimate, lon_estimate, alt_m, gsd_m, mission_time_ms)` |
+| (d) HillshadeGenerator defaults | **azimuth=315°, elevation=45°** — neither matches Blender sun (135°, 35°). Scripts/tests correctly override: `HillshadeGenerator(azimuth_deg=135.0, elevation_deg=45.0)`. Note: elevation=45° is used in scripts (not 35°). |
+
+### OI-42 Verification
+- shimla_texture.png: **FOUND** at `simulation/terrain/shimla/shimla_texture.png`
+- Laplacian variance: **3642**
+- Shi-Tomasi corners: **1000** (capped)
+- OI-42 status: **RESOLVED** (confirmed at QA-034; world file PBR plane fix in place)
+
+### Module Reviews (no changes made)
+- `core/trn/blender_frame_ingestor.py` — complete and correct
+- `core/trn/cross_modal_evaluator.py` — complete; GSD clamp logic verified
+- `scripts/validate_cross_modal_trn.py` — ready for Programme Director use
+- `data/synthetic_imagery/shimla_corridor/README.md` — exists, 12 Blender frames present
+
+### SIL Baseline (re-run)
+- S5 runner: **119/119** PASS
+- S8 runner: **68/68** PASS
+- BCMP2 runner: **90/90** PASS
+- Integration + Gates: **129/129** PASS (1 deselected: G-14)
+- Gate 4: **19/19** PASS
+- Gate 5: **17/17** PASS
+- Gate 6: **15/15** PASS (CM-01..04 all green)
+- **Total SIL: 457/457 — zero regressions**
+
+Note: Prompt specified "446/446 (406+19+17+4)". Actual Gate 6 test count is 15 (6+3+4+2 across CM-01..04), not 4. 457 is the correct total (consistent with QA-034).
+
+### Commit
+`6a67881` — HEAD (QA-034 doc commit; no new code this session)
+
+### Open Items
+- OI-44 (cross-modal threshold decision): OPEN — Programme Director decision required before NAV-02 HIL. Blender peaks 0.09–0.11 vs threshold 0.15. Calibrated suggestion: 0.091.
+- OI-43 (gz.transport13 in conda env): OPEN — not addressed.
+
+---
+
 ## Entry QA-034 — 15 April 2026
 **Session Type:** Gate 6 pre-work — Cross-modal TRN framework + Blender frame pipeline  
 **Focus:** BlenderFrameIngestor, CrossModalEvaluator, OI-42 texture resolution, CM-01 through CM-04  
