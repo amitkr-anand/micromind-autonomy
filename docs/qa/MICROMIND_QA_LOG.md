@@ -4,6 +4,102 @@
 
 ---
 
+## Entry QA-037 — 15 April 2026
+**Session Type:** OI-46 — Real Sentinel-2 TRN Validation  
+**Focus:** Implement validate_real_sentinel_trn.py using T43RGQ TCI JP2 as reference; characterise results; identify root cause of low NCC peaks  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-02, AD-01, EC-13  
+**SIL:** 457/457 ✅
+
+### Session Start Checklist
+| Suite | Result |
+|---|---|
+| run_s5_tests.py | 119 tests OK ✅ |
+| run_s8_tests.py | 4/4 suites PASS ✅ |
+| run_bcmp2_tests.py | 4/4 suites PASS ✅ |
+
+### Step 1 — TCI Tile Inspection
+T43RGQ_20251017T053241_TCI_10m.jp2 inspected via rasterio:
+
+| Field | Value |
+|---|---|
+| Path | `data/terrain/shimla_corridor/S2A_MSIL2A_20251017T053241_N0511_R062_T43RGQ_20251017T075551.SAFE/GRANULE/.../R10m/T43RGQ_20251017T053241_TCI_10m.jp2` |
+| CRS | EPSG:32643 (UTM Zone 43N) |
+| Resolution | 10 m/px |
+| Dimensions | 10980×10980 px |
+| Dtype | uint8, 3-band RGB |
+| WGS84 bounds | 77.086–78.264°E, 30.605–31.618°N |
+| Scene date | 17 October 2025 |
+| Corridor coverage | All 12 SHIMLA_LOCAL km-points (km 0–55) ✅ |
+
+### Step 2 — SentinelTCILoader Implementation
+New `SentinelTCILoader` class (DEMLoader-compatible) in `scripts/validate_real_sentinel_trn.py`:
+- Opens JP2 with rasterio; stores CRS (EPSG:32643), affine transform, dimensions
+- `get_tile()`: WGS84→UTM via `rasterio.warp.transform()`; windowed read; RGB→luminance (0.299R + 0.587G + 0.114B); scipy.ndimage.zoom to target resolution
+- TRN GSD: 5.0 m/px; ref tile: 34×34 px at 173 m footprint
+- PassthroughHillshadeGen passes float32 luminance through as-is (no hillshade transform)
+
+### Real Sentinel-2 TRN Validation Results
+
+**Query:** Blender frames (shimla_texture.png — DEM hillshade-colour, OpenTopography)  
+**Reference:** Sentinel-2 TCI T43RGQ, 10 m/px, Oct 2025  
+**Threshold:** 0.100
+
+| km | Status | Peak | Suitability | Rec | RefTexVar | RefRelief | CorrMag (m) |
+|----|--------|------|-------------|-----|----------|-----------|-------------|
+| 0 | ACCEPTED | 0.1041 | 0.567 | CAUTION | 553.3 | 136.5 | 80.16 |
+| 5 | REJECTED | 0.0943 | 0.439 | CAUTION | 551.8 | 73.1 | 0.00 |
+| 10 | ACCEPTED | 0.1098 | 0.429 | CAUTION | 563.3 | 70.9 | 75.17 |
+| 15 | REJECTED | 0.0944 | 0.393 | CAUTION | 154.8 | 113.2 | 0.00 |
+| 20 | ACCEPTED | 0.1142 | 0.427 | CAUTION | 421.1 | 89.9 | 56.57 |
+| 25 | REJECTED | 0.0950 | 0.516 | CAUTION | 647.8 | 86.5 | 0.00 |
+| 30 | REJECTED | 0.0901 | 0.414 | CAUTION | 398.6 | 92.8 | 0.00 |
+| 35 | ACCEPTED | 0.1057 | 0.409 | CAUTION | 510.8 | 85.4 | 5.00 |
+| 40 | REJECTED | 0.0950 | 0.408 | CAUTION | 445.8 | 83.2 | 0.00 |
+| 45 | REJECTED | 0.0931 | 0.583 | CAUTION | 1489.6 | 25.8 | 0.00 |
+| 50 | REJECTED | 0.0973 | 0.515 | CAUTION | 349.9 | 131.9 | 0.00 |
+| 55 | SUPPRESSED | 0.0000 | 0.000 | SUPPRESS | 103.7 | 218.1 | 0.00 |
+
+**Summary:**
+- Accepted: 4/12 | Rejected: 7/12 | Suppressed: 1/12
+- Peak range: 0.0000–0.1142, Mean: 0.0911
+
+### Baseline Comparison
+
+| Validation | Peak range | Accepted |
+|---|---|---|
+| OI-44 Cross-modal: RGB vs DEM hillshade | 0.0903–0.1136 | 0/12 |
+| OI-45 Same-modal self-offset | 0.9874–0.9932 | 12/12 |
+| OI-46 Real Sentinel-2 TCI | 0.0000–0.1142 | 4/12 |
+
+### OI-46 Finding — OPEN
+
+**Root cause confirmed:** `simulation/terrain/shimla/shimla_texture.png` is `viz.hh_hillshade-color.png` (OpenTopography DEM hillshade-colour terrain visualisation) — NOT Sentinel-2 optical imagery. Blender frames rendered from this texture are therefore cross-modal against the TCI reference. Peak range 0.09–0.11 equals OI-44 cross-modal baseline — consistent with the finding.
+
+**km=55 SUPPRESSED anomaly:** Pre-TRN diagnostic shows ref_texture_var=103.7 > 50 and ref_relief_m=218.1 > 20, which should pass TerrainSuitabilityScorer. TRN nevertheless returns SUPPRESSED. Likely edge case in JP2 windowed read (nodata region, cloud mask, or UTM→pixel boundary clipping). Requires investigation.
+
+**Required action for OI-46 resolution:**
+1. Crop T43RGQ TCI to SHIMLA_LOCAL corridor extent → replace `simulation/terrain/shimla/shimla_texture.png`
+2. Re-render 12 Blender frames with TCI-derived texture
+3. Re-run `validate_real_sentinel_trn.py` — expected peaks ≥ 0.30 for genuine same-modality
+
+### SIL Verification
+- gate tests 51/51 PASS (test_gate4_extended + test_gate5_corridor + test_gate6_cross_modal)
+- run_s5_tests.py: 119 OK
+- run_s8_tests.py: 4/4 PASS
+- run_bcmp2_tests.py: 4/4 PASS
+- **SIL: 457/457 ✅**
+
+### Files Changed This Session
+| File | Action |
+|---|---|
+| `scripts/validate_real_sentinel_trn.py` | CREATED — SentinelTCILoader + PassthroughHillshadeGen + OI-46 runner |
+| `docs/qa/real_sentinel_trn_results.md` | CREATED — OI-46 validation results |
+| `docs/qa/MICROMIND_PROJECT_CONTEXT.md` | UPDATED — Sections 6 and 8 (OI-46 OPEN) |
+| `docs/qa/MICROMIND_QA_LOG.md` | UPDATED — QA-037 appended |
+
+---
+
 ## Entry QA-036 — 16 April 2026
 **Session Type:** OI-45 CRITICAL — Same-modality TRN validation  
 **Focus:** Implement validate_same_modal_trn.py; close OI-44 as architectural; close OI-45 with validated results  
