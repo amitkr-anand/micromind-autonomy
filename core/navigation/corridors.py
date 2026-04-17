@@ -225,3 +225,76 @@ SHIMLA_LOCAL = MissionCorridor(
     gnss_denial_end_km=-1.0,
     description="Shimla local corridor used in Gates 1–3.",
 )
+
+JAMMU_LEH = MissionCorridor(
+    name="JAMMU_LEH",
+    waypoints=[
+        (32.73, 74.87),   # Jammu — corridor start
+        (32.92, 75.13),   # Udhampur
+        (33.17, 75.08),   # Ramban — Chenab gorge
+        (33.50, 75.19),   # Banihal Pass (2,832m)
+        (34.08, 74.80),   # Srinagar — valley floor
+        (34.30, 75.29),   # Sonamarg (2,740m)
+        (34.35, 75.47),   # Zoji La (3,528m) — tactical chokepoint
+        (34.43, 75.76),   # Drass (3,280m)
+        (34.56, 76.13),   # Kargil (2,676m)
+        (34.17, 77.58),   # Leh (3,524m) — corridor end
+    ],
+    total_distance_km=330.0,
+    terrain_dir="data/terrain/Jammu_leh_corridor_COP30/",
+    gnss_denial_start_km=30.0,
+    gnss_denial_end_km=330.0,
+    description=(
+        "Jammu to Leh via NH-1. "
+        "Four terrain zones: Shivalik foothills (0–90 km), "
+        "Pir Panjal / Banihal (90–150 km), "
+        "Kashmir valley and Zoji La (150–210 km), "
+        "Ladakh high plateau (210–330 km)."
+    ),
+    terrain_zones=[
+        {
+            "name": "Shivalik Foothills",
+            "km_start": 0,
+            "km_end": 90,
+            "character": "forested_ridge",
+            "expected_suitability": "ACCEPT",
+            "notes": (
+                "Shivalik range, moderate relief, forested ridgelines, "
+                "strong TRN signal expected"
+            ),
+        },
+        {
+            "name": "Pir Panjal — Banihal",
+            "km_start": 90,
+            "km_end": 150,
+            "character": "high_alpine",
+            "expected_suitability": "ACCEPT",
+            "notes": (
+                "Chenab gorge and Banihal Pass, high relief, "
+                "terrain well-differentiated"
+            ),
+        },
+        {
+            "name": "Kashmir Valley — Zoji La",
+            "km_start": 150,
+            "km_end": 210,
+            "character": "river_gorge",
+            "expected_suitability": "CAUTION",
+            "notes": (
+                "Kashmir valley floor low relief then Zoji La ascent; "
+                "valley floor may suppress TRN score"
+            ),
+        },
+        {
+            "name": "Ladakh High Plateau",
+            "km_start": 210,
+            "km_end": 330,
+            "character": "high_alpine",
+            "expected_suitability": "ACCEPT",
+            "notes": (
+                "Drass, Kargil, Zanskar ranges, extreme relief, "
+                "strong TRN signal expected; snow cover seasonal risk"
+            ),
+        },
+    ],
+)
