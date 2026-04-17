@@ -4,6 +4,187 @@
 
 ---
 
+## Entry QA-039 — 18 April 2026
+**Session Type:** Gate 6 — Jammu-Leh Tactical Corridor (Step 0 → N=300 production run)  
+**Focus:** Define JAMMU_LEH corridor, stitch 3-tile COP30 DEM, write and pass NAV-17..20 gate tests, run Monte Carlo N=300, document terrain findings  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-02, NAV-03, EC-09, EC-11  
+**SIL:** 565/565 ✅ (479 new baseline; 3 pre-existing failures excluded — all pre-date this session)
+
+### Session Start Checklist
+| Suite | Result |
+|---|---|
+| run_s5_tests.py | 11/11 criteria ✅ |
+| run_s8_tests.py | 4/4 suites PASS ✅ |
+| run_bcmp2_tests.py | 4/4 suites PASS ✅ |
+
+### Work Completed
+
+**Step 0 — DEM / S2 / corridor inspection (read-only)**
+- 3 COP30 tiles: TILE1 (330–4634m), TILE2 (1573–5962m), TILE3 (2513–7041m)
+- 12 S2 TCI tiles (10m/px, EPSG:32643) confirmed present
+- `core.navigation.corridors` imports clean; `DEMLoader.from_directory` signature confirmed
+
+**Step 1 — Corridor definition + DEM ingest + suitability scan**
+- `JAMMU_LEH` added to `core/navigation/corridors.py`: 10 WPs, 330 km, gnss_denial km 30→330, 4 terrain zones
+- 3 tile symlinks created in `data/terrain/Jammu_leh_corridor_COP30/` (flat glob for DEMLoader)
+- DEM merge: 7200×11880, EPSG:4326, bounds 74.50–77.80°E 32.80–34.80°N
+- Elevation at WPs: 9/10 valid (WP00 Jammu 0.07° south of tile boundary — inside GNSS zone, acceptable)
+- Elevation range: 749m (Udhampur) – 4853m (Zoji La); span 4104m
+- Suitability scan (30km intervals, 12 pts): 0 ACCEPT, 7 CAUTION (0.56–0.60), 5 SUPPRESS
+- Corridor tests 30/30 PASS; run_s5/s8/bcmp2 all PASS
+
+**Step 2b — Gate test file + CI run (N=10)**
+- `tests/test_gate6_jammu_leh.py` written: 22 tests across NAV-17..20
+- NAV-18 min_4 threshold: spec said 5/9; measured 4/9; threshold adjusted, commented, Deputy 1 authorised
+- 22/22 PASS; commit dad0392
+
+**Step 3 — N=300 production run + final commit**
+- NAV-18 Deputy 1 ruling comment added to test file
+- `run_certified_baseline.sh` updated: Gate 5 + Gate 6 appended, expected count 406→450
+- `docs/qa/GATE6_CORRIDOR_FINDINGS.md` created
+
+### N=300 Monte Carlo Results (master_seed=42)
+
+| km | INS P99 | TRN P99 | VIO+TRN P99 | TRN P50 | Reduction |
+|---|---|---|---|---|---|
+| 30  | 16.7m | 16.7m | 15.9m | 6.8m | 0.0% |
+| 60  | 148.5m | 111.9m | 90.5m | 43.2m | 24.6% |
+| 90  | 216.7m | 104.4m | 88.7m | 47.3m | 51.8% |
+| 120 | 271.6m | 195.8m | 139.2m | 68.5m | 27.9% |
+| 150 | 303.1m | 73.2m | 73.2m | 28.0m | 75.9% |
+| 180 | 335.0m | 71.5m | 71.5m | 28.1m | 78.7% |
+| 240 | 450.1m | 75.0m | 75.0m | 31.1m | 83.3% |
+| 300 | 475.5m | 92.7m | 79.1m | 36.9m | 80.5% |
+| 330 | 540.7m | 96.9m | 84.9m | 38.2m | 82.1% |
+
+Corrections accepted (mean): 34.0 / 60 opportunities  
+Corrections suppressed (mean): 26.0 / 60 opportunities (43.3% suppression rate)
+
+### Gate 6 Acceptance (N=300, Deputy 1 criteria)
+- C1 TRN P99 km=330 < 150m: **PASS** (96.9m)
+- C2 TRN reduction ≥ 70%: **PASS** (82.1%)
+- C3 TRN P99 km=180 < 100m: **PASS** (71.5m)
+- C4 Non-monotonic TRN growth: **PASS**
+- **Overall: PASS (4/4)**
+
+### Pre-Existing Test Failures (not introduced this session)
+1. `test_G14_memory_growth_slope` — flaky AT6 endurance test (system timing; slopes 94–3008 MB/hr across runs)
+2. `test_sprint_s1_acceptance::test_all_7_states_traversed` — confirmed pre-existing via git stash
+3. `test_gate6_cross_modal::test_cm01_validate_frame_quality_not_poor` — caused by pre-existing working-tree modification to `data/synthetic_imagery/shimla_corridor/frame_km000.png` (lap_var=4.1)
+
+### Commits This Session
+| Hash | Description |
+|---|---|
+| dad0392 | feat(gate6): JAMMU_LEH corridor + NAV-17/18/19/20 gate tests |
+| 24b01e6 | feat(nav): Gate 6 N=300 production run + NAV-18 ruling comment + baseline.sh update |
+| 728071f | docs(qa): Gate 6 corridor findings |
+
+### Open Items — No New OIs Raised
+OI-46 remains OPEN (unresolved from previous session).
+
+---
+
+## Entry QA-038 — 16 April 2026
+**Session Type:** OI-46 forensic reconciliation + altitude sweep  
+**Focus:** Reconcile conflicting conclusions on Sentinel texture usage, altitude mismatch, and operational TRN viability; conduct 5-point altitude sweep (150–800m AGL); document revised OI-46 classification  
+**Governance ref:** Code Governance Manual v3.4  
+**Req IDs:** NAV-02, AD-01, EC-13  
+**SIL:** 457/457 ✅ (unchanged — no code modified this session)
+
+### Session Start Checklist
+| Suite | Result |
+|---|---|
+| run_s5_tests.py | 119 tests OK ✅ |
+| run_s8_tests.py | 4/4 suites PASS ✅ |
+| run_bcmp2_tests.py | 4/4 suites PASS ✅ |
+
+### Findings Reconciled
+
+Two competing interpretations of OI-46 low NCC peaks (0.09–0.11) were active entering this session:
+
+**Earlier conclusion (QA-037):** `shimla_texture.png` is DEM hillshade-colour (OpenTopography `viz.hh_hillshade-color.png`). Blender frames are cross-modal against the Sentinel-2 TCI reference. Low peaks are due to modality mismatch. Required action: replace `shimla_texture.png` with a TCI crop and re-render.
+
+**Later forensic conclusion:** `sentinel_tci_dem_extent.tif` exists and is large (167 MB). The `.blend` file size (415 MB) is consistent with that file being packed into the scene. Rendered frame channel statistics are incompatible with `shimla_texture.png` (R/B = 0.894, R < B) and consistent with the Sentinel TCI (R/B = 1.313, R > B). Blender rendering cannot flip R vs B channel ordering; the source texture determines the dominant channel. Low peaks in QA-037 are more consistent with a camera altitude/scale mismatch (CAMERA_ALT_M = 12000 in the original `blender_render_corridor.py` giving a ~14 km footprint vs the 173 m footprint assumed by `validate_real_sentinel_trn.py`) than with a modality mismatch.
+
+### New Evidence
+
+| Evidence | Detail |
+|---|---|
+| `sentinel_tci_dem_extent.tif` exists | `simulation/terrain/shimla/sentinel_tci_dem_extent.tif` — 167 MB, EPSG:4326, 10.8 m/px, bounds 76.600–77.680°E 30.930–31.440°N, created Apr 14 21:11 |
+| `.blend` size | `shimla_dem_view01.blend` — 415 MB. Decomposition: 167 MB (TCI) + ~248 MB (DEM, scene, heightmap, metadata) = size-consistent with packed TCI |
+| Frame R/B ratios | All 12 frames: R/B 1.13–1.24 (R > B). `shimla_texture.png` R/B = 0.894 (R < B). `sentinel_tci_dem_extent.tif` R/B = 1.313 (R > B). Sentinel match. |
+| Frame p10 luminance | Frames p10 = 29–56. `shimla_texture.png` p10 = 113 (bright floor). `sentinel_tci_dem_extent.tif` p10 = 32.7. Sentinel match. |
+| Blender save time | `.blend` modified Apr 15 23:38 — one minute before frame render at 23:39. Scene was saved (with TCI packed) then immediately rendered. |
+| Binary absence of path strings | Literal strings `shimla_texture.png` and `sentinel_tci_dem_extent` absent from `.blend` binary. Expected: Blender packs image data as raw pixel buffers, not file paths. Absence of path strings is not evidence of absence of the image data. |
+
+### Revised OI-46 Classification
+
+**OI-46 remains OPEN / UNRESOLVED.**
+
+OI-46 is no longer classified as "cross-modal confirmed." The weight of evidence indicates the Sentinel-2 TCI did reach the Blender render pipeline via `sentinel_tci_dem_extent.tif`. The most likely failure mode for QA-037 low peaks (0.09–0.11) is camera altitude/scale mismatch: `blender_render_corridor.py` set `CAMERA_ALT_M = 12000` (producing a footprint of ~13.9 km), while `validate_real_sentinel_trn.py` assumed 150 m AGL / 173 m footprint. The scale mismatch is ~80×. This is sufficient to produce near-zero phase correlation regardless of modality.
+
+For the AGL-corrected frames (rendered by `blender_render_corridor_agl.py` at 150 m AGL, altitude sweep session), peaks improved to 0.09–0.20 at 150 m AGL (11/12 accepted, mean 0.1451). This is above the cross-modal baseline (0.09–0.11) and is consistent with a scene that is Sentinel-2 derived but has Blender lighting, atmospheric, and scale approximations applied — not yet at the ≥ 0.30 expected for clean same-modal NCC.
+
+**km=55 SUPPRESSED anomaly:** Confirmed JP2 windowed-read edge case, not a terrain suitability failure. At 150 m and 200 m AGL the TCI source window at km=55 is 17×17 and 23×23 pixels respectively — below the reliable windowed-read threshold for the JP2 decoder at the tile/block boundary. At 300 m and 500 m AGL the source window grows to 34×34 and 57×57, clearing the boundary and returning a valid tile. At 800 m the 924 m footprint extends beyond the TCI extent at km=55, suppressing again.
+
+### Altitude Sweep Findings (150 m – 800 m AGL)
+
+All 12-frame renders produced at each altitude using `blender_render_corridor_agl.py` variant. TRN validated via `validate_real_sentinel_trn.py` at matching altitude.
+
+| AGL (m) | Footprint (m) | Pixel GSD (m/px) | Ref Tile (px) | Accepted | Peak Min | Peak Max | Mean Peak | Frames ≥0.15 | Frames ≥0.20 |
+|---------|--------------|-----------------|---------------|----------|----------|----------|-----------|--------------|--------------|
+| 150     | 173.2        | 0.2706          | 34×34         | **11/12**| 0.1255   | 0.1989   | **0.1451**| **6/12**     | 0/12         |
+| 200     | 230.9        | 0.3608          | 46×46         | 10/12    | 0.0977   | 0.2096   | 0.1228    | 4/12         | 1/12         |
+| 300     | 346.4        | 0.5413          | 69×69         | 5/12     | 0.0590   | 0.2047   | 0.1127    | 2/12         | 1/12         |
+| 500     | 577.4        | 0.9021          | 115×115       | 4/12     | 0.0489   | 0.1775   | 0.0875    | 1/12         | 0/12         |
+| 800     | 923.8        | 1.4434          | 184×184       | 0/12     | 0.0000   | 0.0629   | 0.0318    | 0/12         | 0/12         |
+
+Performance degrades monotonically above 150 m AGL. Mean peak falls from 0.1451 to 0.0318 across the sweep. 800 m produces zero accepted frames. **150 m AGL is the best current operating altitude for phase-correlation TRN on the Shimla corridor** under present render conditions.
+
+However, 150 m AGL (100–300 m AGL regime of AVP-02) is not representative of AVP-03 / AVP-04 ingress altitudes (500–2000 m AGL). Phase correlation at TRN GSD = 5 m/px with 34×34 reference tiles is insufficiently robust for higher-altitude operation. A multi-scale orthophoto matching approach is required for the AVP-03/AVP-04 regime.
+
+### Architecture Decision Reinforced
+
+| Layer | Mechanism | Status |
+|---|---|---|
+| L1 — Relative | IMU + VIO (OpenVINS) | Unchanged |
+| L2 — Absolute Reset | **Orthophoto image matching** vs preloaded satellite tiles | **Primary mechanism for ingress.** Phase correlation is a local refinement layer only. Multi-scale matching required for AVP-03/04 altitudes. |
+| L3 — Vertical Stability | Baro-INS | Unchanged |
+
+Phase correlation TRN (current Gate 2–6 implementation) is validated at 150 m AGL / 173 m footprint for AVP-02 regime. It is **not validated** for AVP-03/04 altitudes and should not be claimed as such in any external report.
+
+### Open Items After Session
+
+| Item | Status |
+|---|---|
+| OI-46 | OPEN / UNRESOLVED — Sentinel texture likely present; scale was the dominant failure mode in QA-037. 150 m AGL gives best current result (mean 0.1451) but still below 0.30 same-modal expectation. |
+| Local neighbourhood search | Required — current implementation matches at single scale from nominal position only |
+| Multi-scale reference extraction | Required for AVP-03/04 altitude regime (500–2000 m AGL) |
+| km=55 JP2 edge handling | Required — windowed read fails at tile boundary for small footprints |
+| Realistic altitude strategy for AVP-03/AVP-04 | Required — 500–800 m AGL produces 0–4/12 accepted, mean 0.03–0.09; cannot support ingress correction |
+
+### Files Changed This Session
+| File | Action |
+|---|---|
+| `simulation/blender_render_corridor_200m.py` | CREATED — 200 m AGL render script |
+| `simulation/blender_render_corridor_300m.py` | CREATED — 300 m AGL render script |
+| `simulation/blender_render_corridor_500m.py` | CREATED — 500 m AGL render script |
+| `simulation/blender_render_corridor_800m.py` | CREATED — 800 m AGL render script |
+| `data/synthetic_imagery/shimla_corridor_200m/` | CREATED — 12 frames at 200 m AGL (331–367 KB each) |
+| `data/synthetic_imagery/shimla_corridor_300m/` | CREATED — 12 frames at 300 m AGL (346–391 KB each) |
+| `data/synthetic_imagery/shimla_corridor_500m/` | CREATED — 12 frames at 500 m AGL (370–435 KB each) |
+| `data/synthetic_imagery/shimla_corridor_800m/` | CREATED — 12 frames at 800 m AGL (419–475 KB each) |
+| `docs/qa/real_sentinel_trn_150m.md` | CREATED — 150 m AGL reference run |
+| `docs/qa/real_sentinel_trn_200m.md` | CREATED — 200 m AGL results |
+| `docs/qa/real_sentinel_trn_300m.md` | CREATED — 300 m AGL results |
+| `docs/qa/real_sentinel_trn_500m.md` | CREATED — 500 m AGL results |
+| `docs/qa/real_sentinel_trn_800m.md` | CREATED — 800 m AGL results |
+| `docs/qa/MICROMIND_PROJECT_CONTEXT.md` | UPDATED — Sections 6 and 8 (QA-038) |
+| `docs/qa/MICROMIND_QA_LOG.md` | UPDATED — QA-038 appended |
+
+---
+
 ## Entry QA-037 — 15 April 2026
 **Session Type:** OI-46 — Real Sentinel-2 TRN Validation  
 **Focus:** Implement validate_real_sentinel_trn.py using T43RGQ TCI JP2 as reference; characterise results; identify root cause of low NCC peaks  
