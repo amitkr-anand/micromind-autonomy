@@ -8,35 +8,35 @@
   CRS: EPSG:32643 (UTM 43N), 10 m/px, uint8 RGB  
   Scene date: 17 October 2025  
   WGS84: 77.086–78.264°E, 30.605–31.618°N
-**Altitude:** 150.0m AGL
+**Altitude:** 200.0m AGL
 **TRN GSD:** 5.0 m/px
-**Ref tile:** 34×34 px (173m footprint)
+**Ref tile:** 46×46 px (231m footprint)
 
 ## Results
 
 | km | Status | Peak | Suitability | Rec | RefTexVar | RefRelief | CorrMag (m) | Query |
 |----|--------|------|-------------|-----|----------|-----------|-------------|-------|
-| 0 | ACCEPTED | 0.1989 | 0.567 | CAUTION | 553.3 | 136.5 | 55.00 | POOR |
-| 5 | ACCEPTED | 0.1384 | 0.439 | CAUTION | 551.8 | 73.1 | 75.00 | POOR |
-| 10 | ACCEPTED | 0.1482 | 0.429 | CAUTION | 563.3 | 70.9 | 70.00 | POOR |
-| 15 | ACCEPTED | 0.1255 | 0.393 | CAUTION | 154.8 | 113.2 | 0.00 | POOR |
-| 20 | ACCEPTED | 0.1814 | 0.427 | CAUTION | 421.1 | 89.9 | 85.00 | POOR |
-| 25 | ACCEPTED | 0.1654 | 0.516 | CAUTION | 647.8 | 86.5 | 30.41 | POOR |
-| 30 | ACCEPTED | 0.1292 | 0.414 | CAUTION | 398.6 | 92.8 | 15.00 | POOR |
-| 35 | ACCEPTED | 0.1558 | 0.409 | CAUTION | 510.8 | 85.4 | 35.00 | POOR |
-| 40 | ACCEPTED | 0.1450 | 0.408 | CAUTION | 445.8 | 83.2 | 15.00 | POOR |
-| 45 | ACCEPTED | 0.1881 | 0.583 | CAUTION | 1489.6 | 25.8 | 5.00 | POOR |
-| 50 | ACCEPTED | 0.1656 | 0.515 | CAUTION | 349.9 | 131.9 | 30.00 | POOR |
-| 55 | SUPPRESSED | 0.0000 | 0.000 | SUPPRESS | 103.7 | 218.1 | 0.00 | POOR |
+| 0 | ACCEPTED | 0.1292 | 0.617 | ACCEPT | 433.2 | 189.1 | 115.00 | POOR |
+| 5 | ACCEPTED | 0.1040 | 0.455 | CAUTION | 240.9 | 129.3 | 35.00 | POOR |
+| 10 | ACCEPTED | 0.1143 | 0.389 | CAUTION | 369.7 | 78.0 | 50.00 | POOR |
+| 15 | ACCEPTED | 0.1058 | 0.374 | CAUTION | 129.2 | 112.0 | 0.00 | POOR |
+| 20 | ACCEPTED | 0.2096 | 0.408 | CAUTION | 282.2 | 97.7 | 0.00 | POOR |
+| 25 | ACCEPTED | 0.1176 | 0.464 | CAUTION | 492.6 | 83.4 | 95.00 | POOR |
+| 30 | ACCEPTED | 0.1586 | 0.398 | CAUTION | 222.1 | 105.6 | 10.00 | POOR |
+| 35 | ACCEPTED | 0.1525 | 0.398 | CAUTION | 243.4 | 102.0 | 70.00 | POOR |
+| 40 | ACCEPTED | 0.1274 | 0.380 | CAUTION | 327.3 | 87.2 | 15.00 | POOR |
+| 45 | REJECTED | 0.0977 | 0.457 | CAUTION | 859.4 | 32.9 | 0.00 | POOR |
+| 50 | ACCEPTED | 0.1564 | 0.560 | CAUTION | 243.0 | 180.6 | 25.00 | POOR |
+| 55 | SUPPRESSED | 0.0000 | 0.000 | SUPPRESS | 71.7 | 233.4 | 0.00 | POOR |
 
 ## Summary
 
-- Accepted: 11/12
-- Rejected: 0/12
+- Accepted: 10/12
+- Rejected: 1/12
 - Suppressed: 1/12
-- Peak range: 0.0000 – 0.1989
-- Mean peak (all): 0.1451
-- Suggested threshold (P10 non-suppressed): 0.129
+- Peak range: 0.0000 – 0.2096
+- Mean peak (all): 0.1228
+- Suggested threshold (P10 non-suppressed): 0.104
 - Current threshold: 0.100
 
 ## Baseline Comparison
@@ -45,7 +45,7 @@
 |-----------|-----------|----------|
 | OI-44 Cross-modal: RGB vs DEM hillshade | 0.0903–0.1136 | 0/12 |
 | OI-45 Same-modal self-offset | 0.9874–0.9932 | 12/12 |
-| OI-46 Real Sentinel-2 TCI | 0.0000–0.1989 | 11/12 |
+| OI-46 Real Sentinel-2 TCI | 0.0000–0.2096 | 10/12 |
 
 ## Interpretation and OI-46 Finding
 

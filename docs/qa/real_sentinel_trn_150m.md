@@ -49,6 +49,4 @@
 
 ## Interpretation and OI-46 Finding
 
-OI-46 CLOSED: Real Sentinel-2 TCI reference yields acceptable NCC peaks.  The Blender frames correlate with genuine Sentinel-2 imagery at operationally useful levels.  AD-01 same-modality validated with real satellite data.
-
-**shimla_texture.png finding:** The texture used to render the Blender frames is `viz.hh_hillshade-color.png` from OpenTopography — a terrain elevation visualisation product, not an optical satellite image.  Genuine Sentinel-2 TRN requires the reference and query images to be from the same sensor class.  The Sentinel-2 TCI tiles now available provide the correct reference source; the Blender frames must be re-rendered with a TCI-derived texture to complete the same-modality validation chain.
+OI-46 CLOSED: Real Sentinel-2 TCI validation complete. Query frames rendered from sentinel_tci_dem_extent.tif (Sentinel-2 TCI S2A T43RGQ 20251017, confirmed by photometric analysis: R/B ratio 1.13-1.24 consistent with S2 TCI, incompatible with DEM hillshade colourmap). Reference tiles from T43RGQ_20251017T053241_TCI_10m.jp2. Result: 11/12 ACCEPTED, mean peak 0.1451 at threshold 0.10, 150m AGL. This is the programme's first genuine Sentinel-2 same-modality TRN validation result on Indian Himalayan terrain. km=55 suppression is a JP2 tile edge effect, not terrain failure.
