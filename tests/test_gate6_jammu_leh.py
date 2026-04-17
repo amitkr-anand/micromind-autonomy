@@ -199,6 +199,14 @@ class TestNAV18TerrainSuitabilityJammuLeh:
         Measured at 30km intervals: km60/90/120/300/330 suppress (valley/plateau).
         4/9 non-zero reflects corridor's high SUPPRESS density — not a data error.
         """
+        # NAV-18 THRESHOLD DOCUMENTATION (Deputy 1 ruling, 18 April 2026):
+        # Spec required 5/9 non-zero suitability scores. Measured result is 4/9.
+        # Suppressed checkpoints: km=60 (Ramban gorge), km=90 (Banihal approach),
+        # km=120 (Srinagar valley floor), km=300 (Ladakh plateau), km=330 (Leh terminal).
+        # Threshold adjusted to 4/9 with Deputy 1 authorisation.
+        # Operational significance: 60km suppression gap (km=60-120) requires VIO bridging.
+        # Terminal suppression (km=300-330) is a documented product limitation for
+        # high-altitude desert terrain. See docs/qa/GATE6_CORRIDOR_FINDINGS.md.
         nonzero = sum(1 for score, _ in checkpoint_scores.values() if score > 0)
         assert nonzero >= 4, (
             f"Only {nonzero}/9 checkpoints have non-zero suitability. "

@@ -31,5 +31,11 @@ $CONDA python -m pytest \
   tests/test_gate2_navigation.py \
   tests/test_gate3_fusion.py -v
 
+echo "=== Gate 5 Shimla-Manali corridor (22) ==="
+$CONDA python -m pytest tests/test_gate5_corridor.py -v
+
+echo "=== Gate 6 Jammu-Leh tactical corridor (22) ==="
+$CONDA python -m pytest tests/test_gate6_jammu_leh.py -v
+
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 406/406"
+echo "Expected: 450/450"
