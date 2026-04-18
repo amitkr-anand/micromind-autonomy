@@ -24,3 +24,37 @@ Valid evaluation requires ONE of:
 
 AD-23 remains valid based on Phase A Colombia data (genuine orthoimage pairs).
 Phase B Indian terrain results are INDICATIVE ONLY — not cited as validated performance.
+
+## Altitude Sweep — S2 Same-Modality Phase Correlation (18 April 2026)
+
+### Test design
+Query = S2 TCI crop shifted 5px (simulated INS drift)
+Reference = same S2 TCI crop unshifted
+Purpose: verify algorithm correctness across altitudes with S2 10m/px
+
+### Results
+| AGL | Footprint | S2_px | GSD | Mean SNR | Correct |
+|-----|-----------|-------|-----|---------|---------|
+| 150m | 173m | 17 | 0.271m/px | 409,440 | YES — 1.35m |
+| 500m | 577m | 58 | 0.902m/px | 409,420 | YES — 4.51m |
+| 1000m | 1155m | 115 | 1.804m/px | 409,438 | YES — 9.02m |
+| 2000m | 2309m | 231 | 3.608m/px | 409,446 | YES — 18.04m |
+
+### Interpretation (Deputy 1, 18 April 2026)
+SNR ~409,000 is a self-correlation artefact — image vs shifted copy of itself
+always produces near-perfect correlation regardless of content. This confirms
+algorithmic correctness only, not real-world cross-condition performance.
+
+Real-world L2 TRN gap is cross-modal/cross-condition (sensor difference,
+seasonal variation, Blender rendering vs real camera), not altitude or GSD.
+
+Correction precision scales linearly with GSD — 0.27m at 150m AGL to 3.6m
+at 2000m AGL. All altitudes within NAV-02 spec if corrections are frequent.
+
+### AD-23 Addendum
+Architecture decision unchanged. Phase correlation validated as L2 primary.
+Operational altitude for HIL: 150m AGL per Gates 1-6 certified baseline.
+Real EO camera data on Orin Nano (HIL) is the next validation step.
+Blender simulation at 150m AGL with S2 texture is not a valid EO camera proxy.
+
+## Sandbox Status: COMPLETE AND CLOSED
