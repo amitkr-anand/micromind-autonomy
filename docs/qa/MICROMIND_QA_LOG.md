@@ -18,19 +18,23 @@
 - Interface contract: `docs/interfaces/L2_LIGHTGLUE_IPC.md` — protocol, error handling, performance envelope
 - Test suite: T1 (ping PASS), T2 (Site 04 shimla km=020 PASS), T3 (invalid coords PASS), latency benchmark (0.35 ms IPC overhead)
 
-### Gate Results
+### Gate Results — Dev Machine (stub mode)
 - T1 (server ping): PASS
-- T2 (valid match Site 04): PASS — dlat=0.000030° dlon=0.000057° conf=0.865 match_ms=71.2
+- T2 (valid match Site 04): PASS — dlat=0.000030° dlon=0.000057° conf=0.865 match_ms=71.2 (stub)
 - T3 (invalid coords): PASS — returns None, reason=invalid_coordinates
-- IPC overhead mean: 0.35 ms (5 frames, Unix socket JSON framing)
+- IPC overhead mean: 0.35 ms (Unix socket JSON framing)
 - Regression: S5 119/119 ✅ S8 68/68 ✅ BCMP2 90/90 ✅
 
-### Flags
-- Stub mode active on dev machine (hil-h3 interpreter not present); real LightGlue timing from H-3: 628 ms median, 1630 ms P99, 45× margin vs 74 s budget
-- T2 result is stub (plausible synthetic); T2 with real LightGlue to be verified on Orin during H-5
+### Gate Results — Orin Nano Super (real LightGlue GPU)
+- T1 (server ping): PASS — lightglue_available=True, round_trip=0.7ms
+- T2 (real GPU match): PASS — conf=0.826, match_ms=635ms steady-state, ipc_overhead=1.0ms, stub_mode=False
+- T3 (invalid coords): PASS — no_match reason=invalid_coordinates, 0.5ms
+- Latency: steady-state mean 564ms, IPC overhead 1.0ms — 131× inside 74s budget
+- CUDA fix applied: `libcusparseLt.so.0` resolved via `LD_LIBRARY_PATH` injection at subprocess spawn
+- Model load: 484ms (SuperPoint + LightGlue, CUDA warm, cached for subsequent calls)
 
-### Commit
-`33c0d40`
+### Commits
+`33c0d40` (bridge) + `b523f59` (qa docs) + `26407a1` (cuda LD_LIBRARY_PATH fix)
 
 ---
 

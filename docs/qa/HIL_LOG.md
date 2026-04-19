@@ -90,5 +90,53 @@ Interface contract: docs/interfaces/L2_LIGHTGLUE_IPC.md (to be created).
 Consistent with SAD AD-03 (subprocess for process isolation).
 
 ### Next HIL Steps
-- H-4: LightGlue subprocess IPC design and latency verification
+- H-4: LightGlue subprocess IPC design and latency verification ✅ DONE
 - H-5: End-to-end L2 correction integration test on Orin
+
+---
+
+## HIL H-4 — LightGlue Subprocess IPC Bridge — Orin Verification
+**Date:** 19 April 2026  
+**Status:** PASS  
+**Commits:** 33c0d40 (bridge) + b523f59 (qa docs) + 26407a1 (cuda fix)
+
+### Environment
+- Server: hil-h3 (Python 3.10.20) on Orin Nano Super
+- Client: micromind-autonomy (Python 3.11.15) on Orin Nano Super
+- IPC: Unix socket `/tmp/micromind_lightglue.sock`
+- Model load: 484 ms (SuperPoint + LightGlue on CUDA, cached after first call)
+- CUDA fix: `libcusparseLt.so.0` resolved from `nvidia/cusparselt` conda package;
+  `LIGHTGLUE_LD_LIBRARY_PATH_EXTRA` injected by client at subprocess spawn
+
+### Test Results
+| Test | Result | Detail |
+|------|--------|--------|
+| T1 — server ping | **PASS** | status=pong, version=1.0, lightglue_available=True, round_trip=0.7ms |
+| T2 — real GPU match | **PASS** | dlat=-0.036576° dlon=0.036270° conf=0.826 match_ms=1386 ipc=1.0ms |
+| T3 — invalid coords | **PASS** | status=no_match reason=invalid_coordinates, 0.5ms |
+
+### Latency Benchmark (5 frames, shimla same-modal, steady-state)
+| Frame | match_ms | ipc_ms | total_ms |
+|-------|----------|--------|----------|
+| 0 (warmup) | 1386 | 1.0 | 1387 |
+| 1 | 635 | 0.9 | 636 |
+| 2 | 542 | 1.1 | 543 |
+| 3 | 539 | 1.1 | 540 |
+| 4 | 541 | 1.1 | 542 |
+
+**Steady-state (frames 1-4): mean 564 ms  IPC overhead mean: 1.0 ms**  
+Budget (2km @ 27m/s): 74,000ms — **131× margin at mean, consistent with H-3 628ms median**
+
+### Notes
+- T2 frame is same-modal DEM hillshade (640×640 synthetic from shimla COP30 tile).
+  Real UAV camera frames (Site 04 JPEGs at ~/hil_benchmark/site04_frames/) are
+  cross-modal vs. COP30 DEM — expected no_match per Gate 6 cross-modal findings.
+  Same-modal operation is the documented production mode (AD-01).
+- IPC overhead (1.0 ms) is higher than dev machine (0.35 ms) due to ARM pipeline;
+  both are operationally negligible.
+- stub_mode=False confirmed — no test relied on synthetic data path.
+
+### Next HIL Steps
+- H-5: End-to-end L2 correction integration test — wire lightglue_client.match()
+  into NavigationManager.update_trn() and verify correction is applied to ESKF
+  on a shimla corridor replay mission on Orin.
