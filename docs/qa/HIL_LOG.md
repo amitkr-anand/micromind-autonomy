@@ -97,8 +97,8 @@ Consistent with SAD AD-03 (subprocess for process isolation).
 
 ## HIL H-4 — LightGlue Subprocess IPC Bridge — Orin Verification
 **Date:** 19 April 2026  
-**Status:** PASS  
-**Commits:** 33c0d40 (bridge) + b523f59 (qa docs) + 26407a1 (cuda fix)
+**Status:** FULL PASS (Site 04 confirmed)  
+**Commits:** 33c0d40 (bridge) + b523f59 (qa docs) + 26407a1 (cuda fix) + f0d7cc3 (extra tiles) + see final commit
 
 ### Environment
 - Server: hil-h3 (Python 3.10.20) on Orin Nano Super
@@ -127,14 +127,25 @@ Consistent with SAD AD-03 (subprocess for process isolation).
 **Steady-state (frames 1-4): mean 564 ms  IPC overhead mean: 1.0 ms**  
 Budget (2km @ 27m/s): 74,000ms — **131× margin at mean, consistent with H-3 628ms median**
 
+### T2 Site 04 — Real UAV Frame (04_0001.JPG) Verification
+After diagnostic revealed tile_resolver returned None for Site 04 GPS (119.9°E not in built-in regions), `satellite04.tif` was located at `/home/mmuser-orin/hil_benchmark/satellite04.tif` and registered via `LIGHTGLUE_EXTRA_TILES` env var (bounds: 119.906–119.955°E / 32.151–32.254°N, confirmed covering frame GPS).
+
+| Item | Value |
+|------|-------|
+| Frame | 04_0001.JPG (real UAV nadir, Site 04) |
+| GPS prior | 32.15556°N 119.928901°E |
+| Tile | satellite04.tif (RGB, 38408×18093, EPSG:4326) |
+| confidence | 0.743 |
+| correction | 93.9 m |
+| match_ms | 3,192 ms (first call — includes JIT + 3-band patch) |
+| ipc_overhead | 2.2 ms |
+| T2 result | **PASS** |
+
+Note: 3,192 ms is elevated vs. 635 ms steady-state because satellite04.tif is 3-band RGB at very high resolution (38k×18k px); patch extraction and initial JIT combine. Within 74,000 ms budget (23× margin at this call). Steady-state will be faster for repeated GPS priors.
+
 ### Notes
-- T2 frame is same-modal DEM hillshade (640×640 synthetic from shimla COP30 tile).
-  Real UAV camera frames (Site 04 JPEGs at ~/hil_benchmark/site04_frames/) are
-  cross-modal vs. COP30 DEM — expected no_match per Gate 6 cross-modal findings.
-  Same-modal operation is the documented production mode (AD-01).
-- IPC overhead (1.0 ms) is higher than dev machine (0.35 ms) due to ARM pipeline;
-  both are operationally negligible.
-- stub_mode=False confirmed — no test relied on synthetic data path.
+- IPC overhead (1.0–2.2 ms) is higher than dev machine (0.35 ms) due to ARM pipeline; both are operationally negligible.
+- stub_mode=False confirmed across all T1/T2/T3 runs.
 
 ### Next HIL Steps
 - H-5: End-to-end L2 correction integration test — wire lightglue_client.match()
