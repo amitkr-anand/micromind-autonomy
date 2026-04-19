@@ -22,11 +22,20 @@ TILE_DIR = os.environ.get(
 )
 
 # Path to the hil-h3 Python 3.10 interpreter that has LightGlue installed.
-# On Orin: /home/mmuser/miniforge3/envs/hil-h3/bin/python3
+# On Orin (mmuser-orin): /home/mmuser-orin/miniforge3/envs/hil-h3/bin/python3
 # Override via env var for custom installs.
 LIGHTGLUE_PYTHON = os.environ.get(
     "LIGHTGLUE_PYTHON",
-    "/home/mmuser/miniforge3/envs/hil-h3/bin/python3",
+    "/home/mmuser-orin/miniforge3/envs/hil-h3/bin/python3",
+)
+
+# Extra LD_LIBRARY_PATH entries required to load libcusparseLt.so.0 on Jetson.
+# The nvidia/cusparselt wheel ships the .so inside the conda env itself.
+# These are prepended when the client spawns the server subprocess.
+_HIL3_SITE = "/home/mmuser-orin/miniforge3/envs/hil-h3/lib/python3.10/site-packages"
+LIGHTGLUE_LD_LIBRARY_PATH_EXTRA = os.environ.get(
+    "LIGHTGLUE_LD_LIBRARY",
+    f"{_HIL3_SITE}/nvidia/cusparselt/lib:/usr/local/cuda-12.6/lib64",
 )
 
 # How long the client waits for the server to become ready after spawning it

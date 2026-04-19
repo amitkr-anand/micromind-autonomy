@@ -22,6 +22,7 @@ from typing import Optional, Tuple
 from .config import (
     SOCKET_PATH,
     LIGHTGLUE_PYTHON,
+    LIGHTGLUE_LD_LIBRARY_PATH_EXTRA,
     SERVER_START_TIMEOUT_S,
     REQUEST_TIMEOUT_S,
 )
@@ -90,11 +91,23 @@ def _start_server() -> None:
         )
         python_exe = sys.executable
 
+    # Build environment: prepend Jetson-specific CUDA library paths so that
+    # libcusparseLt.so.0 (shipped inside the nvidia/cusparselt conda package)
+    # is found at import time.  No-op on dev machine where the path is absent.
+    env = os.environ.copy()
+    if LIGHTGLUE_LD_LIBRARY_PATH_EXTRA:
+        existing = env.get("LD_LIBRARY_PATH", "")
+        env["LD_LIBRARY_PATH"] = (
+            f"{LIGHTGLUE_LD_LIBRARY_PATH_EXTRA}:{existing}" if existing
+            else LIGHTGLUE_LD_LIBRARY_PATH_EXTRA
+        )
+
     log.info("Starting LightGlue server: %s %s", python_exe, server_script)
     _server_proc = subprocess.Popen(
         [python_exe, server_script],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
+        env=env,
     )
 
     # Wait for the server to become ready
