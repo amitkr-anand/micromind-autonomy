@@ -4,9 +4,17 @@ Maps GPS coordinates (lat, lon) to the satellite tile path on disk.
 Coverage regions are derived from the programme terrain data directories.
 Resolution falls back through: shimla-manali → shimla → jammu-leh.
 Returns None if no tile covers the requested position.
+
+Extra tiles (HIL assets, absolute paths) are registered via the
+LIGHTGLUE_EXTRA_TILES environment variable as a JSON array:
+  [{"name":"site04","lat_min":32.15,"lat_max":32.26,
+    "lon_min":119.90,"lon_max":119.96,
+    "tile_path":"/abs/path/satellite04.tif"}]
+Extra tiles are checked first (higher priority than built-in regions).
 """
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,11 +30,11 @@ class TileRegion:
     lat_max: float
     lon_min: float
     lon_max: float
-    tile_path: str  # relative to TILE_DIR
+    tile_path: str  # relative to TILE_DIR, or absolute if it starts with /
 
 
 # Ordered from most-specific to least-specific.
-_REGIONS: list[TileRegion] = [
+_BUILT_IN_REGIONS: list[TileRegion] = [
     TileRegion(
         name="shimla_local",
         lat_min=30.9,
@@ -70,13 +78,51 @@ _REGIONS: list[TileRegion] = [
 ]
 
 
+def _load_extra_regions() -> list[TileRegion]:
+    """Parse LIGHTGLUE_EXTRA_TILES env var into TileRegion objects."""
+    raw = os.environ.get("LIGHTGLUE_EXTRA_TILES", "").strip()
+    if not raw:
+        return []
+    try:
+        entries = json.loads(raw)
+        return [
+            TileRegion(
+                name=e["name"],
+                lat_min=float(e["lat_min"]),
+                lat_max=float(e["lat_max"]),
+                lon_min=float(e["lon_min"]),
+                lon_max=float(e["lon_max"]),
+                tile_path=e["tile_path"],
+            )
+            for e in entries
+        ]
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).warning(
+            "LIGHTGLUE_EXTRA_TILES parse error: %s", exc
+        )
+        return []
+
+
+# Exposed for diagnostics (e.g. tile_resolver._REGIONS)
+_REGIONS: list[TileRegion] = _load_extra_regions() + _BUILT_IN_REGIONS
+
+
+def _candidate_path(region: TileRegion, base: Path) -> Path:
+    """Return absolute Path for a region's tile, supporting both absolute and relative tile_path."""
+    p = region.tile_path
+    if os.path.isabs(p):
+        return Path(p)
+    return base / p
+
+
 def resolve(lat: float, lon: float, tile_dir: Optional[str] = None) -> Optional[str]:
     """Return absolute path to the satellite tile covering (lat, lon), or None."""
     base = Path(tile_dir or TILE_DIR)
     for region in _REGIONS:
         if (region.lat_min <= lat <= region.lat_max and
                 region.lon_min <= lon <= region.lon_max):
-            candidate = base / region.tile_path
+            candidate = _candidate_path(region, base)
             if candidate.exists():
                 return str(candidate)
     return None
