@@ -57,4 +57,68 @@ Operational altitude for HIL: 150m AGL per Gates 1-6 certified baseline.
 Real EO camera data on Orin Nano (HIL) is the next validation step.
 Blender simulation at 150m AGL with S2 texture is not a valid EO camera proxy.
 
+## Phase D-2: Reference Resolution Degradation (19 April 2026)
+Site 04, 60 frames, structured terrain, 540m AGL
+
+| Resolution | Accept | Rate  | Mean GT err | Mean conf |
+|-----------|--------|-------|------------|-----------|
+| 0.28m/px  | 56/60  | 93.3% | 42.4m      | baseline  |
+| 1.0m/px   | 50/60  | 83.3% | 48.9m      | 0.608     |
+| 2.5m/px   | 46/60  | 76.7% | 44.1m      | 0.568     |
+| 5.0m/px   | 19/60  | 31.7% | 48.8m      | 0.440     |
+| 10.0m/px  | 0/60   | 0.0%  | —          | —         |
+
+**Crossover (50% accept): between 2.5m/px and 5.0m/px**
+**Minimum viable satellite reference resolution: ≤3m/px**
+**Key finding: mean GT error stable (42-49m) across accepted frames at all resolutions
+  — LightGlue either accepts cleanly or rejects entirely, no graceful degradation.**
+**Programme implication: Sentinel-2 10m/px NOT viable for LightGlue.
+  CARTOSAT-1 2.5m/px is viable (76.7%). Google Earth 0.28m/px is optimal.**
+
+## Phase D-3: Robustness Testing (19 April 2026)
+Site 04, 30 frames, structured terrain, 540m AGL
+
+### D-3a: Heading Mismatch Tolerance
+
+| Offset | Accept | Rate  | Mean err | Note |
+|--------|--------|-------|---------|------|
+| -45°   | 1/30   | 3.3%  | 77.9m   | collapse |
+| -20°   | 17/30  | 56.7% | 55.4m   | borderline |
+| -10°   | 22/30  | 73.3% | 51.8m   | degraded |
+| -5°    | 27/30  | 90.0% | 49.3m   | acceptable |
+| 0°     | 28/30  | 93.3% | 43.1m   | baseline |
+| +5°    | 28/30  | 93.3% | 38.0m   | nominal |
+| +10°   | 28/30  | 93.3% | 34.2m   | nominal |
+| +20°   | 28/30  | 93.3% | 32.9m   | dataset artifact* |
+| +45°   | 26/30  | 86.7% | 39.3m   | degrading |
+
+*Positive offset improvement at +10/+20° is a dataset artifact — southward-flying
+frames interact with north-alignment rotation. Not a genuine capability gain.
+
+**VIO heading budget: ±10° for reliable operation (73-93% accept rate range)**
+**Negative heading errors are more damaging than positive due to site heading distribution**
+
+### D-3b: FOV Sensitivity
+
+| FOV | Accept | Rate  | Mean err | eff_gsd   |
+|-----|--------|-------|---------|-----------|
+| 30° | 26/30  | 86.7% | 29.4m   | 0.299m/px |
+| 45° | 26/30  | 86.7% | 35.6m   | 0.352m/px |
+| 60° | 28/30  | 93.3% | 43.1m   | 0.491m/px |
+| 75° | 21/30  | 70.0% | 55.6m   | 0.652m/px |
+| 90° | 15/30  | 50.0% | 89.4m   | 0.849m/px |
+
+**Operational setting: FOV 60° (max accept rate criterion)**
+**Note: FOV 30° gives 29.4m mean error — better accuracy but 7pp lower accept rate**
+
+## Consolidated LightGlue Operating Parameters (Deputy 1, 19 April 2026)
+| Parameter           | Value  | Basis       |
+|--------------------|--------|-------------|
+| Confidence threshold| ≥0.35  | Phase D-1   |
+| FOV setting        | 60°    | Phase D-3b  |
+| VIO heading budget | ±10°   | Phase D-3a  |
+| Min satellite res  | ≤3m/px | Phase D-2   |
+| Working resolution | 1280px | TASL camera |
+| Min terrain class  | Structured (roads/buildings) | Phase D-1 |
+
 ## Sandbox Status: COMPLETE AND CLOSED
