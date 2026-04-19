@@ -151,3 +151,23 @@ Note: 3,192 ms is elevated vs. 635 ms steady-state because satellite04.tif is 3-
 - H-5: End-to-end L2 correction integration test — wire lightglue_client.match()
   into NavigationManager.update_trn() and verify correction is applied to ESKF
   on a shimla corridor replay mission on Orin.
+
+### HIL H-4 — Addendum: Site 04 tile resolver fix and closure
+**Date:** 19 April 2026
+
+#### Tile resolver fix
+- satellite04.tif actual bounds confirmed: 119.905980–119.954509°E / 32.151018–32.254036°N
+- Built-in regions cover India only; satellite04.tif is outside all built-in bounds (119.9°E)
+- Fix: LIGHTGLUE_EXTRA_TILES env var accepts JSON array of absolute-path tile entries
+- Frame 0 GPS (32.155560°N 119.928901°E) confirmed covered after fix
+
+#### T2 — Real Site 04 UAV frame (04_0001.JPG) final result
+- conf=0.743, match_ms=3192ms (cold-start JIT + 3-band 38k×18k tile), correction=93.9m
+- Steady-state latency 539–635ms confirmed from H-3; 23× budget margin at cold-start
+- ipc_overhead=2.2ms (Unix socket); stub_mode=False confirmed
+
+#### H-4 gate closure
+- T1 server ping:        PASS
+- T2 real Site 04 match: PASS (conf=0.743, real GPU, real UAV frame)
+- T3 invalid coords:     PASS (returns None)
+- HIL H-4:               FULL PASS
