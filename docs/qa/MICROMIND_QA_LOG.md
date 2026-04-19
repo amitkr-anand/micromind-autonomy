@@ -2121,3 +2121,127 @@ Focus: 180km Shimla–Manali corridor, DEMLoader multi-tile stitching, Monte Car
 None new. Existing OI regarding Manali COP30 tile admission remains in programme backlog (Zones 2–3 SUPPRESS with single-tile coverage).
 
 Next: Deputy 1 Gate 4 acceptance review; Gate 5 prompt pending.
+
+---
+
+## QA-041 — Sandbox Phase D-1: LightGlue Baseline Validated (19 April 2026)
+**Verdict:** VALIDATED
+**Dataset:** UAV-VisLoc (Xu et al., arXiv:2405.11936, 2024)
+**Commits:** f74bd82 (threshold), f53d951 (role evaluation)
+
+Implementation bugs fixed before valid results:
+1. CRS-aware satellite crop — EPSG:4326 tiles require degree-space half-extent
+2. Heading rotation applied after downscaling (not at native 3976×2652)
+
+Results (Site 04, structured terrain, 540m AGL):
+- LightGlue: 56/60 (93.3%), 42.4m mean GT error, 72ms dev machine
+- Confidence threshold calibrated: 0.50 → 0.35 (8 frames with 80+ inliers incorrectly rejected at 0.50)
+- Phase correlation: 411m median — not viable standalone
+- LoFTR: 0.92 accept rate, 163.5m median — fallback role
+
+Temporal change sites excluded (visual inspection ruling, Deputy 1):
+- Site 08b: greenhouses built after satellite acquisition
+- Site 09: highway construction not present in satellite
+
+LightGlue role evaluation:
+- Role 1 (EO-to-satellite position): VALIDATED
+- Role 2a (EO-to-EO VIO heading fast loop): REJECTED — latency incompatible
+- Role 2b (heading from inlier angles): REJECTED — 171° variance, terrain artifact
+
+---
+
+## QA-042 — Sandbox Phase D-2: Resolution Degradation Sweep (19 April 2026)
+**Verdict:** COMPLETE — procurement-critical finding
+**Commit:** aad1fe3
+
+| Resolution | Accept | Rate  | Mean GT err |
+|-----------|--------|-------|------------|
+| 0.28m/px  | 56/60  | 93.3% | 42.4m      |
+| 1.0m/px   | 50/60  | 83.3% | 48.9m      |
+| 2.5m/px   | 46/60  | 76.7% | 44.1m      |
+| 5.0m/px   | 19/60  | 31.7% | 48.8m      |
+| 10.0m/px  | 0/60   | 0.0%  | —          |
+
+Key finding: 50% crossover between 2.5 and 5.0m/px.
+Minimum viable satellite reference: ≤3m/px.
+Sentinel-2 10m/px: NOT viable for LightGlue.
+CARTOSAT-1 2.5m/px: viable (76.7%).
+Accepted frames maintain stable error at all resolutions — no graceful degradation.
+
+---
+
+## QA-043 — Sandbox Phase D-3: Robustness Testing (19 April 2026)
+**Verdict:** COMPLETE — operational parameters confirmed
+**Commit:** 3339858
+
+D-3a Heading mismatch (Site 04, 30 frames):
+- ±5°: 90–93% accept (acceptable)
+- ±10°: 73–93% accept (degraded but operable)
+- ±20°: 57–93% (borderline negative, robust positive)
+- ±45°: 3–87% (collapse negative, degrading positive)
+- VIO heading budget: ±10° for reliable operation
+- Note: positive offset improvement is dataset artifact (southward-flying frames)
+
+D-3b FOV sensitivity:
+- FOV 30°: 86.7% accept, 29.4m mean (best accuracy)
+- FOV 60°: 93.3% accept, 43.1m mean (best accept rate) ← OPERATIONAL SETTING
+- FOV 75°+: degrades rapidly as GSD coarsens
+
+---
+
+## QA-044 — HIL H-1/H-2: Orin Nano Super Environment (19 April 2026)
+**Verdict:** PASS
+**Commit:** e0eb921
+
+Hardware: NVIDIA Jetson Orin Nano Super, JetPack R36.4.7, CUDA 12.6, cuDNN 9.3.0
+SSH: mmuser-orin@192.168.1.53, key-based both directions
+Environment: Miniforge ARM64, conda micromind-autonomy, Python 3.11.15
+Core deps: numpy 2.4.3, scipy 1.17.1, rasterio 1.4.4, cv2 4.13.0
+Certified baseline: 483/483 PASS at max clocks (18m25s)
+Frozen files: both MATCH (md5 verified)
+Terrain minimum set: 415MB (92% reduction from 5.4GB blind transfer)
+sudo: nvpmodel + jetson_clocks passwordless via /etc/sudoers.d/micromind-hil
+
+---
+
+## QA-045 — HIL H-3: LightGlue GPU Latency / OI-25 CLOSURE (19 April 2026)
+**Verdict:** PASS | OI-25: CLOSED
+**Commit:** b3a8c77
+
+GPU: Orin Nano Super iGPU (1024-core Ampere, 918MHz)
+Steady-state latency: 628ms median, 1630ms P99
+Operational slow-loop budget (2km @ 27m/s): 74,000ms
+Margin at P99: 45× inside budget
+Slowdown vs RTX 5060 Ti dev machine (72ms): 12.4×
+TensorRT optimisation: NOT required at current correction interval
+
+OI-25 measurement (ESKF propagate, 2000 iterations, max clocks):
+P50=0.0957ms | P95=0.1014ms | P99=0.1136ms | Budget=50ms | Margin=99.8%
+Verdict: Orin Nano sufficient — no escalation to Orin NX required
+
+Python version flag: Jetson PyTorch cp310 only → hil-h3 env (Python 3.10)
+Resolution: subprocess IPC bridge (HIL H-4)
+
+---
+
+## QA-046 — HIL H-4: LightGlue IPC Bridge Full Pass (19 April 2026)
+**Verdict:** FULL PASS
+**Commits:** 33c0d40, b523f59, 99b6421
+
+IPC mechanism: Unix socket AF_UNIX (/tmp/micromind_lightglue.sock)
+IPC overhead: 1.0ms (Orin ARM); 0.35ms (dev x86)
+Server: hil-h3 Python 3.10 | Client: micromind-autonomy Python 3.11
+Interface: match(frame_path, lat, lon, alt, heading) → (dlat, dlon, conf, ms) or None
+Contract: docs/interfaces/L2_LIGHTGLUE_IPC.md
+
+Test results on Orin:
+- T1 (ping): PASS — lightglue_available=True, round_trip=0.7ms
+- T2 (Site 04 real UAV frame 04_0001.JPG): PASS — conf=0.743, 3192ms cold-start, 93.9m correction
+- T3 (invalid coords): PASS — returns None
+
+Tile resolver fix: satellite04.tif bounds 119.906–119.955°E / 32.151–32.254°N
+confirmed via rasterio. LIGHTGLUE_EXTRA_TILES env var added for non-Indian tiles.
+Earlier stated bounds (30.9°N) were from Site 08 — Deputy 1 error, corrected.
+
+Steady-state latency: 539–635ms (consistent with H-3 628ms median)
+Budget margin: 131× at steady-state mean
