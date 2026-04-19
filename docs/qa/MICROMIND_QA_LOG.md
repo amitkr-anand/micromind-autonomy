@@ -4,6 +4,36 @@
 
 ---
 
+## Entry QA-040 — 19 April 2026
+**Session Type:** HIL H-4 — LightGlue subprocess IPC bridge  
+**Focus:** Design and implement production-quality Unix socket IPC bridge between micromind-autonomy (Python 3.11) and LightGlue (hil-h3 Python 3.10)  
+**Governance ref:** Code Governance Manual v3.4  
+
+### Work Done
+- Selected Unix domain socket as IPC mechanism (zero-dependency, stdlib, bidirectional, < 1 ms overhead)
+- Created `integration/lightglue_bridge/` package: config.py, tile_resolver.py, server.py, client.py, __init__.py
+- Server: handles ping and match commands; auto-starts from client; graceful stub fallback when LightGlue not importable
+- Client API: `match(frame_path, lat, lon, alt, heading_deg)` → `(delta_lat, delta_lon, confidence, latency_ms)` or None
+- tile_resolver: maps GPS coordinates to COP30 satellite tiles (shimla_local, shimla_manali, jammu_leh TILE1/2/3)
+- Interface contract: `docs/interfaces/L2_LIGHTGLUE_IPC.md` — protocol, error handling, performance envelope
+- Test suite: T1 (ping PASS), T2 (Site 04 shimla km=020 PASS), T3 (invalid coords PASS), latency benchmark (0.35 ms IPC overhead)
+
+### Gate Results
+- T1 (server ping): PASS
+- T2 (valid match Site 04): PASS — dlat=0.000030° dlon=0.000057° conf=0.865 match_ms=71.2
+- T3 (invalid coords): PASS — returns None, reason=invalid_coordinates
+- IPC overhead mean: 0.35 ms (5 frames, Unix socket JSON framing)
+- Regression: S5 119/119 ✅ S8 68/68 ✅ BCMP2 90/90 ✅
+
+### Flags
+- Stub mode active on dev machine (hil-h3 interpreter not present); real LightGlue timing from H-3: 628 ms median, 1630 ms P99, 45× margin vs 74 s budget
+- T2 result is stub (plausible synthetic); T2 with real LightGlue to be verified on Orin during H-5
+
+### Commit
+`33c0d40`
+
+---
+
 ## Entry QA-039 — 18 April 2026
 **Session Type:** Gate 6 — Jammu-Leh Tactical Corridor (Step 0 → N=300 production run)  
 **Focus:** Define JAMMU_LEH corridor, stitch 3-tile COP30 DEM, write and pass NAV-17..20 gate tests, run Monte Carlo N=300, document terrain findings  
