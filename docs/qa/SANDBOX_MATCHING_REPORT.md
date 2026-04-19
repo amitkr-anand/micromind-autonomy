@@ -60,13 +60,15 @@ Blender simulation at 150m AGL with S2 texture is not a valid EO camera proxy.
 ## Phase D-2: Reference Resolution Degradation (19 April 2026)
 Site 04, 60 frames, structured terrain, 540m AGL
 
-| Resolution | Accept | Rate  | Mean GT err | Mean conf |
-|-----------|--------|-------|------------|-----------|
-| 0.28m/px  | 56/60  | 93.3% | 42.4m      | baseline  |
-| 1.0m/px   | 50/60  | 83.3% | 48.9m      | 0.608     |
-| 2.5m/px   | 46/60  | 76.7% | 44.1m      | 0.568     |
-| 5.0m/px   | 19/60  | 31.7% | 48.8m      | 0.440     |
-| 10.0m/px  | 0/60   | 0.0%  | —          | —         |
+Degradation method: INTER_AREA downsample → INTER_LINEAR upsample to 1280px
+
+| Resolution | Accept | Rate  | Mean GT err | Mean conf | Mean inliers |
+|-----------|--------|-------|------------|-----------|-------------|
+| 0.28m/px  | 56/60  | 93.3% | 42.4m      | baseline  | baseline    |
+| 1.0m/px   | 50/60  | 83.3% | 48.9m      | 0.608     | 192.3       |
+| 2.5m/px   | 46/60  | 76.7% | 44.1m      | 0.568     | 136.8       |
+| 5.0m/px   | 19/60  | 31.7% | 48.8m      | 0.440     | 73.7        |
+| 10.0m/px  | 0/60   | 0.0%  | —          | —         | —           |
 
 **Crossover (50% accept): between 2.5m/px and 5.0m/px**
 **Minimum viable satellite reference resolution: ≤3m/px**
@@ -121,4 +123,21 @@ frames interact with north-alignment rotation. Not a genuine capability gain.
 | Working resolution | 1280px | TASL camera |
 | Min terrain class  | Structured (roads/buildings) | Phase D-1 |
 
-## Sandbox Status: COMPLETE AND CLOSED
+## HIL Validation (19 April 2026)
+
+### H-3: LightGlue on Orin Nano Super GPU
+- Steady-state: 628ms median, 1630ms P99
+- Budget (2km@27m/s): 74,000ms — 45× margin at P99
+- Slowdown vs dev (RTX 5060 Ti): 12.4×
+- TensorRT optimisation: NOT required
+
+### H-4: LightGlue IPC Bridge
+- Mechanism: Unix socket AF_UNIX, 1.0ms IPC overhead
+- Interface: match(frame_path, lat, lon, alt, heading) → (dlat, dlon, conf, ms)
+- T2 real Site 04: conf=0.743, 3192ms cold-start, 93.9m correction
+- satellite04.tif bounds: 119.906–119.955E / 32.151–32.254N
+- Status: FULL PASS
+
+## Sandbox Status: OPEN
+Phase D-1/D-2/D-3: COMPLETE
+Pending: SAL-3 sandbox (Jammu-Leh SUPPRESS zones)
