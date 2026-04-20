@@ -49,6 +49,10 @@ NAV_MODE_TRN_ONLY   = "NAV_TRN_ONLY" # GNSS unavailable, VIO below threshold
 NAV_MODE_INS_ONLY   = "INS_ONLY"     # GNSS + VIO unavailable, TRN gap > 15km
 NAV_MODE_SHM_TRIGGER = "SHM_TRIGGER" # nav_confidence < threshold
 
+# AD-23 validated LightGlue confidence threshold (ACCEPT terrain class)
+# SAL-2 (OI-49) will replace this with per-class lookup
+LIGHTGLUE_CONF_THRESHOLD = 0.35
+
 # ── VIO nominal covariance (1m horizontal, 2m vertical 1-sigma) ──────────────
 _R_VIO_NOMINAL = np.diag([1.0, 1.0, 2.0])  # m²
 
@@ -98,6 +102,7 @@ class NavigationManager:
         trn_interval_m:             float = 5000.0,
         vio_confidence_threshold:   float = 0.50,
         nav_confidence_shm_threshold: float = 0.20,
+        lightglue_client=None,
     ) -> None:
         """
         eskf                       : ErrorStateEKF instance (shared with caller)
@@ -119,6 +124,10 @@ class NavigationManager:
         nav_confidence_shm_threshold: Unified positional confidence below which
                                      SHM is triggered. 0.20 default.
                                      From config/tunable_mission.yaml.
+        lightglue_client : Optional LightGlue client module
+                           (integration.lightglue_bridge.client). When None,
+                           LightGlue L2 path is disabled — PhaseCorrelationTRN
+                           only. Injected at construction for testability.
         """
         self._eskf              = eskf
         self._bim               = bim
@@ -132,6 +141,7 @@ class NavigationManager:
         self._trn_interval_m    = trn_interval_m
         self._vio_conf_threshold = vio_confidence_threshold
         self._shm_threshold     = nav_confidence_shm_threshold
+        self._lightglue_client = lightglue_client   # None disables LightGlue L2 path
 
         # Tracking state
         self._last_trn_km:      float                    = 0.0
@@ -263,10 +273,58 @@ class NavigationManager:
         # Clock is approximate here — caller should pass dt if sub-Hz precise tracking needed
         self._vio_mode.tick(0.2)
 
-        # ── Step 4: TRN update ────────────────────────────────────────────
+        # ── Step 4a: LightGlue L2 correction (primary, AD-23) ────────────────
+        lightglue_accepted = False
         distance_since_trn_m = (mission_km - self._last_trn_km) * 1000.0
-        if distance_since_trn_m >= self._trn_interval_m:
-            tile = camera_tile  # use injected tile for TRN too
+        if self._lightglue_client is not None and distance_since_trn_m >= self._trn_interval_m:
+            lg_frame_path = getattr(self._camera_bridge, 'last_frame_path', None)
+            if lg_frame_path is not None:
+                lg_result = self._lightglue_client.match(
+                    uav_frame_path=lg_frame_path,
+                    lat=lat_estimate,
+                    lon=lon_estimate,
+                    alt=alt_m,
+                    heading_deg=0.0,   # OI-49: replace with VIO heading when available
+                )
+                if lg_result is not None:
+                    delta_lat, delta_lon, lg_conf, lg_latency_ms = lg_result
+                    if lg_conf >= LIGHTGLUE_CONF_THRESHOLD:
+                        correction = np.array([
+                            delta_lat * 111_320.0,
+                            delta_lon * 111_320.0 * np.cos(np.radians(lat_estimate)),
+                            0.0,
+                        ])
+                        nis, rejected, innov_mag = self._eskf.update_trn(
+                            state,
+                            correction,
+                            lg_conf,
+                            1.0,
+                        )
+                        if not rejected:
+                            self._eskf.inject(state)
+                            trn_active        = True
+                            trn_conf          = lg_conf
+                            self._last_trn_km = mission_km
+                            lightglue_accepted = True
+                            cycle_log.append({
+                                "event":        "NAV_LIGHTGLUE_CORRECTION",
+                                "module_name":  "NavigationManager",
+                                "req_id":       "NAV-02",
+                                "severity":     "INFO",
+                                "timestamp_ms": mission_time_ms,
+                                "payload": {
+                                    "confidence":    round(lg_conf, 4),
+                                    "latency_ms":    round(lg_latency_ms, 1),
+                                    "delta_north_m": round(correction[0], 2),
+                                    "delta_east_m":  round(correction[1], 2),
+                                },
+                            })
+
+        # ── Step 4b: PhaseCorrelationTRN fallback (SIL compatibility) ────────
+        # Skipped if LightGlue already accepted a correction this cycle.
+        # distance_since_trn_m computed above in Step 4a.
+        if not lightglue_accepted and distance_since_trn_m >= self._trn_interval_m:
+            tile = camera_tile
             if tile is not None:
                 trn_result = self._trn.match(
                     camera_tile=tile,
@@ -290,8 +348,8 @@ class NavigationManager:
                     )
                     if not rejected:
                         self._eskf.inject(state)
-                        trn_active   = True
-                        trn_conf     = float(trn_result.confidence)
+                        trn_active        = True
+                        trn_conf          = float(trn_result.confidence)
                         self._last_trn_km = mission_km
 
         # ── Step 5: Unified nav confidence ───────────────────────────────
