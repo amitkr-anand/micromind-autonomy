@@ -171,3 +171,37 @@ Note: 3,192 ms is elevated vs. 635 ms steady-state because satellite04.tif is 3-
 - T2 real Site 04 match: PASS (conf=0.743, real GPU, real UAV frame)
 - T3 invalid coords:     PASS (returns None)
 - HIL H-4:               FULL PASS
+
+---
+
+## HIL H-5 — NavigationManager + LightGlue Integration
+**Date:** 21 April 2026
+**Node:** Orin Nano Super (mmuser-orin@192.168.1.53)
+**Env:** micromind-autonomy (Python 3.11) → lightglue_bridge → hil-h3 (Python 3.10, CUDA 12.6)
+**HEAD:** ff6cbb8
+**Deputy 1 ruling:** PASS (partial — H5-AC-3 deferred to H-6)
+
+### Test scope
+End-to-end integration of OI-48 (LightGlue wired into NavigationManager) and
+OI-49 (SAL-2 terrain-class thresholds) on Orin GPU hardware.
+
+### Results
+
+| AC | Description | Result |
+|---|---|---|
+| H5-AC-1 | LightGlue server starts without exception | PASS |
+| H5-AC-2 | match() returns server response (None acceptable at H-5) | PASS — None returned (geographic mismatch Site 04 / Shimla tile — expected) |
+| H5-AC-3 | confidence in [0.0, 1.0] if match returned | DEFERRED — no geographic overlap at H-5; confirmed at H-6 |
+| H5-AC-4 | Latency reported | PASS — 23,655ms wall-clock (cold-start); H-3 warm = 628ms median |
+| H5-AC-5 | SAL-2 thresholds correct on Orin | PASS — ACCEPT=0.35, CAUTION=0.40, SUPPRESS=None |
+| H5-AC-6 | lightglue_client in NavigationManager.__init__ | PASS — default=None confirmed |
+
+### Frozen file verification
+- core/ekf/error_state_ekf.py: 7021ff952454474c3bc289acd63ed480 ✅
+- scenarios/bcmp1/bcmp1_runner.py: 3ea4416da572e20a0cf4c558ad1b3c00 ✅
+
+### Open items raised
+- OI-51 (NEW): HIL H-6 — geographically matched corridor replay. Requires UAV frames
+  from Shimla corridor (or Site 04 tile loaded for Site 04 frames). Confirms H5-AC-3
+  (confidence in [0,1]) and measures warm-path latency end-to-end through
+  NavigationManager. Prerequisite: frame/tile geographic alignment confirmed before run.
