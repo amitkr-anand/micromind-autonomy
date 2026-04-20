@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCMP-2 Run Report — Seed 42 — 2026-03-31</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #1A1A2E;
+          color: #ECF0F1; padding: 24px; }
+  h1   { font-size: 1.6rem; font-weight: 700; margin-bottom: 6px; }
+  h2   { font-size: 1.15rem; font-weight: 600; margin: 28px 0 10px; color: #BDC3C7; }
+  h3   { font-size: 0.95rem; font-weight: 600; margin: 14px 0 6px; color: #95A5A6; }
+  .card { background: #16213E; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .outcome-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+  .outcome-box { flex: 1; min-width: 260px; border-radius: 8px; padding: 18px 20px; }
+  .outcome-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+                    letter-spacing: 1px; opacity: 0.8; margin-bottom: 8px; }
+  .outcome-result { font-size: 1.4rem; font-weight: 800; margin-bottom: 12px; }
+  .chain-item { font-size: 0.85rem; line-height: 1.6; padding: 2px 0; opacity: 0.9; }
+  .chain-item::before { content: "→ "; opacity: 0.5; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+                  gap: 12px; margin: 12px 0; }
+  .metric-cell { background: #0F3460; border-radius: 6px; padding: 12px; text-align: center; }
+  .metric-val  { font-size: 1.2rem; font-weight: 700; }
+  .metric-lbl  { font-size: 0.72rem; opacity: 0.7; margin-top: 4px; }
+  .pass { color: #27AE60; } .fail { color: #C0392B; } .warn { color: #E67E22; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { background: #0F3460; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #1E3A5F; }
+  tr:hover td { background: #1A2F50; }
+  .ev-tag { display: inline-block; border-radius: 4px; padding: 1px 6px; font-size: 0.72rem;
+             font-weight: 700; }
+  .ev-gnss { background: #7D3C98; } .ev-vio { background: #2980B9; }
+  .ev-trn  { background: #117A65; } .ev-eo  { background: #A93226; }
+  .ev-info { background: #2C3E50; }
+  .divider { border: none; border-top: 1px solid #2C3E50; margin: 18px 0; }
+  svg { max-width: 100%; height: auto; }
+</style>
+</head>
+<body>
+<h1>BCMP-2 Mission Report</h1>
+<p style="opacity:0.6; font-size:0.82rem; margin-bottom:20px;">
+  Seed 42 &nbsp;·&nbsp; 2026-03-31 &nbsp;·&nbsp;
+  simulated &nbsp;·&nbsp;
+  IMU: Safran STIM300 &nbsp;·&nbsp;
+  Duration: 11.8s
+</p>
+
+<div class="card">
+  <h2 style="margin-top:0; color:#ECF0F1; font-size:1.05rem;">
+    Mission Outcome — GNSS Denied at km 30
+  </h2>
+  <div class="outcome-row">
+
+    <div class="outcome-box" style="background:#E67E2222; border:2px solid #E67E22;">
+      <div class="outcome-label">Without MicroMind (Baseline)</div>
+      <div class="outcome-result" style="color:#E67E22;">&#9888; MARGINAL</div>
+      <div class="chain-item">GNSS denied at km 30 — INS-only propagation began</div><div class="chain-item">No terrain or visual correction available — drift accumulated unchecked</div><div class="chain-item">Lateral error at km 120: 126 m (no mission-layer awareness)</div><div class="chain-item">Corridor breach: none observed</div><div class="chain-item">Terminal approach geometry: potentially unsafe</div>
+      <hr class="divider">
+      <div class="metric-grid">
+        <div class="metric-cell">
+          <div class="metric-val" style="color:#E67E22;">126 m</div>
+          <div class="metric-lbl">Lateral drift @ km 120</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-val" style="color:#E67E22;">None</div>
+          <div class="metric-lbl">First corridor breach</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="outcome-box" style="background:#E67E2222; border:2px solid #E67E22;">
+      <div class="outcome-label">With MicroMind</div>
+      <div class="outcome-result" style="color:#E67E22;">&#10003; PARTIAL</div>
+      <div class="chain-item">GNSS denied at km 30 — TRN/VIO transition triggered</div><div class="chain-item">TRN corrections applied: N/A</div><div class="chain-item">Max 5km drift bounded to: N/A</div><div class="chain-item">Mission enforcement active throughout terminal phase</div><div class="chain-item">Terminal action gated by confidence and NOMINAL state requirement</div>
+      <hr class="divider">
+      <div class="metric-grid">
+        <div class="metric-cell">
+          <div class="metric-val" style="color:#E67E22;">N/A</div>
+          <div class="metric-lbl">Max 5km drift bounded</div>
+        </div>
+        <div class="metric-cell">
+          <div class="metric-val" style="color:#E67E22;">N/A</div>
+          <div class="metric-lbl">TRN corrections applied</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="card"><h2>Vehicle A Drift vs C-2 Envelopes</h2><svg viewBox="0 0 560 180" xmlns="http://www.w3.org/2000/svg" style="background:#16213E;border-radius:6px;"><line x1="56" y1="140" x2="540" y2="140" stroke="#2C3E50" stroke-width="1"/><text x="54" y="144" fill="#7F8C8D" font-size="9" text-anchor="end">0</text><line x1="56" y1="111" x2="540" y2="111" stroke="#2C3E50" stroke-width="1"/><text x="54" y="115" fill="#7F8C8D" font-size="9" text-anchor="end">39</text><line x1="56" y1="81" x2="540" y2="81" stroke="#2C3E50" stroke-width="1"/><text x="54" y="85" fill="#7F8C8D" font-size="9" text-anchor="end">78</text><line x1="56" y1="51" x2="540" y2="51" stroke="#2C3E50" stroke-width="1"/><text x="54" y="55" fill="#7F8C8D" font-size="9" text-anchor="end">117</text><line x1="56" y1="21" x2="540" y2="21" stroke="#2C3E50" stroke-width="1"/><text x="54" y="25" fill="#7F8C8D" font-size="9" text-anchor="end">157</text><rect x="84" y="137" width="96" height="3" fill="#2ecc7122" stroke="#2ecc71" stroke-width="1" stroke-dasharray="3,2"/><line x1="84" y1="79" x2="180" y2="79" stroke="#C0392B" stroke-width="1" stroke-dasharray="4,2"/><rect x="96" y="128" width="48" height="12" fill="#27AE60" rx="2"/><text x="120" y="124" fill="#27AE60" font-size="10" text-anchor="middle">17m</text><rect x="252" y="131" width="96" height="9" fill="#2ecc7122" stroke="#2ecc71" stroke-width="1" stroke-dasharray="3,2"/><line x1="252" y1="-127" x2="348" y2="-127" stroke="#C0392B" stroke-width="1" stroke-dasharray="4,2"/><rect x="264" y="71" width="48" height="69" fill="#27AE60" rx="2"/><text x="288" y="67" fill="#27AE60" font-size="10" text-anchor="middle">91m</text><rect x="420" y="129" width="96" height="11" fill="#2ecc7122" stroke="#2ecc71" stroke-width="1" stroke-dasharray="3,2"/><line x1="420" y1="-356" x2="516" y2="-356" stroke="#C0392B" stroke-width="1" stroke-dasharray="4,2"/><rect x="432" y="45" width="48" height="95" fill="#27AE60" rx="2"/><text x="456" y="41" fill="#27AE60" font-size="10" text-anchor="middle">126m</text><text x="132" y="172" fill="#7F8C8D" font-size="11" text-anchor="middle">km 60</text><text x="300" y="172" fill="#7F8C8D" font-size="11" text-anchor="middle">km 100</text><text x="468" y="172" fill="#7F8C8D" font-size="11" text-anchor="middle">km 120</text><text x="30" y="80" fill="#7F8C8D" font-size="9" text-anchor="middle" transform="rotate(-90,30,80)">Lateral drift (m)</text></svg><p style="font-size:0.75rem;opacity:0.6;margin-top:6px;"><span style="color:#27AE60">■</span> Observed drift (within envelope) &nbsp; <span style="color:#C0392B">■</span> Observed drift (out of envelope) &nbsp; <span style="color:#C0392B">— —</span> Ceiling &nbsp; <span style="color:#2ecc71">▒</span> Valid envelope band</p></div>
+<div class="card"><h2>Vehicle B Navigation KPIs (MicroMind)</h2><table><thead><tr><th>KPI</th><th>Value</th></tr></thead><tbody></tbody></table></div>
+<div class="card"><h2>Disturbance Event Log</h2><table><thead><tr><th>Type</th><th>Position</th><th>Event</th><th>Detail</th></tr></thead><tbody><tr><td><span class="ev-tag ev-gnss">GNSS</span></td><td>km 30</td><td>GNSS Denial begins</td><td style="opacity:0.7">Duration: ?s</td></tr><tr><td><span class="ev-tag ev-vio">VIO</span></td><td>km 48</td><td>VIO Outage #1</td><td style="opacity:0.7">Duration: 15.0s</td></tr></tbody></table></div>
+<div class="card"><h2>Technical Evidence</h2><h3>C-2 Drift Gate Results (Vehicle A)</h3><table><thead><tr><th>Phase boundary</th><th>Observed drift</th><th>Gate</th></tr></thead><tbody><tr><td>km 60</td><td>17 m</td><td class="pass">PASS</td></tr><tr><td>km 100</td><td>91 m</td><td class="pass">PASS</td></tr><tr><td>km 120</td><td>126 m</td><td class="pass">PASS</td></tr></tbody></table><br><h3>Run Metadata</h3><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Seed</td><td>42</td></tr><tr><td>Max km</td><td>150.0</td></tr><tr><td>IMU model</td><td>Safran STIM300</td></tr><tr><td>Hardware source</td><td>simulated</td></tr><tr><td>Run duration (s)</td><td>11.76</td></tr><tr><td>Vehicle A time (s)</td><td>1.1</td></tr><tr><td>Vehicle B time (s)</td><td>8.76</td></tr><tr><td>BCMP-2 version</td><td>1.1</td></tr></tbody></table></div>
+<p style="font-size:0.72rem;opacity:0.4;margin-top:20px;text-align:center;">MicroMind / NanoCorteX — BCMP-2 Report — Generated 2026-03-31 02:19 UTC — Seed 42</p></body></html>

@@ -1,0 +1,146 @@
+Module                  Size  Used by
+nvidia_drm             94208  1
+nvidia_modeset       1261568  6 nvidia_drm
+xt_conntrack           16384  1
+xt_MASQUERADE          16384  1
+ip6table_nat           16384  1
+ip6table_filter        16384  1
+ip6_tables             32768  2 ip6table_filter,ip6table_nat
+xt_set                 20480  0
+ip_set                 53248  1 xt_set
+iptable_nat            16384  1
+nf_nat                 45056  3 ip6table_nat,iptable_nat,xt_MASQUERADE
+nf_conntrack          122880  3 xt_conntrack,nf_nat,xt_MASQUERADE
+nf_defrag_ipv6         24576  1 nf_conntrack
+nf_defrag_ipv4         16384  1 nf_conntrack
+xt_addrtype            16384  4
+iptable_filter         16384  1
+nf_tables             217088  0
+libcrc32c              16384  3 nf_conntrack,nf_nat,nf_tables
+nfnetlink              20480  3 nf_tables,ip_set
+lzo_rle                16384  36
+lzo_compress           16384  1 lzo_rle
+zram                   32768  12
+zsmalloc               32768  1 zram
+nvme_fabrics           24576  0
+nvme_core              90112  1 nvme_fabrics
+r8168                 512000  0
+ramoops                28672  0
+reed_solomon           20480  1 ramoops
+bridge                241664  0
+stp                    20480  1 bridge
+llc                    20480  2 bridge,stp
+algif_hash             24576  1
+usb_f_ncm              28672  2
+algif_skcipher         20480  1
+af_alg                 28672  6 algif_hash,algif_skcipher
+usb_f_mass_storage     45056  2
+bnep                   28672  2
+usb_f_acm              16384  2
+u_serial               20480  3 usb_f_acm
+usb_f_rndis            28672  2
+u_ether                28672  2 usb_f_rndis,usb_f_ncm
+libcomposite           61440  16 usb_f_rndis,usb_f_mass_storage,usb_f_acm,usb_f_ncm
+tegra_pcie_dma_test    20480  0
+tegra_pcie_edma        20480  1 tegra_pcie_dma_test
+rtl8822ce            3272704  0
+snd_soc_tegra186_asrc    36864  1
+snd_soc_tegra210_admaif   118784  1
+snd_soc_tegra_pcm      16384  1 snd_soc_tegra210_admaif
+snd_soc_tegra210_afc    20480  6
+snd_soc_tegra210_ope    32768  1
+snd_soc_tegra186_dspk    20480  2
+snd_soc_tegra186_arad    24576  2 snd_soc_tegra186_asrc
+snd_soc_tegra210_dmic    20480  3
+snd_soc_tegra210_adx    28672  4
+snd_soc_tegra210_sfc    57344  4
+snd_soc_tegra210_mvc    20480  2
+snd_soc_tegra210_mixer    45056  1
+snd_soc_tegra210_i2s    24576  4
+snd_soc_tegra210_amx    32768  4
+cfg80211              765952  1 rtl8822ce
+tegra210_adma          24576  0
+snd_soc_tegra210_ahub  1257472  3 snd_soc_tegra210_ope,snd_soc_tegra210_sfc
+spidev                 28672  0
+joydev                 32768  0
+rtk_btusb              73728  0
+btusb                  49152  0
+btrtl                  24576  1 btusb
+btintel                40960  1 btusb
+nvvrs_pseq_rtc         16384  0
+btbcm                  28672  1 btusb
+mttcan                 65536  0
+nvpps                  28672  1 mttcan
+fusb301                24576  0
+tegra_cactmon_mc_all    16384  0
+can_dev                36864  1 mttcan
+tegra_aconnect         16384  0
+tegra234_aon           49152  1
+tegra_xudc             45056  0
+pwm_tegra_tachometer    16384  0
+snd_hda_codec_hdmi     61440  1
+snd_hda_tegra          20480  0
+snd_hda_codec         126976  2 snd_hda_codec_hdmi,snd_hda_tegra
+phy_tegra194_p2u       16384  9
+snd_hda_core           94208  3 snd_hda_codec_hdmi,snd_hda_codec,snd_hda_tegra
+at24                   24576  0
+mc_hwpm                16384  0
+spi_tegra114           28672  0
+pcie_tegra194          40960  0
+host1x_fence           24576  0
+nvhost_isp5            16384  0
+nvhost_vi5             20480  0
+nvhost_nvcsi_t194      16384  0
+tegra_camera          217088  3 nvhost_isp5,nvhost_nvcsi_t194,nvhost_vi5
+v4l2_dv_timings        36864  1 tegra_camera
+nvidia               1458176  11 nvidia_modeset
+snd_soc_tegra_machine_driver    16384  0
+crct10dif_ce           20480  1
+nvhost_nvcsi           24576  1 tegra_camera
+snd_soc_tegra_utils    28672  2 snd_soc_tegra210_admaif,snd_soc_tegra_machine_driver
+tegra_camera_platform    24576  4 nvhost_isp5,nvhost_nvcsi_t194,tegra_camera,nvhost_vi5
+snd_soc_simple_card_utils    28672  1 snd_soc_tegra_utils
+nvpmodel_clk_cap       16384  0
+tegra234_oc_event      16384  0
+thermal_trip_event     16384  0
+capture_ivc            28672  1 tegra_camera
+tegra_dce              98304  2 nvidia
+tsecriscv              32768  1 nvidia
+nvidia_vrs_pseq        16384  0
+tegra_camera_rtcpu    176128  2 capture_ivc,tegra_camera
+ivc_bus                24576  2 capture_ivc,tegra_camera_rtcpu
+hsp_mailbox_client     20480  2 ivc_bus,tegra_camera_rtcpu
+ivc_ext                20480  2 ivc_bus,capture_ivc
+governor_userspace     16384  0
+v4l2_fwnode            20480  1 tegra_camera
+v4l2_async             20480  2 v4l2_fwnode,tegra_camera
+videobuf2_dma_contig    24576  1 tegra_camera
+videobuf2_memops       20480  1 videobuf2_dma_contig
+nvhost_capture         20480  2 nvhost_isp5,nvhost_vi5
+videobuf2_v4l2         28672  1 tegra_camera
+videobuf2_common       61440  4 videobuf2_dma_contig,videobuf2_v4l2,tegra_camera,videobuf2_memops
+tegra_drm             344064  12
+tegra_wmark            16384  0
+videodev              249856  4 v4l2_async,videobuf2_v4l2,tegra_camera,videobuf2_common
+nvhwpm                106496  2 mc_hwpm,tegra_drm
+host1x_nvhost          40960  8 nvhost_isp5,nvhost_nvcsi_t194,nvidia,tegra_camera,nvhost_capture,nvhost_nvcsi,nvhost_vi5,nvidia_modeset
+cec                    53248  1 tegra_drm
+mc                     57344  4 videodev,videobuf2_v4l2,tegra_camera,videobuf2_common
+drm_kms_helper        278528  4 tegra_drm,nvidia_drm
+tpm_ftpm_tee           16384  0
+nvidia_p2p             20480  0
+ina3221                24576  0
+nvgpu                2654208  23
+governor_pod_scaling    36864  0
+host1x                180224  6 host1x_nvhost,host1x_fence,nvgpu,tegra_drm,nvidia_drm,nvidia_modeset
+mc_utils               16384  3 nvidia,nvgpu,tegra_camera_platform
+nvmap                 208896  170 nvgpu
+nvsciipc               24576  1 nvmap
+drm                   602112  18 drm_kms_helper,nvidia,tegra_drm,nvidia_drm
+fuse                  131072  5
+ip_tables              32768  2 iptable_filter,iptable_nat
+x_tables               45056  10 ip6table_filter,xt_conntrack,iptable_filter,ip6table_nat,xt_addrtype,xt_set,ip6_tables,ip_tables,iptable_nat,xt_MASQUERADE
+ipv6                  471040  95 bridge
+pwm_fan                24576  0
+pwm_tegra              20480  1
+tegra_bpmp_thermal     16384  0

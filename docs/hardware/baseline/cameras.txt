@@ -1,0 +1,5 @@
+Cannot open device /dev/video0, exiting.
+NVIDIA Tegra Video Input Device (platform:tegra-camrtc-ca):
+	/dev/media0
+
+ls: cannot access '/dev/video*': No such file or directory

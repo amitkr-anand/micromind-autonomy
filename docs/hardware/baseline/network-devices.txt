@@ -1,0 +1,10 @@
+DEVICE            TYPE      STATE                   CONNECTION              
+enP8p1s0          ethernet  connected               Wired connection 1      
+wlP1p1s0          wifi      connected               Airtel_amit_5354_5GHz 1 
+docker0           bridge    connected (externally)  docker0                 
+p2p-dev-wlP1p1s0  wifi-p2p  disconnected            --                      
+l4tbr0            bridge    unmanaged               --                      
+can0              can       unmanaged               --                      
+usb0              ethernet  unmanaged               --                      
+usb1              ethernet  unmanaged               --                      
+lo                loopback  unmanaged               --                      

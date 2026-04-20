@@ -1,0 +1,569 @@
+.
+├── 31 March 2026
+├── artifacts
+│   ├── BCMP2_ClosureReport.md
+│   └── bcmp2_regression_results.json
+├── bcmp1_kpi_log.json
+├── BCMP2_JOURNAL.md
+├── bcmp2_sb1_files.zip
+├── bcmp2_sb2_files.zip
+├── bcmp2_sb3_files.zip
+├── bcmp2_sb4_files.zip
+├── bcmp2_sb4_final.zip
+├── BCMP2_STATUS.md
+├── core
+│   ├── bim
+│   │   ├── bim.py
+│   │   └── __init__.py
+│   ├── cems
+│   │   ├── cems.py
+│   │   └── __init__.py
+│   ├── clock
+│   │   ├── __init__.py
+│   │   └── sim_clock.py
+│   ├── constants.py
+│   ├── dmrl
+│   │   ├── dmrl_stub.py
+│   │   └── __init__.py
+│   ├── ekf
+│   │   └── error_state_ekf.py
+│   ├── error_state_ekf.py
+│   ├── ew_engine
+│   │   ├── ew_engine.py
+│   │   └── __init__.py
+│   ├── fusion
+│   │   ├── frame_utils.py
+│   │   ├── fusion_logger.py
+│   │   ├── __init__.py
+│   │   ├── vio_covariance_error.py
+│   │   ├── vio_mode_FROZEN_BASELINE.py
+│   │   └── vio_mode.py
+│   ├── __init__.py
+│   ├── ins
+│   │   ├── imu_model.py
+│   │   ├── mechanisation.py
+│   │   ├── orthophoto_matching_stub.py
+│   │   ├── state.py
+│   │   └── trn_stub.py
+│   ├── l10s_se
+│   │   ├── __init__.py
+│   │   └── l10s_se.py
+│   ├── math
+│   │   ├── __init__.py
+│   │   └── quaternion.py
+│   ├── route_planner
+│   │   ├── hybrid_astar.py
+│   │   └── __init__.py
+│   ├── state_machine
+│   │   ├── __init__.py
+│   │   └── state_machine.py
+│   └── zpi
+│       ├── __init__.py
+│       └── zpi.py
+├── Daily Logs
+│   ├── HANDOFF_S5_to_S6.md
+│   ├── HANDOFF_S6_to_S7.md
+│   ├── HANDOFF_S7_to_S8.md
+│   ├── HANDOFF_S8_to_S9.md
+│   ├── HANDOFF_S9_to_S10.md
+│   ├── HANDOFF_S9_to_S10_Updated.docx
+│   ├── README_2026-01-04_ESKF_BASELINE.md
+│   ├── README_2026-02-18_ESKF_V2.md
+│   ├── README_2026-02-21_S5_Complete.md
+│   ├── README_2026-02-22_S7_Complete.md
+│   ├── SPRINT_STATUS.md
+│   └── TRN_Sandbox_ClosureReport_S10Handoff.docx
+├── dashboard
+│   ├── als250_drift_chart_20260312_1416.html
+│   ├── als250_drift_chart_20260312_1416.png
+│   ├── als250_drift_chart.py
+│   ├── bcmp1_dashboard.py
+│   ├── bcmp1_report.py
+│   ├── bcmp2_dashboard.py
+│   ├── bcmp2_dashboard_seed42_20260331_0735.html
+│   ├── bcmp2_dashboard_seed42_20260331_0735.png
+│   ├── bcmp2_dashboard_seed42_20260331_0736.html
+│   ├── bcmp2_dashboard_seed42_20260331_0736.png
+│   ├── bcmp2_dashboard_seed42_20260331_0737.html
+│   ├── bcmp2_dashboard_seed42_20260331_0737.png
+│   ├── bcmp2_dashboard_seed42_20260331_0747.html
+│   ├── bcmp2_dashboard_seed42_20260331_0747.png
+│   ├── bcmp2_dashboard_seed42_20260331_0748.html
+│   ├── bcmp2_dashboard_seed42_20260331_0748.png
+│   ├── bcmp2_dashboard_seed42_20260331_0749.html
+│   ├── bcmp2_dashboard_seed42_20260331_0749.png
+│   ├── bcmp2_dashboard_seed42_20260331_0812.html
+│   ├── bcmp2_dashboard_seed42_20260331_0812.png
+│   ├── bcmp2_dashboard_seed42_20260331_0814.html
+│   ├── bcmp2_dashboard_seed42_20260331_0814.png
+│   ├── bcmp2_dashboard_seed42_20260331_0817.html
+│   ├── bcmp2_dashboard_seed42_20260331_0817.png
+│   ├── bcmp2_dashboard_seed42_20260331_0818.html
+│   ├── bcmp2_dashboard_seed42_20260331_0818.png
+│   ├── bcmp2_dashboard_seed42_20260401_1907.html
+│   ├── bcmp2_dashboard_seed42_20260401_1907.png
+│   ├── bcmp2_dashboard_seed42_20260401_1908.html
+│   ├── bcmp2_dashboard_seed42_20260401_1908.png
+│   ├── bcmp2_dashboard_v1.py
+│   ├── bcmp2_executive_seed42_20260331_0736.html
+│   ├── bcmp2_executive_seed42_20260331_0736.png
+│   ├── bcmp2_executive_seed42_20260331_0737.html
+│   ├── bcmp2_executive_seed42_20260331_0737.png
+│   ├── bcmp2_executive_seed42_20260331_0748.html
+│   ├── bcmp2_executive_seed42_20260331_0748.png
+│   ├── bcmp2_executive_seed42_20260331_0749.html
+│   ├── bcmp2_executive_seed42_20260331_0749.png
+│   ├── bcmp2_executive_seed42_20260331_0817.html
+│   ├── bcmp2_executive_seed42_20260331_0817.png
+│   ├── bcmp2_executive_seed42_20260331_0818.html
+│   ├── bcmp2_executive_seed42_20260331_0818.png
+│   ├── bcmp2_executive_seed42_20260401_1907.html
+│   ├── bcmp2_executive_seed42_20260401_1907.png
+│   ├── bcmp2_executive_seed42_20260401_1908.html
+│   ├── bcmp2_executive_seed42_20260401_1908.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f001.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f002.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f003.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f004.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f005.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f006.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f007.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f008.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f009.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f010.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f011.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f012.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f013.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f014.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f015.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f016.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f017.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f018.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f019.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f020.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f021.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f022.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f023.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f024.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f025.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f026.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f027.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f028.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f029.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_f030.png
+│   ├── bcmp2_hifi_seed42_20260331_0736_final.html
+│   ├── bcmp2_hifi_seed42_20260331_0736_final.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f001.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f002.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f003.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f004.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f005.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f006.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f007.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f008.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f009.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f010.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f011.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f012.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f013.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f014.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f015.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f016.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f017.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f018.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f019.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f020.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f021.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f022.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f023.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f024.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f025.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f026.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f027.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f028.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f029.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_f030.png
+│   ├── bcmp2_hifi_seed42_20260331_0748_final.html
+│   ├── bcmp2_hifi_seed42_20260331_0748_final.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f001.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f002.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f003.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f004.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f005.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f006.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f007.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f008.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f009.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f010.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f011.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f012.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f013.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f014.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f015.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f016.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f017.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f018.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f019.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f020.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f021.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f022.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f023.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f024.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f025.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f026.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f027.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f028.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f029.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_f030.png
+│   ├── bcmp2_hifi_seed42_20260331_0817_final.html
+│   ├── bcmp2_hifi_seed42_20260331_0817_final.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f001.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f002.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f003.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f004.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f005.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f006.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f007.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f008.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f009.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f010.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f011.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f012.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f013.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f014.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f015.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f016.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f017.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f018.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f019.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f020.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f021.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f022.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f023.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f024.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f025.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f026.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f027.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f028.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f029.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_f030.png
+│   ├── bcmp2_hifi_seed42_20260401_1907_final.html
+│   ├── bcmp2_hifi_seed42_20260401_1907_final.png
+│   ├── bcmp2_replay.py
+│   ├── bcmp2_replay_V1.py
+│   ├── bcmp2_report_seed42_20260331_0737.html
+│   ├── bcmp2_report_seed42_20260331_0749.html
+│   ├── bcmp2_report_seed42_20260331_0817.html
+│   ├── bcmp2_report_seed42_20260401_1907.html
+│   ├── bcmp2_run_seed42_20260331_0737.json
+│   ├── bcmp2_run_seed42_20260331_0749.json
+│   ├── bcmp2_run_seed42_20260331_0817.json
+│   ├── bcmp2_run_seed42_20260401_1907.json
+│   ├── dashboard
+│   │   ├── bcmp2_dashboard_seed42_20260330_2117.html
+│   │   ├── bcmp2_dashboard_seed42_20260330_2117.png
+│   │   └── executive
+│   │       ├── bcmp2_dashboard_seed42_20260330_2117.html
+│   │       ├── bcmp2_dashboard_seed42_20260330_2117.png
+│   │       ├── frame_0000_km29.png
+│   │       ├── frame_0001_km35.png
+│   │       ├── frame_0002_km80.png
+│   │       ├── frame_0003_km150.png
+│   │       ├── replay_manifest.json
+│   │       └── replay_summary.html
+│   ├── demo_bridge_20260329_101729.jsonl
+│   ├── demo_bridge_20260329_101941.jsonl
+│   ├── demo_bridge_20260329_102704.jsonl
+│   ├── demo_bridge_20260329_103032.jsonl
+│   ├── demo_bridge_20260329_103236.jsonl
+│   ├── demo_bridge_20260329_104701.jsonl
+│   ├── demo_bridge_20260329_105119.jsonl
+│   ├── demo_bridge_20260329_110518.jsonl
+│   ├── demo_bridge_20260329_111321.jsonl
+│   ├── demo_bridge_20260329_111829.jsonl
+│   ├── demo_bridge_20260329_115245.jsonl
+│   ├── demo_bridge_20260329_121240.jsonl
+│   ├── demo_bridge_20260329_125023.jsonl
+│   ├── demo_bridge_20260329_131056.jsonl
+│   ├── demo_bridge_20260329_134339.jsonl
+│   ├── demo_bridge_20260408_012835.jsonl
+│   ├── demo_bridge_20260408_064305.jsonl
+│   ├── demo_events_20260329_101941.json
+│   ├── demo_events_20260329_102704.json
+│   ├── demo_events_20260329_103032.json
+│   ├── demo_events_20260329_103236.json
+│   ├── demo_events_20260329_105119.json
+│   ├── demo_events_20260329_110518.json
+│   ├── demo_events_20260329_111321.json
+│   ├── demo_events_20260329_111829.json
+│   ├── demo_events_20260329_115245.json
+│   ├── demo_events_20260329_121240.json
+│   ├── demo_events_20260329_125023.json
+│   ├── demo_events_20260329_131056.json
+│   ├── demo_events_20260329_134339.json
+│   ├── demo_events_20260408_012835.json
+│   ├── demo_events_20260408_064305.json
+│   ├── demo_latency_20260329_101941.json
+│   ├── demo_latency_20260329_102704.json
+│   ├── demo_latency_20260329_103032.json
+│   ├── demo_latency_20260329_103236.json
+│   ├── demo_latency_20260329_105119.json
+│   ├── demo_latency_20260329_110518.json
+│   ├── demo_latency_20260329_111321.json
+│   ├── demo_latency_20260329_111829.json
+│   ├── demo_latency_20260329_115245.json
+│   ├── demo_latency_20260329_121240.json
+│   ├── demo_latency_20260329_125023.json
+│   ├── demo_latency_20260329_131056.json
+│   ├── demo_latency_20260329_134339.json
+│   ├── demo_latency_20260408_012835.json
+│   ├── demo_latency_20260408_064305.json
+│   ├── demo_report_20260329_101941.html
+│   ├── demo_report_20260329_102704.html
+│   ├── demo_report_20260329_103032.html
+│   ├── demo_report_20260329_103236.html
+│   ├── demo_report_20260329_105119.html
+│   ├── demo_report_20260329_110518.html
+│   ├── demo_report_20260329_111321.html
+│   ├── demo_report_20260329_111829.html
+│   ├── demo_report_20260329_115245.html
+│   ├── demo_report_20260329_121240.html
+│   ├── demo_report_20260329_125023.html
+│   ├── demo_report_20260329_131056.html
+│   ├── demo_report_20260329_134339.html
+│   ├── demo_report_20260408_012835.html
+│   ├── demo_report_20260408_064305.html
+│   ├── ew_dashboard.png
+│   ├── __init__.py
+│   ├── micromind_demo_recording_20260329_131028.mp4
+│   ├── micromind_demo_recording_20260329_134311.mp4
+│   ├── micromind_demo_recording_vlc.mp4
+│   ├── micromind_prehil_cp2_latency_20260329.json
+│   ├── micromind_prehil_cp2_report_20260329.html
+│   ├── micromind_prehil_cp3_readiness_20260329.json
+│   ├── mission_dashboard.png
+│   └── mission_dashboard.py
+├── dataman
+├── demo_overlay.py
+├── docs
+│   ├── governance
+│   │   └── MICROMIND_CODE_GOVERNANCE_v3.0.md
+│   ├── hardware
+│   │   └── SYSTEM_BASELINE_2026-03-19.md
+│   ├── qa
+│   │   ├── AT6_Acceptance_Criteria.md
+│   │   ├── MICROMIND_DECISIONS.md
+│   │   ├── MicroMind_PartTwo_V7.1_Live.docx
+│   │   ├── MicroMind_PartTwo_V7_2.docx
+│   │   ├── MICROMIND_PROJECT_CONTEXT.md
+│   │   ├── MICROMIND_QA_LOG.md
+│   │   ├── MICROMIND_SESSION_START.md
+│   │   ├── MicroMind_SRS_v1_2_1.docx
+│   │   ├── MicroMind_SRS_v1_3.docx
+│   │   └── Sessions
+│   │       ├── 2026-04-03_onboarding.md
+│   │       ├── 2026-04-03_repo_assessment.md
+│   │       ├── 2026-04-03_status_digest.md
+│   │       ├── 2026-04-04_sprintB_code_reading.md
+│   │       ├── 2026-04-04_sprintB_scenarios.md
+│   │       ├── 2026-04-05_sprintC_spec.md
+│   │       ├── 2026-04-05_sprintD_code_review.md
+│   │       └── 2026-04-05_sprintD_spec.md
+│   └── status_updates
+│       ├── 2026-04-06_session_report.md
+│       ├── BCMP2_JOURNAL.md
+│       ├── BCMP2_STATUS.md
+│       ├── HANDOFF_S10_to_S11.md
+│       ├── HANDOFF_S-NEP-02_to_S-NEP-03.md
+│       ├── HANDOFF_S-NEP-04_CLOSURE.md
+│       ├── HANDOFF_S-NEP-05_CLOSURE.md
+│       ├── HANDOFF_S-NEP-06_CLOSURE.md
+│       ├── HANDOFF_S-NEP-08_CLOSURE.md
+│       ├── JOURNAL.md
+│       ├── MicroMind_BCMP2_Implementation_Architecture_v1_1.md
+│       ├── MicroMind_DemoEdition_RealignmentAnalysis.md
+│       ├── MicroMind_PartTwo_DemoEdition_v1.0.md
+│       ├── MicroMind_Phase1_ClosureReport.md
+│       ├── MicroMind_PreHIL_ADR0_v1_0.md
+│       ├── MicroMind_PreHIL_ADR0_v1_1.md
+│       ├── MicroMind_PreHIL_Part12_ProgrammeAssessment_20260329.md
+│       ├── MicroMind_PreHIL_TD_Update_20260329.md
+│       ├── MicroMind_PreHIL_v1_2.md
+│       ├── MicroMind_S9_TD_Update.md
+│       ├── MicroMind_SIA_v1_0.md
+│       ├── MicroMind_SNEP06_ClosureReport.md
+│       ├── MicroMind_SNEP07_EngineeringDecisions_Rev3.md
+│       ├── MicroMind_SNEP09_AnalysisReport_Rev2.md
+│       ├── MicroMind_SoftwareArchitecture_v1_0.md
+│       ├── MicroMind_VIO_Integration_Plan_S-NEP-04.md
+│       ├── MicroMind_VIO_Selection_Programme_v1_2.md
+│       ├── Mission_Demo_Tool_Reqmt.md
+│       ├── NEP_Phase1_ExecutionPlan-1.md
+│       ├── NEP_PlatformContractSpec_v1_1-1.md
+│       ├── NEP_SPRINT_STATUS.md
+│       ├── OpenVINS_Endurance_Validation_Report_Stage2_v4.md
+│       ├── README_2026-02-21_S5_Complete.md
+│       ├── RTABMap_Stage1_Evaluation_Record.md
+│       ├── S10_ScopeReview_DemoFork_Updated.md
+│       ├── SPRINT_STATUS.md
+│       ├── TRN_Sandbox_ClosureReport_S10Handoff.md
+│       ├── TRN_Whitepaper_Outline.md
+│       └── VIO_Phase0_Architecture_v1_2.md
+├── eeprom
+├── etc -> /home/mmuser/PX4-Autopilot/build/px4_sitl_default/etc
+├── fault_injection
+│   ├── fault_manager.py
+│   ├── __init__.py
+│   ├── nav_source_proxy.py
+│   └── sensor_fault_proxy.py
+├── HANDOFF_Phase3_Entry.md
+├── HANDOFF_S-NEP-08_CLOSURE.md
+├── __init__.py
+├── inject_outage.py
+├── integration
+│   ├── bridge
+│   │   ├── bridge_logger.py
+│   │   ├── __init__.py
+│   │   ├── mavlink_bridge.py
+│   │   └── time_reference.py
+│   ├── config
+│   │   └── mission_config.py
+│   ├── drivers
+│   │   ├── base.py
+│   │   ├── eoir.py
+│   │   ├── factory.py
+│   │   ├── gnss.py
+│   │   ├── imu.py
+│   │   ├── __init__.py
+│   │   ├── radalt.py
+│   │   ├── real_eoir.py
+│   │   ├── real_gnss.py
+│   │   ├── real_imu.py
+│   │   ├── real_radalt.py
+│   │   ├── real_sdr.py
+│   │   ├── sim_eoir.py
+│   │   ├── sim_gnss.py
+│   │   ├── sim_imu.py
+│   │   ├── sim_radalt.py
+│   │   ├── sim_sdr.py
+│   │   └── vio_driver.py
+│   ├── __init__.py
+│   ├── pipeline
+│   │   ├── demo_report.py
+│   │   ├── latency_monitor.py
+│   │   ├── live_pipeline.py
+│   │   └── setpoint_coordinator.py
+│   └── tests
+│       ├── __init__.py
+│       ├── test_prehil_bridge.py
+│       ├── test_prehil_drivers.py
+│       ├── test_prehil_latency.py
+│       ├── test_prehil_pipeline.py
+│       └── test_prehil_vio_driver.py
+├── JOURNAL.md
+├── log
+├── logs
+│   ├── at6_endurance_5min_20260405_2347.log
+│   ├── at6_endurance_5min_20260405_2356.log
+│   ├── at6_endurance_5min_20260406_0002.log
+│   ├── at6_endurance_overnight_20260406_0010.log
+│   ├── __init__.py
+│   ├── mission_log_schema.py
+│   └── s10_chart.log
+├── MicroMind_PreHIL_ADR0_v1_0.docx
+├── MicroMind_PreHIL_ADR0_v1_1.docx
+├── notebooks
+│   ├── 01_ins_propagation.ipynb
+│   ├── 02_error_state_ekf.ipynb
+│   ├── 02_ins_mechanisation_quaternion.ipynb
+│   ├── 03_error_state_ekf_propagation.ipynb
+│   ├── 03_eskf_validation.ipynb
+│   └── Untitled.ipynb
+├── pytest.ini
+├── README.md
+├── repo_map.txt
+├── requirements.txt
+├── run_als250_parallel.py
+├── run_bcmp2_tests.py
+├── run_demo_dual.sh
+├── run_demo_record.sh
+├── run_demo.sh
+├── run_s5_tests.py
+├── run_s8_tests.py
+├── scenarios
+│   ├── bcmp1
+│   │   ├── bcmp1_runner (Copy).py
+│   │   ├── bcmp1_runner.py
+│   │   ├── bcmp1_scenario.py
+│   │   ├── bcmp1_two_theatre.py
+│   │   └── __init__.py
+│   ├── bcmp2
+│   │   ├── baseline_nav_sim.py
+│   │   ├── bcmp2_drift_envelopes.py
+│   │   ├── bcmp2_report.py
+│   │   ├── bcmp2_runner (Copy).py
+│   │   ├── bcmp2_runner.py
+│   │   ├── bcmp2_scenario.py
+│   │   ├── bcmp2_terrain_gen.py
+│   │   ├── __init__.py
+│   │   └── run_bcmp2_tests.py
+│   └── __init__.py
+├── sim
+│   ├── als250_nav_sim.py
+│   ├── als250_results
+│   │   ├── als250_nav_ADIS16505_3_42_drift.npy
+│   │   ├── als250_nav_ADIS16505_3_42_meta.json
+│   │   ├── als250_nav_ADIS16505_3_42_position.npy
+│   │   ├── als250_nav_BASELINE_42_drift.npy
+│   │   ├── als250_nav_BASELINE_42_meta.json
+│   │   ├── als250_nav_BASELINE_42_position.npy
+│   │   ├── als250_nav_STIM300_42_drift.npy
+│   │   ├── als250_nav_STIM300_42_meta.json
+│   │   ├── als250_nav_STIM300_42_position.npy
+│   │   └── als250_parallel_manifest.json
+│   ├── bcmp1_cems_sim.py
+│   ├── bcmp1_ew_sim.py
+│   ├── bcmp1_runner.py
+│   ├── eskf_simulation.py
+│   ├── gnss_spoof_injector.py
+│   ├── __init__.py
+│   ├── nav_scenario.py
+│   └── run_als250_overnight.py
+├── simulation
+│   ├── launch_two_vehicle_sitl.sh
+│   ├── run_demo.sh
+│   ├── run_mission.py
+│   └── worlds
+│       └── two_vehicle_sitl.sdf
+├── SPRINT_STATUS.md
+├── test_data -> /home/mmuser/PX4-Autopilot/test_data
+└── tests
+    ├── __init__.py
+    ├── test_bcmp2_at1.py
+    ├── test_bcmp2_at2.py
+    ├── test_bcmp2_at3_5.py
+    ├── test_bcmp2_at6.py
+    ├── test_bcmp2_sb2.py
+    ├── test_prehil_rc11.py
+    ├── test_prehil_rc7.py
+    ├── test_prehil_rc8.py
+    ├── test_s5_bcmp1_runner.py
+    ├── test_s5_dmrl.py
+    ├── test_s5_l10s_se_adversarial.py
+    ├── test_s5_l10s_se.py
+    ├── test_s6_zpi_cems.py
+    ├── test_s8a_imu_model.py
+    ├── test_s8b_mechanisation.py
+    ├── test_s8c_als250_nav_sim.py
+    ├── test_s8e_bcmp1_runner_imu.py
+    ├── test_s9_nav01_pass.py
+    ├── test_s_nep_04a_interface.py
+    ├── test_s_nep_08.py
+    ├── test_s_nep_09.py
+    ├── test_sprint_c_om_stub.py
+    ├── test_sprint_s1_acceptance.py
+    ├── test_sprint_s2_acceptance.py
+    ├── test_sprint_s3_acceptance.py
+    └── test_sprint_s4_acceptance.py
+
+48 directories, 519 files

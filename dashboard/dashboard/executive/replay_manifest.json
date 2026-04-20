@@ -1,0 +1,30 @@
+{
+  "mode": "executive",
+  "seed": 42,
+  "max_km": 150.0,
+  "frames": [
+    {
+      "km": 29,
+      "label": "Pre-denial \u2014 Both vehicles nominal",
+      "png_path": "dashboard/executive/frame_0000_km29.png"
+    },
+    {
+      "km": 35,
+      "label": "P2 \u2014 GNSS denied, Vehicle A drifting",
+      "png_path": "dashboard/executive/frame_0001_km35.png"
+    },
+    {
+      "km": 80,
+      "label": "P3 \u2014 Plains corridor, A breach imminent",
+      "png_path": "dashboard/executive/frame_0002_km80.png"
+    },
+    {
+      "km": 150,
+      "label": "Mission end \u2014 Final outcome",
+      "png_path": "dashboard/executive/frame_0003_km150.png"
+    }
+  ],
+  "full_dashboard": "dashboard/executive/bcmp2_dashboard_seed42_20260330_2117.png",
+  "html": "dashboard/executive/replay_summary.html",
+  "generated": "2026-03-30T15:47:24.712663+00:00"
+}

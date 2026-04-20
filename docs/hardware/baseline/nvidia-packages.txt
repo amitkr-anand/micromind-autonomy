@@ -1,0 +1,53 @@
+ii  libnvidia-container-tools                                1.16.2-1                                         arm64        NVIDIA container runtime library (command-line tools)
+ii  libnvidia-container1:arm64                               1.16.2-1                                         arm64        NVIDIA container runtime library
+ii  nvidia-container-toolkit                                 1.16.2-1                                         arm64        NVIDIA Container toolkit
+ii  nvidia-container-toolkit-base                            1.16.2-1                                         arm64        NVIDIA Container Toolkit Base
+ii  nvidia-l4t-3d-core                                       36.4.7-20250918154033                            arm64        NVIDIA GL EGL Package
+ii  nvidia-l4t-apt-source                                    36.4.7-20250918154033                            arm64        NVIDIA L4T apt source list debian package
+ii  nvidia-l4t-bootloader                                    36.4.7-20250918154033                            arm64        NVIDIA Bootloader Package
+ii  nvidia-l4t-camera                                        36.4.7-20250918154033                            arm64        NVIDIA Camera Package
+ii  nvidia-l4t-configs                                       36.4.7-20250918154033                            arm64        NVIDIA configs debian package
+ii  nvidia-l4t-core                                          36.4.7-20250918154033                            arm64        NVIDIA Core Package
+ii  nvidia-l4t-cuda                                          36.4.7-20250918154033                            arm64        NVIDIA CUDA Package
+ii  nvidia-l4t-cuda-utils                                    36.4.7-20250918154033                            arm64        NVIDIA CUDA utilities
+ii  nvidia-l4t-cudadebuggingsupport                          12.6-34622040.0                                  arm64        NVIDIA CUDA Debugger Support Package
+ii  nvidia-l4t-display-kernel                                5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA Display Kernel Modules Package
+ii  nvidia-l4t-dla-compiler                                  36.4.7-20250918154033                            arm64        NVIDIA DLA Compiler Package
+ii  nvidia-l4t-firmware                                      36.4.7-20250918154033                            arm64        NVIDIA Firmware Package
+ii  nvidia-l4t-gbm                                           36.4.7-20250918154033                            arm64        NVIDIA GBM Package
+ii  nvidia-l4t-graphics-demos                                36.4.7-20250918154033                            arm64        NVIDIA graphics demo applications
+ii  nvidia-l4t-gstreamer                                     36.4.7-20250918154033                            arm64        NVIDIA GST Application files
+ii  nvidia-l4t-init                                          36.4.7-20250918154033                            arm64        NVIDIA Init debian package
+ii  nvidia-l4t-initrd                                        36.4.7-20250918154033                            arm64        NVIDIA initrd debian package
+ii  nvidia-l4t-jetson-io                                     36.4.7-20250918154033                            arm64        NVIDIA Jetson.IO debian package
+ii  nvidia-l4t-jetson-multimedia-api                         36.4.7-20250918154033                            arm64        NVIDIA Jetson Multimedia API is a collection of lower-level APIs that support flexible application development.
+ii  nvidia-l4t-jetsonpower-gui-tools                         36.4.7-20250918154033                            arm64        NVIDIA Jetson Power GUI Tools debian package
+ii  nvidia-l4t-kernel                                        5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA Kernel Package
+ii  nvidia-l4t-kernel-dtbs                                   5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA Kernel DTB Package
+ii  nvidia-l4t-kernel-headers                                5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA Linux Tegra Kernel Headers Package
+ii  nvidia-l4t-kernel-oot-headers                            5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA OOT Kernel Module Headers Package
+ii  nvidia-l4t-kernel-oot-modules                            5.15.148-tegra-36.4.7-20250918154033             arm64        NVIDIA OOT Kernel Module Drivers Package
+ii  nvidia-l4t-libwayland-client0                            36.4.7-20250918154033                            arm64        NVIDIA Wayland Package
+ii  nvidia-l4t-libwayland-cursor0                            36.4.7-20250918154033                            arm64        NVIDIA Wayland Package
+ii  nvidia-l4t-libwayland-egl1                               36.4.7-20250918154033                            arm64        NVIDIA Wayland Package
+ii  nvidia-l4t-libwayland-server0                            36.4.7-20250918154033                            arm64        NVIDIA Wayland Package
+ii  nvidia-l4t-multimedia                                    36.4.7-20250918154033                            arm64        NVIDIA Multimedia Package
+ii  nvidia-l4t-multimedia-utils                              36.4.7-20250918154033                            arm64        NVIDIA Multimedia Package
+ii  nvidia-l4t-nvfancontrol                                  36.4.7-20250918154033                            arm64        NVIDIA Nvfancontrol debian package
+ii  nvidia-l4t-nvml                                          36.4.7-20250918154033                            arm64        NVIDIA NVML Package
+ii  nvidia-l4t-nvpmodel                                      36.4.7-20250918154033                            arm64        NVIDIA Nvpmodel debian package
+ii  nvidia-l4t-nvpmodel-gui-tools                            36.4.7-20250918154033                            arm64        NVIDIA Nvpmodel GUI Tools debian package
+ii  nvidia-l4t-nvsci                                         36.4.7-20250918154033                            arm64        NVIDIA NvSci Package
+ii  nvidia-l4t-oem-config                                    36.4.7-20250918154033                            arm64        NVIDIA OEM-Config Package
+ii  nvidia-l4t-openwfd                                       36.4.7-20250918154033                            arm64        NVIDIA OpenWFD Package
+ii  nvidia-l4t-optee                                         36.4.7-20250918154033                            arm64        OP-TEE userspace daemons, test programs and libraries
+ii  nvidia-l4t-pva                                           36.4.7-20250918154033                            arm64        NVIDIA PVA Package
+ii  nvidia-l4t-tools                                         36.4.7-20250918154033                            arm64        NVIDIA Public Test Tools Package
+ii  nvidia-l4t-vulkan-sc                                     36.4.7-20250918154033                            arm64        NVIDIA Vulkan SC run-time package
+ii  nvidia-l4t-vulkan-sc-dev                                 36.4.7-20250918154033                            arm64        NVIDIA Vulkan SC Dev package
+ii  nvidia-l4t-vulkan-sc-samples                             36.4.7-20250918154033                            arm64        NVIDIA Vulkan SC samples package
+ii  nvidia-l4t-vulkan-sc-sdk                                 36.4.7-20250918154033                            arm64        NVIDIA Vulkan SC SDK package
+ii  nvidia-l4t-wayland                                       36.4.7-20250918154033                            arm64        NVIDIA Wayland Package
+ii  nvidia-l4t-weston                                        36.4.7-20250918154033                            arm64        NVIDIA Weston Package
+ii  nvidia-l4t-x11                                           36.4.7-20250918154033                            arm64        NVIDIA X11 Package
+ii  nvidia-l4t-xusb-firmware                                 36.4.7-20250918154033                            arm64        NVIDIA USB Firmware Package

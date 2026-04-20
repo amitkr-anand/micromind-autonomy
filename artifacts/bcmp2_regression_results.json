@@ -1,0 +1,780 @@
+{
+  "generated_at": 1775065962.347775,
+  "elapsed_s": 37.47,
+  "at1": {
+    "test_id": "AT-1",
+    "seed": 42,
+    "passed": true,
+    "vehicle_a_result": "MARGINAL",
+    "vehicle_b_result": "SUCCEEDED",
+    "raw": {
+      "bcmp2_version": "1.1",
+      "hardware_source": "simulated",
+      "seed": 42,
+      "max_km": 5.0,
+      "imu_model": "Safran STIM300",
+      "run_duration_s": 0.43,
+      "vehicle_a_time_s": 0.03,
+      "vehicle_b_time_s": 0.35,
+      "disturbance_schedule": {
+        "seed": 42,
+        "gnss_denial": {
+          "start_s": 545.4545454545455,
+          "end_s": "inf"
+        },
+        "wind": {
+          "mean_north_ms": 2.0,
+          "mean_east_ms": 1.5,
+          "gust_amplitude_ms": 3.0,
+          "gust_period_s": 45.0,
+          "turbulence_sigma_ms": 0.5
+        },
+        "vio_outages": [
+          {
+            "start_s": 872.7272727272727,
+            "duration_s": 15.0,
+            "reason": "scripted_P2"
+          }
+        ],
+        "radalt_loss_s": null,
+        "eo_freeze_s": null,
+        "imu_noise_scale": 1.0
+      },
+      "vehicle_a": {
+        "vehicle": "A_baseline",
+        "seed": 42,
+        "imu_model": "Safran STIM300",
+        "total_steps": 18182,
+        "drift_at_km60_m": null,
+        "drift_at_km100_m": null,
+        "drift_at_km120_m": null,
+        "first_corridor_violation_km": null,
+        "total_corridor_violations": 0,
+        "c2_gates": {
+          "60": {
+            "passed": false,
+            "reason": "Not reached km 60",
+            "observed_m": null
+          },
+          "100": {
+            "passed": false,
+            "reason": "Not reached km 100",
+            "observed_m": null
+          },
+          "120": {
+            "passed": false,
+            "reason": "Not reached km 120",
+            "observed_m": null
+          }
+        },
+        "final_lateral_error_m": -1.3245973798984114
+      },
+      "vehicle_b": {
+        "nav01_pass": true,
+        "max_5km_drift_m": 17.922,
+        "trn_corrections": null,
+        "all_criteria_met": true,
+        "spoof_detection_ms": null,
+        "dmrl_lock_conf": 0.8647,
+        "l10s_decision_ms": null,
+        "ew_cost_map_ms": null,
+        "route_replan_ms": null,
+        "ew_replan_count": 4,
+        "l10s_decision": "CONTINUE",
+        "criteria": {
+          "C-01-BIM-SPOOF-DETECT": true,
+          "C-02-BIM-RED-STATE": true,
+          "C-03-NAV-DRIFT": true,
+          "C-04-EW-LATENCY": true,
+          "C-05-ROUTE-REPLAN": true,
+          "C-06-FSM-TRANSITION": true,
+          "C-07-DMRL-LOCK": true,
+          "C-08-DECOY-REJECT": true,
+          "C-09-L10S-DECISION": true,
+          "C-10-CIVILIAN-SAFE": true,
+          "C-11-LOG-COMPLETE": true
+        }
+      },
+      "comparison": {
+        "seed": 42,
+        "gnss_denial_km": 30.000000000000004,
+        "vehicle_a_mission_result": "MARGINAL",
+        "vehicle_b_mission_result": "SUCCEEDED",
+        "vehicle_a_drift_km120_m": null,
+        "vehicle_b_max_5km_drift_m": 17.922,
+        "vehicle_a_first_corridor_violation_km": null,
+        "vehicle_b_corridor_maintained": true,
+        "vehicle_a_causal_chain": [
+          "GNSS denied at km 30 \u2014 INS-only propagation began",
+          "No terrain or visual correction available \u2014 drift accumulated unchecked",
+          "Lateral error at km 120: N/A m (no mission-layer awareness)",
+          "Corridor breach: none observed",
+          "Terminal approach geometry: potentially unsafe"
+        ],
+        "vehicle_b_causal_chain": [
+          "GNSS denied at km 30 \u2014 TRN/VIO transition triggered",
+          "TRN corrections applied: N/A",
+          "Max 5km drift bounded to: 17.9 m",
+          "Mission enforcement active throughout terminal phase",
+          "Terminal action gated by confidence and NOMINAL state requirement"
+        ],
+        "vehicle_a_c2_gates_all_passed": false,
+        "vehicle_a_c2_gates": {
+          "60": {
+            "passed": false,
+            "reason": "Not reached km 60",
+            "observed_m": null
+          },
+          "100": {
+            "passed": false,
+            "reason": "Not reached km 100",
+            "observed_m": null
+          },
+          "120": {
+            "passed": false,
+            "reason": "Not reached km 120",
+            "observed_m": null
+          }
+        }
+      }
+    }
+  },
+  "at2": {
+    "test_id": "AT-2",
+    "overall_pass": true,
+    "seed_count": 3,
+    "runs": [
+      {
+        "seed": 42,
+        "km60_pass": true,
+        "km100_pass": true,
+        "km120_pass": true,
+        "all_gates_pass": true,
+        "vehicle_a_result": "MARGINAL",
+        "vehicle_b_result": "PARTIAL",
+        "vehicle_a_drift_km120_m": 125.73625886118135,
+        "vehicle_b_max_5km_drift_m": 7273.84,
+        "raw": {
+          "bcmp2_version": "1.1",
+          "hardware_source": "simulated",
+          "seed": 42,
+          "max_km": 150.0,
+          "imu_model": "Safran STIM300",
+          "run_duration_s": 9.38,
+          "vehicle_a_time_s": 0.93,
+          "vehicle_b_time_s": 6.95,
+          "disturbance_schedule": {
+            "seed": 42,
+            "gnss_denial": {
+              "start_s": 545.4545454545455,
+              "end_s": "inf"
+            },
+            "wind": {
+              "mean_north_ms": 2.0,
+              "mean_east_ms": 1.5,
+              "gust_amplitude_ms": 3.0,
+              "gust_period_s": 45.0,
+              "turbulence_sigma_ms": 0.5
+            },
+            "vio_outages": [
+              {
+                "start_s": 872.7272727272727,
+                "duration_s": 15.0,
+                "reason": "scripted_P2"
+              }
+            ],
+            "radalt_loss_s": null,
+            "eo_freeze_s": null,
+            "imu_noise_scale": 1.0
+          },
+          "vehicle_a": {
+            "vehicle": "A_baseline",
+            "seed": 42,
+            "imu_model": "Safran STIM300",
+            "total_steps": 545455,
+            "drift_at_km60_m": 16.92082201437605,
+            "drift_at_km100_m": 91.47491593742653,
+            "drift_at_km120_m": 125.73625886118135,
+            "first_corridor_violation_km": null,
+            "total_corridor_violations": 0,
+            "c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 16.9 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 16.92082201437605
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 91.5 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 91.47491593742653
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 125.7 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 125.73625886118135
+              }
+            },
+            "final_lateral_error_m": -183.69093983324115
+          },
+          "vehicle_b": {
+            "nav01_pass": false,
+            "max_5km_drift_m": 7273.84,
+            "trn_corrections": null,
+            "all_criteria_met": false,
+            "spoof_detection_ms": null,
+            "dmrl_lock_conf": 0.8697,
+            "l10s_decision_ms": null,
+            "ew_cost_map_ms": null,
+            "route_replan_ms": null,
+            "ew_replan_count": 4,
+            "l10s_decision": "CONTINUE",
+            "criteria": {
+              "C-01-BIM-SPOOF-DETECT": true,
+              "C-02-BIM-RED-STATE": true,
+              "C-03-NAV-DRIFT": false,
+              "C-04-EW-LATENCY": true,
+              "C-05-ROUTE-REPLAN": true,
+              "C-06-FSM-TRANSITION": true,
+              "C-07-DMRL-LOCK": true,
+              "C-08-DECOY-REJECT": true,
+              "C-09-L10S-DECISION": true,
+              "C-10-CIVILIAN-SAFE": true,
+              "C-11-LOG-COMPLETE": true
+            }
+          },
+          "comparison": {
+            "seed": 42,
+            "gnss_denial_km": 30.000000000000004,
+            "vehicle_a_mission_result": "MARGINAL",
+            "vehicle_b_mission_result": "PARTIAL",
+            "vehicle_a_drift_km120_m": 125.73625886118135,
+            "vehicle_b_max_5km_drift_m": 7273.84,
+            "vehicle_a_first_corridor_violation_km": null,
+            "vehicle_b_corridor_maintained": true,
+            "vehicle_a_causal_chain": [
+              "GNSS denied at km 30 \u2014 INS-only propagation began",
+              "No terrain or visual correction available \u2014 drift accumulated unchecked",
+              "Lateral error at km 120: 126 m (no mission-layer awareness)",
+              "Corridor breach: none observed",
+              "Terminal approach geometry: potentially unsafe"
+            ],
+            "vehicle_b_causal_chain": [
+              "GNSS denied at km 30 \u2014 TRN/VIO transition triggered",
+              "TRN corrections applied: N/A",
+              "Max 5km drift bounded to: 7273.8 m",
+              "Mission enforcement active throughout terminal phase",
+              "Terminal action gated by confidence and NOMINAL state requirement"
+            ],
+            "vehicle_a_c2_gates_all_passed": true,
+            "vehicle_a_c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 16.9 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 16.92082201437605
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 91.5 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 91.47491593742653
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 125.7 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 125.73625886118135
+              }
+            }
+          }
+        }
+      },
+      {
+        "seed": 101,
+        "km60_pass": true,
+        "km100_pass": true,
+        "km120_pass": true,
+        "all_gates_pass": true,
+        "vehicle_a_result": "FAILED",
+        "vehicle_b_result": "PARTIAL",
+        "vehicle_a_drift_km120_m": 470.82839500295336,
+        "vehicle_b_max_5km_drift_m": 24899.235,
+        "raw": {
+          "bcmp2_version": "1.1",
+          "hardware_source": "simulated",
+          "seed": 101,
+          "max_km": 150.0,
+          "imu_model": "Safran STIM300",
+          "run_duration_s": 9.35,
+          "vehicle_a_time_s": 0.92,
+          "vehicle_b_time_s": 6.93,
+          "disturbance_schedule": {
+            "seed": 101,
+            "gnss_denial": {
+              "start_s": 545.4545454545455,
+              "end_s": "inf"
+            },
+            "wind": {
+              "mean_north_ms": 4.0,
+              "mean_east_ms": 3.0,
+              "gust_amplitude_ms": 6.0,
+              "gust_period_s": 45.0,
+              "turbulence_sigma_ms": 1.2
+            },
+            "vio_outages": [
+              {
+                "start_s": 1000.0,
+                "duration_s": 25.0,
+                "reason": "scripted_P2"
+              }
+            ],
+            "radalt_loss_s": null,
+            "eo_freeze_s": null,
+            "imu_noise_scale": 1.15
+          },
+          "vehicle_a": {
+            "vehicle": "A_baseline",
+            "seed": 101,
+            "imu_model": "Safran STIM300",
+            "total_steps": 545455,
+            "drift_at_km60_m": 56.6858378853602,
+            "drift_at_km100_m": 298.7581095189486,
+            "drift_at_km120_m": 470.82839500295336,
+            "first_corridor_violation_km": 123.35152500141591,
+            "total_corridor_violations": 96904,
+            "c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 56.7 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 56.6858378853602
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 298.8 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 298.7581095189486
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 470.8 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 470.82839500295336
+              }
+            },
+            "final_lateral_error_m": -768.667669255838
+          },
+          "vehicle_b": {
+            "nav01_pass": false,
+            "max_5km_drift_m": 24899.235,
+            "trn_corrections": null,
+            "all_criteria_met": false,
+            "spoof_detection_ms": null,
+            "dmrl_lock_conf": 0.8823,
+            "l10s_decision_ms": null,
+            "ew_cost_map_ms": null,
+            "route_replan_ms": null,
+            "ew_replan_count": 4,
+            "l10s_decision": "CONTINUE",
+            "criteria": {
+              "C-01-BIM-SPOOF-DETECT": true,
+              "C-02-BIM-RED-STATE": true,
+              "C-03-NAV-DRIFT": false,
+              "C-04-EW-LATENCY": true,
+              "C-05-ROUTE-REPLAN": true,
+              "C-06-FSM-TRANSITION": true,
+              "C-07-DMRL-LOCK": true,
+              "C-08-DECOY-REJECT": true,
+              "C-09-L10S-DECISION": true,
+              "C-10-CIVILIAN-SAFE": true,
+              "C-11-LOG-COMPLETE": true
+            }
+          },
+          "comparison": {
+            "seed": 101,
+            "gnss_denial_km": 30.000000000000004,
+            "vehicle_a_mission_result": "FAILED",
+            "vehicle_b_mission_result": "PARTIAL",
+            "vehicle_a_drift_km120_m": 470.82839500295336,
+            "vehicle_b_max_5km_drift_m": 24899.235,
+            "vehicle_a_first_corridor_violation_km": 123.35152500141591,
+            "vehicle_b_corridor_maintained": false,
+            "vehicle_a_causal_chain": [
+              "GNSS denied at km 30 \u2014 INS-only propagation began",
+              "No terrain or visual correction available \u2014 drift accumulated unchecked",
+              "Lateral error at km 120: 471 m (no mission-layer awareness)",
+              "Corridor breach: km 123.4",
+              "Terminal approach geometry: potentially unsafe"
+            ],
+            "vehicle_b_causal_chain": [
+              "GNSS denied at km 30 \u2014 TRN/VIO transition triggered",
+              "TRN corrections applied: N/A",
+              "Max 5km drift bounded to: 24899.2 m",
+              "Mission enforcement active throughout terminal phase",
+              "Terminal action gated by confidence and NOMINAL state requirement"
+            ],
+            "vehicle_a_c2_gates_all_passed": true,
+            "vehicle_a_c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 56.7 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 56.6858378853602
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 298.8 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 298.7581095189486
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 470.8 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 470.82839500295336
+              }
+            }
+          }
+        }
+      },
+      {
+        "seed": 303,
+        "km60_pass": true,
+        "km100_pass": true,
+        "km120_pass": true,
+        "all_gates_pass": true,
+        "vehicle_a_result": "FAILED",
+        "vehicle_b_result": "PARTIAL",
+        "vehicle_a_drift_km120_m": 249.1843048029657,
+        "vehicle_b_max_5km_drift_m": 4026.933,
+        "raw": {
+          "bcmp2_version": "1.1",
+          "hardware_source": "simulated",
+          "seed": 303,
+          "max_km": 150.0,
+          "imu_model": "Safran STIM300",
+          "run_duration_s": 9.44,
+          "vehicle_a_time_s": 0.93,
+          "vehicle_b_time_s": 7.02,
+          "disturbance_schedule": {
+            "seed": 303,
+            "gnss_denial": {
+              "start_s": 545.4545454545455,
+              "end_s": "inf"
+            },
+            "wind": {
+              "mean_north_ms": 6.0,
+              "mean_east_ms": 4.0,
+              "gust_amplitude_ms": 10.0,
+              "gust_period_s": 45.0,
+              "turbulence_sigma_ms": 2.0
+            },
+            "vio_outages": [
+              {
+                "start_s": 763.6363636363636,
+                "duration_s": 35.0,
+                "reason": "scripted_P2"
+              }
+            ],
+            "radalt_loss_s": 2181.818181818182,
+            "eo_freeze_s": null,
+            "imu_noise_scale": 1.3
+          },
+          "vehicle_a": {
+            "vehicle": "A_baseline",
+            "seed": 303,
+            "imu_model": "Safran STIM300",
+            "total_steps": 545455,
+            "drift_at_km60_m": 24.040267820058524,
+            "drift_at_km100_m": 144.7337785336984,
+            "drift_at_km120_m": 249.1843048029657,
+            "first_corridor_violation_km": 149.24277500198107,
+            "total_corridor_violations": 2754,
+            "c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 24.0 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 24.040267820058524
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 144.7 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 144.7337785336984
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 249.2 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 249.1843048029657
+              }
+            },
+            "final_lateral_error_m": -507.43431390277664
+          },
+          "vehicle_b": {
+            "nav01_pass": false,
+            "max_5km_drift_m": 4026.933,
+            "trn_corrections": null,
+            "all_criteria_met": false,
+            "spoof_detection_ms": null,
+            "dmrl_lock_conf": 0.8577,
+            "l10s_decision_ms": null,
+            "ew_cost_map_ms": null,
+            "route_replan_ms": null,
+            "ew_replan_count": 4,
+            "l10s_decision": "CONTINUE",
+            "criteria": {
+              "C-01-BIM-SPOOF-DETECT": true,
+              "C-02-BIM-RED-STATE": true,
+              "C-03-NAV-DRIFT": false,
+              "C-04-EW-LATENCY": true,
+              "C-05-ROUTE-REPLAN": true,
+              "C-06-FSM-TRANSITION": true,
+              "C-07-DMRL-LOCK": true,
+              "C-08-DECOY-REJECT": true,
+              "C-09-L10S-DECISION": true,
+              "C-10-CIVILIAN-SAFE": true,
+              "C-11-LOG-COMPLETE": true
+            }
+          },
+          "comparison": {
+            "seed": 303,
+            "gnss_denial_km": 30.000000000000004,
+            "vehicle_a_mission_result": "FAILED",
+            "vehicle_b_mission_result": "PARTIAL",
+            "vehicle_a_drift_km120_m": 249.1843048029657,
+            "vehicle_b_max_5km_drift_m": 4026.933,
+            "vehicle_a_first_corridor_violation_km": 149.24277500198107,
+            "vehicle_b_corridor_maintained": false,
+            "vehicle_a_causal_chain": [
+              "GNSS denied at km 30 \u2014 INS-only propagation began",
+              "No terrain or visual correction available \u2014 drift accumulated unchecked",
+              "Lateral error at km 120: 249 m (no mission-layer awareness)",
+              "Corridor breach: km 149.2",
+              "Terminal approach geometry: potentially unsafe"
+            ],
+            "vehicle_b_causal_chain": [
+              "GNSS denied at km 30 \u2014 TRN/VIO transition triggered",
+              "TRN corrections applied: N/A",
+              "Max 5km drift bounded to: 4026.9 m",
+              "Mission enforcement active throughout terminal phase",
+              "Terminal action gated by confidence and NOMINAL state requirement"
+            ],
+            "vehicle_a_c2_gates_all_passed": true,
+            "vehicle_a_c2_gates": {
+              "60": {
+                "passed": true,
+                "reason": "PASS \u2014 24.0 m within [5, 80] m at km 60",
+                "floor_m": 5,
+                "nominal_m": 19,
+                "ceiling_m": 80,
+                "observed_m": 24.040267820058524
+              },
+              "100": {
+                "passed": true,
+                "reason": "PASS \u2014 144.7 m within [12, 350] m at km 100",
+                "floor_m": 12,
+                "nominal_m": 96,
+                "ceiling_m": 350,
+                "observed_m": 144.7337785336984
+              },
+              "120": {
+                "passed": true,
+                "reason": "PASS \u2014 249.2 m within [15, 650] m at km 120",
+                "floor_m": 15,
+                "nominal_m": 155,
+                "ceiling_m": 650,
+                "observed_m": 249.1843048029657
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "at3": {
+    "test_id": "AT-3",
+    "seed": 42,
+    "passed": true,
+    "corridor_breach_km": null,
+    "vehicle_a_result": "MARGINAL",
+    "vehicle_b_result": "PARTIAL",
+    "raw": {
+      "bcmp2_version": "1.1",
+      "hardware_source": "simulated",
+      "seed": 42,
+      "max_km": 120.0,
+      "imu_model": "Safran STIM300",
+      "run_duration_s": 8.86,
+      "vehicle_a_time_s": 0.72,
+      "vehicle_b_time_s": 6.95,
+      "disturbance_schedule": {
+        "seed": 42,
+        "gnss_denial": {
+          "start_s": 545.4545454545455,
+          "end_s": "inf"
+        },
+        "wind": {
+          "mean_north_ms": 2.0,
+          "mean_east_ms": 1.5,
+          "gust_amplitude_ms": 3.0,
+          "gust_period_s": 45.0,
+          "turbulence_sigma_ms": 0.5
+        },
+        "vio_outages": [
+          {
+            "start_s": 872.7272727272727,
+            "duration_s": 15.0,
+            "reason": "scripted_P2"
+          }
+        ],
+        "radalt_loss_s": null,
+        "eo_freeze_s": null,
+        "imu_noise_scale": 1.0
+      },
+      "vehicle_a": {
+        "vehicle": "A_baseline",
+        "seed": 42,
+        "imu_model": "Safran STIM300",
+        "total_steps": 436364,
+        "drift_at_km60_m": 16.92082201437605,
+        "drift_at_km100_m": 91.47491593742653,
+        "drift_at_km120_m": null,
+        "first_corridor_violation_km": null,
+        "total_corridor_violations": 0,
+        "c2_gates": {
+          "60": {
+            "passed": true,
+            "reason": "PASS \u2014 16.9 m within [5, 80] m at km 60",
+            "floor_m": 5,
+            "nominal_m": 19,
+            "ceiling_m": 80,
+            "observed_m": 16.92082201437605
+          },
+          "100": {
+            "passed": true,
+            "reason": "PASS \u2014 91.5 m within [12, 350] m at km 100",
+            "floor_m": 12,
+            "nominal_m": 96,
+            "ceiling_m": 350,
+            "observed_m": 91.47491593742653
+          },
+          "120": {
+            "passed": false,
+            "reason": "Not reached km 120",
+            "observed_m": null
+          }
+        },
+        "final_lateral_error_m": -125.73378391927174
+      },
+      "vehicle_b": {
+        "nav01_pass": false,
+        "max_5km_drift_m": 7273.84,
+        "trn_corrections": null,
+        "all_criteria_met": false,
+        "spoof_detection_ms": null,
+        "dmrl_lock_conf": 0.8692,
+        "l10s_decision_ms": null,
+        "ew_cost_map_ms": null,
+        "route_replan_ms": null,
+        "ew_replan_count": 4,
+        "l10s_decision": "CONTINUE",
+        "criteria": {
+          "C-01-BIM-SPOOF-DETECT": true,
+          "C-02-BIM-RED-STATE": true,
+          "C-03-NAV-DRIFT": false,
+          "C-04-EW-LATENCY": true,
+          "C-05-ROUTE-REPLAN": true,
+          "C-06-FSM-TRANSITION": true,
+          "C-07-DMRL-LOCK": true,
+          "C-08-DECOY-REJECT": true,
+          "C-09-L10S-DECISION": true,
+          "C-10-CIVILIAN-SAFE": true,
+          "C-11-LOG-COMPLETE": true
+        }
+      },
+      "comparison": {
+        "seed": 42,
+        "gnss_denial_km": 30.000000000000004,
+        "vehicle_a_mission_result": "MARGINAL",
+        "vehicle_b_mission_result": "PARTIAL",
+        "vehicle_a_drift_km120_m": null,
+        "vehicle_b_max_5km_drift_m": 7273.84,
+        "vehicle_a_first_corridor_violation_km": null,
+        "vehicle_b_corridor_maintained": true,
+        "vehicle_a_causal_chain": [
+          "GNSS denied at km 30 \u2014 INS-only propagation began",
+          "No terrain or visual correction available \u2014 drift accumulated unchecked",
+          "Lateral error at km 120: N/A m (no mission-layer awareness)",
+          "Corridor breach: none observed",
+          "Terminal approach geometry: potentially unsafe"
+        ],
+        "vehicle_b_causal_chain": [
+          "GNSS denied at km 30 \u2014 TRN/VIO transition triggered",
+          "TRN corrections applied: N/A",
+          "Max 5km drift bounded to: 7273.8 m",
+          "Mission enforcement active throughout terminal phase",
+          "Terminal action gated by confidence and NOMINAL state requirement"
+        ],
+        "vehicle_a_c2_gates_all_passed": false,
+        "vehicle_a_c2_gates": {
+          "60": {
+            "passed": true,
+            "reason": "PASS \u2014 16.9 m within [5, 80] m at km 60",
+            "floor_m": 5,
+            "nominal_m": 19,
+            "ceiling_m": 80,
+            "observed_m": 16.92082201437605
+          },
+          "100": {
+            "passed": true,
+            "reason": "PASS \u2014 91.5 m within [12, 350] m at km 100",
+            "floor_m": 12,
+            "nominal_m": 96,
+            "ceiling_m": 350,
+            "observed_m": 91.47491593742653
+          },
+          "120": {
+            "passed": false,
+            "reason": "Not reached km 120",
+            "observed_m": null
+          }
+        }
+      }
+    }
+  }
+}
