@@ -56,6 +56,32 @@ STRIP_LEN_PX        = 40            # strip length used for correlation template
 SEARCH_PAD_PX       = 25            # search half-width — 125 m radius to cover INS drift
 R_TRN_NORTH         = 15.0 ** 2     # TRN measurement noise variance (m²) — north
 R_TRN_EAST          = 15.0 ** 2     # TRN measurement noise variance (m²) — east
+SEARCH_PAD_PX_MIN   = 10   # 50 m minimum — sensor noise floor
+SEARCH_PAD_PX_MAX   = 60   # 300 m maximum — compute budget cap
+
+
+def _cov_to_search_pad_px(p_north_var: float, p_east_var: float,
+                          n_sigma: float = 3.0) -> int:
+    """
+    Derive NCC search half-width in pixels from ESKF position covariance.
+
+    Uses the larger of north/east 1-sigma, scaled by n_sigma, then
+    converted to pixels via DEM_PIXEL_SIZE. Result is clamped:
+      minimum: SEARCH_PAD_PX_MIN (covers sensor noise floor)
+      maximum: SEARCH_PAD_PX_MAX (caps compute cost)
+
+    Args:
+        p_north_var: ESKF north position variance (m²) — P[0,0]
+        p_east_var:  ESKF east  position variance (m²) — P[1,1]
+        n_sigma:     coverage factor (default 3σ ≈ 99.7%)
+
+    Returns:
+        search_pad_px (int) — half-width of NCC search area in pixels
+    """
+    sigma_m = math.sqrt(max(p_north_var, p_east_var))
+    pad_m   = n_sigma * sigma_m
+    pad_px  = int(math.ceil(pad_m / DEM_PIXEL_SIZE))
+    return int(np.clip(pad_px, SEARCH_PAD_PX_MIN, SEARCH_PAD_PX_MAX))
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +316,7 @@ class TRNStub:
         self._corrections: List[TRNCorrection] = []
         self.last_correction: Optional[TRNCorrection] = None
         self._drift_m = 0.0
+        self._last_search_pad_px  = 0
 
     # ------------------------------------------------------------------
     # Public
@@ -319,6 +346,11 @@ class TRNStub:
         """Absolute INS position error at time of last correction (m)."""
         return self._drift_m
 
+    @property
+    def last_search_pad_px(self) -> int:
+        """Search pad used in the most recent NCC call (pixels). 0 if no call yet."""
+        return self._last_search_pad_px
+
     def update(self,
                ins_north_m:    float,
                ins_east_m:     float,
@@ -326,6 +358,8 @@ class TRNStub:
                true_east_m:    float,
                ground_track_m: float,
                timestamp_s:    float = 0.0,
+               p_north_var:    Optional[float] = None,   # ESKF P[0,0] — north variance (m²)
+               p_east_var:     Optional[float] = None,   # ESKF P[1,1] — east  variance (m²)
                ) -> Optional[TRNCorrection]:
         """
         S9-1: Measurement provider only. No internal Kalman. No state mutation.
@@ -341,6 +375,11 @@ class TRNStub:
             true_east_m    : ground-truth east  (simulation only)
             ground_track_m : accumulated ground track from mission start (m)
             timestamp_s    : simulation clock time (s)
+            p_north_var    : ESKF north position variance P[0,0] in m². When supplied
+                             together with p_east_var, search radius is derived dynamically
+                             from the uncertainty ellipse (SAL-1 / AD-24). When None,
+                             fixed search_pad_px from constructor is used.
+            p_east_var     : ESKF east position variance P[1,1] in m². See p_north_var.
 
         Returns:
             TRNCorrection if fix attempted, else None.
@@ -353,7 +392,11 @@ class TRNStub:
         # Acquire radar strip at TRUE position (what the sensor sees)
         strip = self._radar.acquire_strip(true_north_m, true_east_m)
         # Build DEM search area centred on INS estimate
-        pad = self._search_pad_px
+        if p_north_var is not None and p_east_var is not None:
+            pad = _cov_to_search_pad_px(p_north_var, p_east_var)
+        else:
+            pad = self._search_pad_px
+        self._last_search_pad_px = pad
         search_h = STRIP_LEN_PX + 2 * pad
         search_w = STRIP_WIDTH_PX + 2 * pad
         search_area = self._dem.patch(
