@@ -2245,3 +2245,35 @@ Earlier stated bounds (30.9°N) were from Site 08 — Deputy 1 error, corrected.
 
 Steady-state latency: 539–635ms (consistent with H-3 628ms median)
 Budget margin: 131× at steady-state mean
+
+---
+
+## Entry QA-047 — 20 April 2026
+**Session Type:** Implementation — SAL-1, SAL-2, LightGlue NavigationManager integration
+**Governance ref:** Code Governance Manual v3.4, Anti-Bias Protocol (AB-01 through AB-06)
+**HEAD at close:** 27999d2
+
+### Actions completed
+
+| Prompt | OI | Deliverable | Commit |
+|---|---|---|---|
+| 1 | OI-47 | SAL-1: `_cov_to_search_pad_px()` in `core/ins/trn_stub.py` — dynamic search radius from ESKF P covariance. Constants: `SEARCH_PAD_PX_MIN=10`, `SEARCH_PAD_PX_MAX=60`, n_sigma=3.0. `last_search_pad_px` diagnostic property added. | `c6e85f0` |
+| 2–3 | OI-48 | LightGlue wired into `NavigationManager.update()` as Step 4a primary L2 source. `LIGHTGLUE_CONF_THRESHOLD=0.35` named constant. PhaseCorrelationTRN retained as Step 4b fallback. `NAV_LIGHTGLUE_CORRECTION` event added to cycle_log. | `66af1b3` |
+| 4 | OI-49 | SAL-2: `_lightglue_threshold_for_class()` in `navigation_manager.py`. Per-class thresholds: ACCEPT=0.35, CAUTION=0.40, SUPPRESS=skip (no IPC call). `terrain_class` added to `update()` signature and event payload. | `27999d2` |
+
+### Gate summary
+- OI-47: AC-1 through AC-4 all pass. Certified baseline 483/483.
+- OI-48: AC-1 through AC-5 all pass. Certified baseline 483/483.
+- OI-49: AC-1 through AC-7 all pass. Certified baseline 483/483.
+
+### Frozen file verification (all prompts)
+- `core/ekf/error_state_ekf.py`: `7021ff952454474c3bc289acd63ed480` — unchanged
+- `scenarios/bcmp1/bcmp1_runner.py`: `3ea4416da572e20a0cf4c558ad1b3c00` — unchanged
+
+### Open items raised this session
+- OI-50 (NEW): Dedicated SIL gate test `test_navigation_manager_lightglue.py` for `lightglue_client is not None` path with mock client. Not a blocker — HIL H-5 is the integration validation gate.
+
+### Next session candidates
+- HIL H-5: `lightglue_client.match()` end-to-end on Orin with Shimla corridor replay
+- `test_navigation_manager_lightglue.py` gate test (OI-50)
+- `MICROMIND_PROJECT_CONTEXT.md` update (deferred from this session)
