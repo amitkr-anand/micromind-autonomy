@@ -49,12 +49,35 @@ NAV_MODE_TRN_ONLY   = "NAV_TRN_ONLY" # GNSS unavailable, VIO below threshold
 NAV_MODE_INS_ONLY   = "INS_ONLY"     # GNSS + VIO unavailable, TRN gap > 15km
 NAV_MODE_SHM_TRIGGER = "SHM_TRIGGER" # nav_confidence < threshold
 
-# AD-23 validated LightGlue confidence threshold (ACCEPT terrain class)
-# SAL-2 (OI-49) will replace this with per-class lookup
-LIGHTGLUE_CONF_THRESHOLD = 0.35
+# AD-23 validated LightGlue confidence thresholds — SAL-2 (AD-24, OI-49)
+LIGHTGLUE_CONF_THRESHOLD_ACCEPT   = 0.35   # structured terrain — AD-23 validated
+LIGHTGLUE_CONF_THRESHOLD_CAUTION  = 0.40   # marginal terrain — higher bar
+# SUPPRESS class: match skipped entirely — no threshold needed
+
+_LIGHTGLUE_TERRAIN_THRESHOLDS = {
+    "ACCEPT":   LIGHTGLUE_CONF_THRESHOLD_ACCEPT,
+    "CAUTION":  LIGHTGLUE_CONF_THRESHOLD_CAUTION,
+}
 
 # ── VIO nominal covariance (1m horizontal, 2m vertical 1-sigma) ──────────────
 _R_VIO_NOMINAL = np.diag([1.0, 1.0, 2.0])  # m²
+
+
+def _lightglue_threshold_for_class(terrain_class: str) -> Optional[float]:
+    """
+    Return the LightGlue confidence threshold for the given terrain class.
+
+    Returns None for SUPPRESS — caller must skip the match entirely.
+    Returns the float threshold for ACCEPT and CAUTION.
+    Unknown classes default to ACCEPT threshold (conservative).
+
+    SAL-2 / AD-24 / OI-49.
+    """
+    if terrain_class == "SUPPRESS":
+        return None
+    return _LIGHTGLUE_TERRAIN_THRESHOLDS.get(
+        terrain_class, LIGHTGLUE_CONF_THRESHOLD_ACCEPT
+    )
 
 
 # ── Output dataclass ─────────────────────────────────────────────────────────
@@ -185,6 +208,7 @@ class NavigationManager:
         lon_estimate:       float,
         camera_tile:        Optional[np.ndarray],
         mission_time_ms:    int,
+        terrain_class:      str = "ACCEPT",
     ) -> NavigationManagerOutput:
         """
         Called once per navigation cycle. Orchestrates all correction sources.
@@ -202,6 +226,9 @@ class NavigationManager:
         camera_tile      : Optional direct-inject camera tile (for tests / TRN).
                            None in live operation (frames arrive via camera_bridge).
         mission_time_ms  : Mission time in ms (from injected clock)
+        terrain_class    : Terrain suitability class for this corridor segment.
+                           One of 'ACCEPT', 'CAUTION', 'SUPPRESS' (AD-24 SAL-2).
+                           Default 'ACCEPT' — backward compatible with all existing callers.
 
         Returns NavigationManagerOutput.
         """
@@ -273,52 +300,55 @@ class NavigationManager:
         # Clock is approximate here — caller should pass dt if sub-Hz precise tracking needed
         self._vio_mode.tick(0.2)
 
-        # ── Step 4a: LightGlue L2 correction (primary, AD-23) ────────────────
+        # ── Step 4a: LightGlue L2 correction (primary, AD-23 / SAL-2 AD-24) ──
         lightglue_accepted = False
         distance_since_trn_m = (mission_km - self._last_trn_km) * 1000.0
         if self._lightglue_client is not None and distance_since_trn_m >= self._trn_interval_m:
-            lg_frame_path = getattr(self._camera_bridge, 'last_frame_path', None)
-            if lg_frame_path is not None:
-                lg_result = self._lightglue_client.match(
-                    uav_frame_path=lg_frame_path,
-                    lat=lat_estimate,
-                    lon=lon_estimate,
-                    alt=alt_m,
-                    heading_deg=0.0,   # OI-49: replace with VIO heading when available
-                )
-                if lg_result is not None:
-                    delta_lat, delta_lon, lg_conf, lg_latency_ms = lg_result
-                    if lg_conf >= LIGHTGLUE_CONF_THRESHOLD:
-                        correction = np.array([
-                            delta_lat * 111_320.0,
-                            delta_lon * 111_320.0 * np.cos(np.radians(lat_estimate)),
-                            0.0,
-                        ])
-                        nis, rejected, innov_mag = self._eskf.update_trn(
-                            state,
-                            correction,
-                            lg_conf,
-                            1.0,
-                        )
-                        if not rejected:
-                            self._eskf.inject(state)
-                            trn_active        = True
-                            trn_conf          = lg_conf
-                            self._last_trn_km = mission_km
-                            lightglue_accepted = True
-                            cycle_log.append({
-                                "event":        "NAV_LIGHTGLUE_CORRECTION",
-                                "module_name":  "NavigationManager",
-                                "req_id":       "NAV-02",
-                                "severity":     "INFO",
-                                "timestamp_ms": mission_time_ms,
-                                "payload": {
-                                    "confidence":    round(lg_conf, 4),
-                                    "latency_ms":    round(lg_latency_ms, 1),
-                                    "delta_north_m": round(correction[0], 2),
-                                    "delta_east_m":  round(correction[1], 2),
-                                },
-                            })
+            lg_threshold = _lightglue_threshold_for_class(terrain_class)
+            if lg_threshold is not None:   # None == SUPPRESS — skip IPC entirely
+                lg_frame_path = getattr(self._camera_bridge, 'last_frame_path', None)
+                if lg_frame_path is not None:
+                    lg_result = self._lightglue_client.match(
+                        uav_frame_path=lg_frame_path,
+                        lat=lat_estimate,
+                        lon=lon_estimate,
+                        alt=alt_m,
+                        heading_deg=0.0,
+                    )
+                    if lg_result is not None:
+                        delta_lat, delta_lon, lg_conf, lg_latency_ms = lg_result
+                        if lg_conf >= lg_threshold:
+                            correction = np.array([
+                                delta_lat * 111_320.0,
+                                delta_lon * 111_320.0 * np.cos(np.radians(lat_estimate)),
+                                0.0,
+                            ])
+                            nis, rejected, innov_mag = self._eskf.update_trn(
+                                state,
+                                correction,
+                                lg_conf,
+                                1.0,
+                            )
+                            if not rejected:
+                                self._eskf.inject(state)
+                                trn_active        = True
+                                trn_conf          = lg_conf
+                                self._last_trn_km = mission_km
+                                lightglue_accepted = True
+                                cycle_log.append({
+                                    "event":        "NAV_LIGHTGLUE_CORRECTION",
+                                    "module_name":  "NavigationManager",
+                                    "req_id":       "NAV-02",
+                                    "severity":     "INFO",
+                                    "timestamp_ms": mission_time_ms,
+                                    "payload": {
+                                        "confidence":    round(lg_conf, 4),
+                                        "latency_ms":    round(lg_latency_ms, 1),
+                                        "delta_north_m": round(correction[0], 2),
+                                        "delta_east_m":  round(correction[1], 2),
+                                        "terrain_class": terrain_class,
+                                    },
+                                })
 
         # ── Step 4b: PhaseCorrelationTRN fallback (SIL compatibility) ────────
         # Skipped if LightGlue already accepted a correction this cycle.
