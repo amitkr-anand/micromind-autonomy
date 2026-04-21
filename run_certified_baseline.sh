@@ -44,5 +44,11 @@ $CONDA python -m pytest tests/test_gate4_extended.py -v
 echo "=== Gate 6 Cross-Modal TRN — CM-01..04 (14, CM-01 pre-existing failure excluded) ==="
 $CONDA python -m pytest tests/test_gate6_cross_modal.py -k "not test_cm01_validate_frame_quality_not_poor" -v
 
+echo "=== NM-LG SIL gates — NM-LG-01..06 (6) ==="
+$CONDA python -m pytest tests/test_navigation_manager_lightglue.py -v
+
+echo "=== Gate 7 SAL corridor — G7-01..05 (21) ==="
+$CONDA python -m pytest tests/test_gate7_sal_corridor.py -v
+
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 483/483"
+echo "Expected: 510/510"
