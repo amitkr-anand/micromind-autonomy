@@ -593,11 +593,28 @@ Threshold set at 0.35 (Deputy 1, 19 April 2026). Previous value 0.50 rejected 8 
 - docs/qa/SANDBOX_MATCHING_REPORT.md
 - LIGHTGLUE_EVALUATION_NOTES.md (matching_sandbox)
 
+### HIL Implementation Notes (added 21 April 2026)
+
+**H-6 architectural finding — heading_deg and alt are forward-reserved parameters:**
+In the current IPC server implementation (`integration/lightglue_bridge/server.py`),
+`heading_deg` and `alt` are accepted in the IPC payload but are not used in the
+matching logic. `_run_lightglue()` does not receive these values. Tile patch extraction
+uses fixed `TILE_PATCH_RADIUS_M=500m` regardless of altitude. Both parameters are
+plumbed through for future use (e.g. altitude-aware GSD computation, heading-aligned
+crop rotation). This is not a defect — it is a forward-reserve design. Confirmed at
+HIL H-6, commit `8086f95`.
+
+**HIL validation milestones (AD-23):**
+- H-3: LightGlue GPU latency — 628ms median, 1630ms P99, 45× inside budget. `b3a8c77`
+- H-4: IPC bridge full pass — Unix socket T1/T2/T3 PASS, Site 04 conf=0.743. `99b6421`
+- H-5: NavigationManager integration — chain confirmed on Orin, SAL-2 thresholds verified. `037317d`
+- H-6: Geographically matched replay — conf=0.743, warm=1511ms, NAV_LIGHTGLUE_CORRECTION confirmed. `8086f95`
+
 ---
 
 ## AD-24 — Segment Awareness Layer (SAL): Corridor-Constrained L2 Matching
 **Date:** 19 April 2026
-**Status:** PROPOSED — Pending formal sandbox validation
+**Status:** PARTIALLY IMPLEMENTED — SAL-1 and SAL-2 implemented in production stack (20 Apr 2026); SAL-3 pending dedicated sandbox validation
 **Owner:** Programme Director (hypothesis), Deputy 1 (architecture)
 
 ### Decision
@@ -647,6 +664,33 @@ segment_record:
 - SAL-3 requires a new sandbox with Jammu-Leh terrain as the validation target
 - Segment length of 5km is appropriate given INS drift rate (~1.8m/km from Gate 6)
 - The segment schema must separate passive reference data (different trust model) from active semantic landmarks (different failure modes) — they are not merged into a single confidence score
+
+### Implementation Record (added 21 April 2026)
+
+**SAL-1 — IMPLEMENTED** `c6e85f0` (20 April 2026)
+File: `core/ins/trn_stub.py`
+Function: `_cov_to_search_pad_px(p_north_var, p_east_var, n_sigma=3.0) -> int`
+Behaviour: Derives NCC search half-width from ESKF position covariance. Covers 3σ of
+the INS uncertainty ellipse. Clamped: minimum 10px (50m floor), maximum 60px (300m cap).
+`last_search_pad_px` diagnostic property added to TRNStub.
+Backward compatible: callers without covariance use fixed constructor default.
+SIL gate: AC-1 through AC-4 all pass. Certified baseline 485/485.
+
+**SAL-2 — IMPLEMENTED** `27999d2` (20 April 2026)
+File: `core/navigation/navigation_manager.py`
+Function: `_lightglue_threshold_for_class(terrain_class: str) -> Optional[float]`
+Thresholds: ACCEPT=0.35, CAUTION=0.40, SUPPRESS=None (IPC call skipped entirely).
+Unknown class defaults to ACCEPT threshold (conservative fallback).
+`terrain_class: str = "ACCEPT"` added to `NavigationManager.update()` signature.
+`terrain_class` field added to `NAV_LIGHTGLUE_CORRECTION` event payload.
+Backward compatible: default "ACCEPT" preserves all existing caller behaviour.
+SIL gate: NM-LG-01 through NM-LG-06 all pass. Certified baseline 485/485.
+
+**SAL-3 — NOT YET IMPLEMENTED**
+Requires a new sandbox targeting Jammu-Leh SUPPRESS zones (km 60–120, km 300–330).
+Falsifiable question remains open: "Can a landmark-aware matcher produce a usable EKF
+measurement in SUPPRESS-class terrain zones where NCC/LightGlue fail?"
+No implementation timeline set. Prerequisite: SAL-3 sandbox scope defined by Deputy 1.
 
 ### References
 - Programme Director hypothesis, 19 April 2026
