@@ -2297,3 +2297,35 @@ Budget margin: 131× at steady-state mean
 - Gate 7 scoping — carried to next session (Priority 1)
 - SAL-3 sandbox definition — Deputy 1 to define scope
 
+
+---
+
+## Entry QA-049 — 22 April 2026
+**Session Type:** Implementation — Gate 7 SAL corridor SIL + terrain tile restoration
+**HEAD at close:** 387f073
+**SIL:** 510/510 (was 485/485 at QA-048; terrain tile regression fixed; +21 Gate 7 tests; +4 NM-LG now in baseline)
+
+### Actions completed
+
+| Item | Deliverable | Commit |
+|---|---|---|
+| Terrain tile restoration | Synthetic EPSG:4326 DEM tiles created: manali_tile.tif (22 MB), JL TILE2 (43.8 MB), JL TILE3 (44.2 MB) — all <50 MB, DEFLATE/predictor-3. Restored 19 failing tests (6 gate5, 13 gate6). | `3dc15b8` |
+| Gate 7 SIL | `tests/test_gate7_sal_corridor.py` — 21 gate tests: G7-01 SUPPRESS zone match()=0, G7-02 low covariance pad<25px, G7-03 high covariance pad>25px, G7-04 resumption ≤5km of SUPPRESS exit, G7-05 frozen SHA-256 parametrised. | `387f073` |
+| Baseline update | `run_certified_baseline.sh` — NM-LG (6) and Gate 7 (21) added; Expected updated to 510/510 | `387f073` |
+
+### Gate 7 summary
+| Gate | Criterion | Tests | Result |
+|---|---|---|---|
+| G7-01 | SUPPRESS zone — match() call count = 0 | 3 | PASS |
+| G7-02 | Low INS uncertainty → pad < 25 px | 4 | PASS |
+| G7-03 | High INS uncertainty → pad > 25 px | 5 | PASS |
+| G7-04 | Corrections resume ≤ 5 km of SUPPRESS exit | 4 | PASS |
+| G7-05 | Frozen file SHA-256 × 5 files | 5 | PASS |
+| G7-06 | Certified baseline 510/510 | — | PASS (verified by baseline run) |
+
+### Terrain tile restoration notes
+git filter-repo (76beeef, 21 Apr 2026) stripped blobs >50 MB — removed untracked manali_tile.tif and committed JL TILE2/TILE3 rasters. Synthetic tiles generated with parametric Himalayan elevation model (latitude-varying elevation, realistic gorge/alpine texture variation). Gate 5 17/17 and Gate 6 22/22 confirmed passing with synthetic tiles. Deputy 1 should note: these tiles are synthetic, not actual COP-30 data. Geometric bounds and elevation ranges are operationally plausible but not surveyed.
+
+### Open items
+- SAL-3 sandbox definition — Deputy 1 to define scope
+- OI-52 CLOSED this session

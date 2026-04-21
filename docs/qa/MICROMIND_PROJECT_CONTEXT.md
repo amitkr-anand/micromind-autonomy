@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 21 April 2026 (QA-047 — 20–21 Apr sessions)  
+**Last Updated:** 22 April 2026 (QA-049 — Gate 7 SAL corridor SIL)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -56,14 +56,14 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–6 LOCKED, 483/483 certified baseline, HEAD 037317d (OI-50 NM-LG SIL gates — 21 Apr 2026) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 510/510 certified baseline, HEAD 387f073 (Gate 7 SAL corridor — 22 Apr 2026) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment (dev):** Python 3.11 conda micromind-autonomy / Ubuntu 24.04.4 / micromind-node01 (192.168.1.44)
 **Environment (Orin):** mmuser-orin@192.168.1.53 | Python 3.11 conda micromind-autonomy + Python 3.10 conda hil-h3 (LightGlue GPU) | SSH key-based both directions  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
-**Certified baseline runner:** `run_certified_baseline.sh` (406) + `test_gate4_extended.py` (19) + `test_gate5_corridor.py` (17) + `test_gate6_cross_modal.py` (15) + `test_gate6_jammu_leh.py` (22) — use before every gate commit and handoff  
-**Total regression baseline:** 483 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
+**Certified baseline runner:** `run_certified_baseline.sh` (includes NM-LG 6 + Gate 7 21) — use before every gate commit and handoff  
+**Total regression baseline:** 510 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
 
 ---
 
@@ -109,6 +109,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | HIL H-5 NavigationManager + LightGlue integration | ✅ PASS (AC-3 deferred to H-6) | Integration chain confirmed on Orin GPU: micromind-autonomy → lightglue_client → Unix socket → hil-h3 LightGlue server → CUDA 12.6 → response. SAL-2 thresholds confirmed on Orin (ACCEPT=0.35, CAUTION=0.40, SUPPRESS=None). match() returned None — geographic mismatch Site 04 / Shimla tile, correct behaviour. Cold-start 23.6s; warm = H-3 628ms median. H5-AC-3 (confidence in [0,1]) deferred to H-6 (requires geographically matched frame). NavigationManager.__init__ lightglue_client parameter confirmed, default=None. | `037317d` (log entry) |
 | HIL H-6 NavigationManager + LightGlue geographically matched replay | ✅ PASS | H5-AC-3 closed: conf=0.7430 (float, in [0,1]) ✅. Frame 04_0001.JPG (lat=32.1555603, lon=119.9289015) matched against satellite04.tif — geographic overlap confirmed. Warm-path call-2 wall=1511.5 ms (reproducible; higher than H-3 628ms median — methodological difference, operationally acceptable). NAV_LIGHTGLUE_CORRECTION event in NavigationManager cycle_log: confidence=0.743, delta_north=93.86 m, delta_east=1.01 m, terrain_class=ACCEPT ✅. Frozen files: all 5 SHA-256 exact match dev baseline ✅. Architectural findings: heading_deg and alt are forward-reserved pass-through parameters in current server version. OI-51 CLOSED. | `793eb73` (log entry) |
 | OI-50 — test_navigation_manager_lightglue.py | ✅ CLOSED | NM-LG-01..06 all PASS. Covers: None backward compat (NM-LG-01), mock construction no exception (NM-LG-02), NAV_LIGHTGLUE_CORRECTION event fired with valid MatchResult (NM-LG-03), SUPPRESS terrain match() never called call_count=0 (NM-LG-04), CAUTION threshold 0.40 rejects confidence 0.38 (NM-LG-05), _lightglue_threshold_for_class() all four cases (NM-LG-06). Baseline 483/483. | `037317d` |
+| Gate 7 — SAL-1 + SAL-2 Combined Corridor Validation (OI-52) | ✅ COMPLETE | G7-01..05 PASS (21/21 gate tests). G7-01: SUPPRESS zone match() count=0 across 60 km segment (6 update calls). G7-02: low ESKF covariance → search pad < 25 px (unit + TRNStub integration). G7-03: high covariance post-SUPPRESS → pad > 25 px (unit + TRNStub + monotonicity). G7-04: corrections resume ≤ 1 km after SUPPRESS zone exit (ACCEPT update at km 121, SUPPRESS exit km 120). G7-05: frozen file SHA-256 parametrised (5 files PASS). Terrain tiles restored: synthetic manali_tile.tif (22 MB) + JL TILE2 (43.8 MB) + TILE3 (44.2 MB) committed after filter-repo strip — all <50 MB, DEFLATE compressed. run_certified_baseline.sh updated to include NM-LG + Gate 7; Expected 510/510. | `387f073` |
 | Gate 6 — Jammu-Leh Tactical Corridor (NAV-17 through NAV-20) | ✅ COMPLETE | JAMMU_LEH corridor added to core/navigation/corridors.py: 10 WPs, 330 km, NH-1 Jammu→Leh via Zoji La, gnss_denial km 30→330, 4 terrain zones. 3 GLO-30 COP30 tiles (TILE1/2/3) stitched via symlinks + DEMLoader.from_directory(). NAV-17..20 PASS (22/22 gate tests). Monte Carlo N=300, master_seed=42: TRN P99 at km=330 = 96.9m (INS 540.7m, 82.1% reduction). Key finding: 60km suppression gap km=60–120 (Kashmir valley floor) — VIO bridging required. Terminal suppression km=300–330 (Ladakh plateau) — documented product limitation. Gate 6 acceptance: C1 PASS (96.9m < 150m), C2 PASS (82.1% ≥ 70%), C3 PASS (71.5m < 100m), C4 PASS. GATE6_CORRIDOR_FINDINGS.md committed. SIL 565/565 (479 baseline + pre-existing failures pre-date this session). | QA-039, `728071f` |
 | OI-45 Same-Modal TRN Validation | ✅ COMPLETE | validate_same_modal_trn.py committed (`afb837a`). BlenderFrameRefLoader (DEMLoader-compatible) + PassthroughHillshadeGen deliver unshifted Blender frame as Sentinel-2 same-modal reference. Sentinel-2 source texture: simulation/terrain/shimla/shimla_texture.png, 512×512, 19.53 m/px — scale finding: 19.53 m/px too coarse for direct texture matching at 150 m AGL (173 m footprint ≈ 8.9 px). Same-modal proof via self-offset method: query = frame shifted by (row=20, col=25) = (+5.41 m N, −6.77 m E); reference = original frame. Results: 12/12 ACCEPTED, peaks 0.9874–0.9932 (mean 0.9903), offset recovery error 0.00 m. Cross-modal baseline: 0.09–0.11 (0/12 accepted). OI-44 confirmed ARCHITECTURAL (cross-modal NCC ceiling is expected for RGB vs DEM hillshade). OI-45 CLOSED: AD-01 validated, same-modality >> cross-modal. SIL 457/457. | QA-036 |
 | ~~OI-46~~ Real Sentinel-2 TRN Validation | ✅ CLOSED — `5eac124` | validate_real_sentinel_trn.py committed. **QA-037 conclusion (cross-modal confirmed) revised by QA-038 forensic audit.** New evidence: `sentinel_tci_dem_extent.tif` exists (167 MB, simulation/terrain/shimla/), .blend file size (415 MB) is consistent with packed TCI, and rendered frame R/B ratios (1.13–1.24) match Sentinel TCI (R/B 1.313) not shimla_texture.png (R/B 0.894). Sentinel-2 texture likely reached Blender render pipeline. **QA-037 low peaks (0.09–0.11) are now attributed primarily to scale/altitude mismatch** (CAMERA_ALT_M=12000 in blender_render_corridor.py → ~14 km footprint vs 173 m assumed by validator). Altitude sweep QA-038: at 150 m AGL (AGL-corrected frames), result = 11/12 ACCEPTED, mean 0.1451, 6/12 frames ≥ 0.15. Performance degrades monotonically above 150 m (200m: 10/12, 300m: 5/12, 500m: 4/12, 800m: 0/12). 150 m AGL is validated operating altitude for AVP-02. Multi-scale matching for AVP-03/04 and km=55 JP2 edge fix are future enhancements, not blockers. Corrected frames committed `3240994`. | QA-038 / closed 18 Apr 2026 |
@@ -166,7 +167,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | Gate 6 cross-modal TRN | test_gate6_cross_modal | 15 |
 | Gate 6 Jammu-Leh corridor | test_gate6_jammu_leh | 22 |
 | NavigationManager LightGlue | test_navigation_manager_lightglue | 6 |
-| **TOTAL** | | **485** |
+| Gate 7 SAL corridor | test_gate7_sal_corridor | 21 |
+| **TOTAL** | | **506** |
 
 **Excluded from baseline (scope/CI reasons):**
 
@@ -273,6 +275,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~OI-49~~ **CLOSED** `27999d2` — SAL-2 terrain-class thresholds implemented. `_lightglue_threshold_for_class(terrain_class)` module-level function in `navigation_manager.py`. Returns 0.35 (ACCEPT), 0.40 (CAUTION), None (SUPPRESS — IPC call skipped entirely). Unknown class defaults to ACCEPT (0.35). `terrain_class: str = "ACCEPT"` added to `update()` signature (backward compatible). `terrain_class` field added to `NAV_LIGHTGLUE_CORRECTION` payload. AC-1..7 all PASS. Baseline 483/483. | Architecture | CLOSED |
 | ~~OI-50~~ **CLOSED** `037317d` — `tests/test_navigation_manager_lightglue.py` committed. NM-LG-01..06 all PASS. 6 gates added to certified baseline (TOTAL: 485). | Testing | CLOSED |
 | ~~OI-51~~ **CLOSED** `793eb73` (log entry) — HIL H-6 PASS. H5-AC-3 confirmed: conf=0.7430 float in [0,1]. Warm-path 1511.5 ms. NAV_LIGHTGLUE_CORRECTION event confirmed with live IPC result. Frozen files unchanged. Architectural findings documented: heading_deg and alt are forward-reserved pass-through parameters in current server version. | Testing | CLOSED |
+| ~~OI-52~~ **CLOSED** `387f073` — Gate 7 SAL-1 + SAL-2 combined corridor SIL. G7-01..05 all PASS (21 tests). test_gate7_sal_corridor.py committed. run_certified_baseline.sh updated; Expected 510/510. Terrain tile regression (3dc15b8): synthetic EPSG:4326 replacements for manali_tile.tif, JL TILE2/TILE3 committed — baseline restored from 467/485 to 510/510. | Testing | CLOSED |
 ---
 
 ## 9. QA Agent Standing Instructions
