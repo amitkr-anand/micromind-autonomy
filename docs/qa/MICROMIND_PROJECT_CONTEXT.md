@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 19 April 2026 (QA-046 — end of day)  
+**Last Updated:** 21 April 2026 (QA-047 — 20–21 Apr sessions)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -56,7 +56,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–6 LOCKED, 483/483 certified baseline, HEAD 99b6421 (HIL H-4 full pass) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–6 LOCKED, 483/483 certified baseline, HEAD 037317d (OI-50 NM-LG SIL gates — 21 Apr 2026) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment (dev):** Python 3.11 conda micromind-autonomy / Ubuntu 24.04.4 / micromind-node01 (192.168.1.44)
@@ -88,8 +88,8 @@ All test scenarios must be designed against these profiles. No other baseline is
 | OI-30 run_demo.sh full integration | ✅ CLOSED | Phase A+B+C verified on micromind-node01 10 Apr 2026: GAZEBO_READY ✅ EKF2 x2 ✅ VEH A ARM ✅ OFFBOARD ✅ alt 95.1 m ✅ lap 1 T+106.0s ✅ MISSION PASS ✅. SIL 290/290 ✅ | `97b2f5a` |
 | EF-02 run_demo.sh clean exit | ✅ CLOSED | exec→foreground (python3.12 -u); explicit post-mission cleanup (pkill -9 gz sim, pkill -9 bin/px4, || true guards); EXIT trap fixed (|| true + pkill -9 gz sim added, pkill -9 bin/px4); os._exit() isolation test PASS (daemon thread terminated immediately, exit code 0). SIL 290/290 ✅ | `7ed5a8e` (run_mission.py) + `4ecff95` (run_demo.sh) |
 | EF-01 Vehicle A OFFBOARD failsafe | 🔴 OPEN | PX4 instance 1 (PX4_GZ_STANDALONE=1) triggers mc_pos_control invalid setpoints → Failsafe: blind land immediately after OFFBOARD engagement. Vehicle A never completes lap; mission exits via OI-36 timeout guard (ABORT, exit code 2). Pre-existing; not introduced by EF-02. Separate investigation required. | — |
-| SB-5 Phase A — Checkpoint v1.2 | 🟡 IN PROGRESS | SA-01–SA-04 ✅ — 6 new fields, P-01 SHM persistence, P-02 operator clearance gate, TECHNICAL_NOTES.md CREATED. SIL 294/294. | `fcb5106` |
-| SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate | 🟡 IN PROGRESS | SA-05–SA-07 ✅ — RebootDetector (seq-reset, rollover guard), MAVLinkBridge wired, on_reboot_detected() D8a gate, MISSION_RESUME_AUTHORISED nominal path. SIL 297/297. | `787ecd4` |
+| SB-5 Phase A — Checkpoint v1.2 | ✅ CLOSED | SA-01–SA-04 ✅ — 6 new fields, P-01 SHM persistence, P-02 operator clearance gate, TECHNICAL_NOTES.md CREATED. SIL 294/294. | `fcb5106` |
+| SB-5 Phase A — PX4-04 Reboot Detection + D8a Gate | ✅ CLOSED | SA-05–SA-07 ✅ — RebootDetector (seq-reset, rollover guard), MAVLinkBridge wired, on_reboot_detected() D8a gate, MISSION_RESUME_AUTHORISED nominal path. SIL 297/297. | `787ecd4` |
 | SB-5 Phase A — EC-07 §16 Recovery Ownership Verification | ✅ CLOSED | EC-07 ownership verification complete. SB5_EC07_OwnershipVerification.md committed. Phase A exit gate: SA-01–SA-07 ✅, EC-07 doc ✅. 5/6 events compliant. OI-39 CLOSED (GNSS_SPOOF_DETECTED log event added to bim.py — Deputy 1 unfreeze authorised). OI-40 OPEN (Corridor Violation — §16 doc gap, SRS v1.4 fix). SIL 297/297. | `fff0cc4` (doc) + see OI-39 code commit |
 | SB-5 Phase A — IT-PX4-01 Formal OFFBOARD Continuity Gate | ✅ CLOSED | EC-01 addressed — PX4ContinuityMonitor (integration/bridge/offboard_monitor.py) implements OFFBOARD continuity tracking, setpoint rate measurement, stale setpoint discard logging. EC01-01 ✅ continuity ≥ 99.5 %, EC01-02 ✅ loss_count ≤ 1, EC01-03 ✅ setpoint_rate ≥ 20 Hz. SIL 308/308. | this commit |
 | SB-5 Phase B — PLN-02 Retask + PLN-03 Dead-End + MM-04 Queue Latency | ✅ CLOSED | SB-01–SB-07 ✅ — R-01–R-06 + PLN-03 + MM-04 event bus (MissionEventBus), EVENT_QUEUE_LATENCY, QUEUE_HIGH, QUEUE_CRITICAL_OVERFLOW, SB-06 PASS, RS-04 route fragment cleanup (_intermediate_fragments + _cleanup_route_fragments()), SB-07 PASS, TECHNICAL_NOTES.md UPDATED. SIL 309/309. | `6c405aa` (SB-01–05) + `d0e4c5d` (SB-06) + `c35122a` (SB-07) |
@@ -106,6 +106,8 @@ All test scenarios must be designed against these profiles. No other baseline is
 | HIL H-2 Certified baseline | ✅ PASS | 483/483 at max clocks, 18m25s, frozen files MATCH | `e0eb921` |
 | HIL H-3 LightGlue GPU latency | ✅ PASS | 628ms median, 1630ms P99, 45x inside 74,000ms budget | `b3a8c77` |
 | HIL H-4 LightGlue IPC bridge | ✅ FULL PASS | Unix socket, T1/T2/T3 PASS real GPU, Site 04 conf=0.743 | `99b6421` |
+| HIL H-5 NavigationManager + LightGlue integration | ✅ PASS (AC-3 deferred to H-6) | Integration chain confirmed on Orin GPU: micromind-autonomy → lightglue_client → Unix socket → hil-h3 LightGlue server → CUDA 12.6 → response. SAL-2 thresholds confirmed on Orin (ACCEPT=0.35, CAUTION=0.40, SUPPRESS=None). match() returned None — geographic mismatch Site 04 / Shimla tile, correct behaviour. Cold-start 23.6s; warm = H-3 628ms median. H5-AC-3 (confidence in [0,1]) deferred to H-6 (requires geographically matched frame). NavigationManager.__init__ lightglue_client parameter confirmed, default=None. | `037317d` (log entry) |
+| OI-50 — test_navigation_manager_lightglue.py | ✅ CLOSED | NM-LG-01..06 all PASS. Covers: None backward compat (NM-LG-01), mock construction no exception (NM-LG-02), NAV_LIGHTGLUE_CORRECTION event fired with valid MatchResult (NM-LG-03), SUPPRESS terrain match() never called call_count=0 (NM-LG-04), CAUTION threshold 0.40 rejects confidence 0.38 (NM-LG-05), _lightglue_threshold_for_class() all four cases (NM-LG-06). Baseline 483/483. | `037317d` |
 | Gate 6 — Jammu-Leh Tactical Corridor (NAV-17 through NAV-20) | ✅ COMPLETE | JAMMU_LEH corridor added to core/navigation/corridors.py: 10 WPs, 330 km, NH-1 Jammu→Leh via Zoji La, gnss_denial km 30→330, 4 terrain zones. 3 GLO-30 COP30 tiles (TILE1/2/3) stitched via symlinks + DEMLoader.from_directory(). NAV-17..20 PASS (22/22 gate tests). Monte Carlo N=300, master_seed=42: TRN P99 at km=330 = 96.9m (INS 540.7m, 82.1% reduction). Key finding: 60km suppression gap km=60–120 (Kashmir valley floor) — VIO bridging required. Terminal suppression km=300–330 (Ladakh plateau) — documented product limitation. Gate 6 acceptance: C1 PASS (96.9m < 150m), C2 PASS (82.1% ≥ 70%), C3 PASS (71.5m < 100m), C4 PASS. GATE6_CORRIDOR_FINDINGS.md committed. SIL 565/565 (479 baseline + pre-existing failures pre-date this session). | QA-039, `728071f` |
 | OI-45 Same-Modal TRN Validation | ✅ COMPLETE | validate_same_modal_trn.py committed (`afb837a`). BlenderFrameRefLoader (DEMLoader-compatible) + PassthroughHillshadeGen deliver unshifted Blender frame as Sentinel-2 same-modal reference. Sentinel-2 source texture: simulation/terrain/shimla/shimla_texture.png, 512×512, 19.53 m/px — scale finding: 19.53 m/px too coarse for direct texture matching at 150 m AGL (173 m footprint ≈ 8.9 px). Same-modal proof via self-offset method: query = frame shifted by (row=20, col=25) = (+5.41 m N, −6.77 m E); reference = original frame. Results: 12/12 ACCEPTED, peaks 0.9874–0.9932 (mean 0.9903), offset recovery error 0.00 m. Cross-modal baseline: 0.09–0.11 (0/12 accepted). OI-44 confirmed ARCHITECTURAL (cross-modal NCC ceiling is expected for RGB vs DEM hillshade). OI-45 CLOSED: AD-01 validated, same-modality >> cross-modal. SIL 457/457. | QA-036 |
 | ~~OI-46~~ Real Sentinel-2 TRN Validation | ✅ CLOSED — `5eac124` | validate_real_sentinel_trn.py committed. **QA-037 conclusion (cross-modal confirmed) revised by QA-038 forensic audit.** New evidence: `sentinel_tci_dem_extent.tif` exists (167 MB, simulation/terrain/shimla/), .blend file size (415 MB) is consistent with packed TCI, and rendered frame R/B ratios (1.13–1.24) match Sentinel TCI (R/B 1.313) not shimla_texture.png (R/B 0.894). Sentinel-2 texture likely reached Blender render pipeline. **QA-037 low peaks (0.09–0.11) are now attributed primarily to scale/altitude mismatch** (CAMERA_ALT_M=12000 in blender_render_corridor.py → ~14 km footprint vs 173 m assumed by validator). Altitude sweep QA-038: at 150 m AGL (AGL-corrected frames), result = 11/12 ACCEPTED, mean 0.1451, 6/12 frames ≥ 0.15. Performance degrades monotonically above 150 m (200m: 10/12, 300m: 5/12, 500m: 4/12, 800m: 0/12). 150 m AGL is validated operating altitude for AVP-02. Multi-scale matching for AVP-03/04 and km=55 JP2 edge fix are future enhancements, not blockers. Corrected frames committed `3240994`. | QA-038 / closed 18 Apr 2026 |
@@ -116,8 +118,10 @@ All test scenarios must be designed against these profiles. No other baseline is
 | LightGlue role evaluation | ✅ DOCUMENTED | Role 1 VALIDATED; Roles 2a/2b REJECTED (latency + instability) | `f53d951` |
 
 **Consolidated LightGlue operating parameters (AD-23, validated 19 Apr 2026):**
-conf>=0.35 | FOV 60deg | VIO heading +-10deg | satellite <=3m/px | 1280px | structured terrain only
-**SAL-1 prerequisite:** search_pad_px=25 (fixed 125m) in core/ins/trn_stub.py:56 → Gate 7 replaces with ESKF covariance radius
+conf>=0.35 (ACCEPT) | conf>=0.40 (CAUTION) | skip IPC (SUPPRESS) | FOV 60deg | VIO heading +-10deg | satellite <=3m/px | 1280px | structured terrain only
+**SAL-1 IMPLEMENTED** `c6e85f0` — `_cov_to_search_pad_px()` in `core/ins/trn_stub.py`. SEARCH_PAD_PX_MIN=10, MAX=60, n_sigma=3.0. `last_search_pad_px` diagnostic property added.
+**SAL-2 IMPLEMENTED** `27999d2` — `_lightglue_threshold_for_class()` in `navigation_manager.py`. ACCEPT=0.35, CAUTION=0.40, SUPPRESS=skip IPC. `terrain_class` in `update()` signature and event payload.
+**LightGlue wired into NavigationManager** `66af1b3` — Step 4a primary L2 source. PhaseCorrelationTRN retained as Step 4b fallback. `LIGHTGLUE_CONF_THRESHOLD_ACCEPT=0.35` named constant. `NAV_LIGHTGLUE_CORRECTION` event in cycle_log.
 **IPC bridge:** integration/lightglue_bridge/ | interface: docs/interfaces/L2_LIGHTGLUE_IPC.md
 
 ### nep-vio-sandbox
@@ -160,7 +164,8 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | Gate 5 full corridor | test_gate5_corridor | 17 |
 | Gate 6 cross-modal TRN | test_gate6_cross_modal | 15 |
 | Gate 6 Jammu-Leh corridor | test_gate6_jammu_leh | 22 |
-| **TOTAL** | | **479** |
+| NavigationManager LightGlue | test_navigation_manager_lightglue | 6 |
+| **TOTAL** | | **485** |
 
 **Excluded from baseline (scope/CI reasons):**
 
@@ -262,9 +267,11 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~OI-46~~ | **CLOSED** `5eac124` / frames committed `3240994` (18 Apr 2026). QA-037 cross-modal finding revised: `sentinel_tci_dem_extent.tif` (167 MB) confirmed in render pipeline. AGL-corrected renders at 150 m: 11/12 accepted, mean 0.1451 — validated operating altitude for AVP-02. Phase correlation at 5 m/px TRN GSD validated for AVP-02 (100–300 m AGL). Multi-scale matching for AVP-03/04 altitudes and km=55 JP2 edge fix are future enhancements tracked separately. Orthophoto matching confirmed as correct L2 absolute reset architecture. | TRN/Navigation | CLOSED |
 | OI-43 | `gz.transport13` Python bindings not installed in micromind-autonomy conda env. `NadirCameraFrameBridge` silently falls back to inject-only mode. Current workaround: use system Python 3.12 + `PYTHONPATH=/usr/lib/python3/dist-packages`. Fix: install gz-transport13 Python bindings in conda env, or add Python 3.12 dispatch wrapper to run_sitl_vio.py. Not blocking (workaround exists) but fragile. | Code | MEDIUM — fragile workaround |
 | ~~E-02~~ **CLOSED** c35122a — RS-04 v1.2 route fragment cleanup implemented. `_intermediate_fragments` list tracks non-adopted replan attempts per retask. `_cleanup_route_fragments(ts_ms)` clears fragments and logs `ROUTE_FRAGMENT_CLEANUP` (DEBUG, req_id='RS-04', payload: fragments_cleared, bytes_freed_estimate) on all retask() exit paths. No time.time() calls; ts_ms passed from caller. SB-07 PASS. SIL 309/309. | Code | CLOSED |
-| OI-47 | SAL-1: replace fixed SEARCH_PAD_PX=25 in core/ins/trn_stub.py:56 with dynamic radius from ESKF position covariance. Gate 7 candidate. No frozen file modifications. | Architecture | MEDIUM — Gate 7 |
-| OI-48 | HIL H-5: wire lightglue_client.match() into NavigationManager.update_trn(), verify ESKF correction on Shimla corridor replay on Orin. | Testing | MEDIUM — next HIL session |
-| OI-49 | SAL-2: terrain-class-specific LightGlue confidence thresholds (ACCEPT=0.35, CAUTION=0.40, SUPPRESS=skip) from terrain_suitability_score. Gate 7 candidate. | Architecture | MEDIUM — Gate 7 |
+| ~~OI-47~~ **CLOSED** `c6e85f0` — SAL-1 implemented. `_cov_to_search_pad_px(p_north_var, p_east_var, n_sigma=3.0)` added to `core/ins/trn_stub.py`. SEARCH_PAD_PX_MIN=10 (50m floor), SEARCH_PAD_PX_MAX=60 (300m cap). `last_search_pad_px` diagnostic property added. AC-1: 100m σ → 60px (clamped to MAX) ✅. AC-2: 10m σ → 10px (clamped to MIN) ✅. AC-3: backward compat via None fallback ✅. AC-4: dynamic pad 20m σ → 12px ✅. Baseline 483/483. | Architecture | CLOSED |
+| ~~OI-48~~ **CLOSED** `66af1b3` — LightGlue wired into NavigationManager as L2 primary. `lightglue_client` optional parameter added to `__init__` (default None — backward compatible). Step 4a: LightGlue primary with `LIGHTGLUE_CONF_THRESHOLD_ACCEPT=0.35` named constant and `NAV_LIGHTGLUE_CORRECTION` cycle_log event. Step 4b: PhaseCorrelationTRN fallback (unchanged, guarded by `not lightglue_accepted`). AC-1..5 all PASS. Frozen files unchanged. Baseline 483/483. | Testing | CLOSED |
+| ~~OI-49~~ **CLOSED** `27999d2` — SAL-2 terrain-class thresholds implemented. `_lightglue_threshold_for_class(terrain_class)` module-level function in `navigation_manager.py`. Returns 0.35 (ACCEPT), 0.40 (CAUTION), None (SUPPRESS — IPC call skipped entirely). Unknown class defaults to ACCEPT (0.35). `terrain_class: str = "ACCEPT"` added to `update()` signature (backward compatible). `terrain_class` field added to `NAV_LIGHTGLUE_CORRECTION` payload. AC-1..7 all PASS. Baseline 483/483. | Architecture | CLOSED |
+| ~~OI-50~~ **CLOSED** `037317d` — `tests/test_navigation_manager_lightglue.py` committed. NM-LG-01..06 all PASS. 6 gates added to certified baseline (TOTAL: 485). | Testing | CLOSED |
+| OI-51 | HIL H-6: geographically matched corridor replay. H5-AC-3 deferred — requires UAV frame that overlaps a loaded tile geographically. Recommended path: use Site 04 UAV frames (04_0001.JPG..04_0005.JPG in ~/hil_benchmark/site04_frames/) with satellite04.tif as reference tile — geographic match guaranteed. Confirms confidence in [0,1] and measures warm-path end-to-end latency through NavigationManager on Orin. | Testing | MEDIUM — next HIL session |
 ---
 
 ## 9. QA Agent Standing Instructions
