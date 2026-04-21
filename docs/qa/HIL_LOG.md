@@ -205,3 +205,71 @@ OI-49 (SAL-2 terrain-class thresholds) on Orin GPU hardware.
   from Shimla corridor (or Site 04 tile loaded for Site 04 frames). Confirms H5-AC-3
   (confidence in [0,1]) and measures warm-path latency end-to-end through
   NavigationManager. Prerequisite: frame/tile geographic alignment confirmed before run.
+
+---
+
+## HIL H-6 — NavigationManager + LightGlue Geographically Matched Corridor Replay
+**Date:** 21 April 2026
+**Node:** Orin Nano Super (mmuser-orin@192.168.1.53)
+**Env:** micromind-autonomy (Python 3.11) → lightglue_bridge → hil-h3 (Python 3.10, CUDA 12.6)
+**HEAD:** 793eb73
+**Deputy 1 ruling:** PASS — all five ACs confirmed. OI-51 CLOSED.
+
+### Test scope
+Closure of H5-AC-3 (deferred at H-6): confirm that `lightglue_client.match()` returns a
+`float` confidence in `[0.0, 1.0]` for a geographically matched frame. Also confirms
+warm-path latency through `NavigationManager.update()` on Orin GPU, and verifies
+`NAV_LIGHTGLUE_CORRECTION` event in `cycle_log` with a live IPC result.
+
+Dataset: Site 04 (Jiangsu, China) — 5 UAV nadir frames (`04_0001.JPG` – `04_0005.JPG`),
+satellite reference tile `satellite04.tif` (WGS-84, 0.298 m/px, 18093×38408 px).
+Frame used: `04_0001.JPG` (lat=32.1555603, lon=119.9289015, alt=545.22 m MSL, heading=350.0°).
+All 5 frames confirmed within tile extent (32.151–32.254°N, 119.906–119.955°E).
+
+Test script: `tests/hil/hil_h6_nav_manager_geomatch.py`
+
+### Results
+
+| AC | Description | Result |
+|---|---|---|
+| H6-AC-1 | match() returns non-None for geographically matched frame | PASS — MatchResult returned on both calls |
+| H6-AC-2 | Returned confidence is float in [0.0, 1.0] | PASS — conf=0.7430, type=float |
+| H6-AC-3 | Warm-path latency reported in ms | PASS — call-2 wall=1511.5 ms, internal=1511.5 ms (see note) |
+| H6-AC-4 | NAV_LIGHTGLUE_CORRECTION event in NavigationManager cycle_log | PASS — event present, confidence=0.743, terrain_class=ACCEPT, delta_north=93.86 m, delta_east=1.01 m |
+| H6-AC-5 | Frozen file hashes unchanged on Orin | PASS — all 5 files exact match with dev baseline (see table) |
+
+### AC-3 latency note
+H-6 warm-path (1511 ms) is higher than H-3 median (628 ms). Methodological difference:
+H-3 ran 5+ calls with a fully warmed CUDA kernel; H-6 call 2 follows a single cold-start
+and one prior call — CUDA JIT may not yet be fully warm. Value is reproducible across two
+independent runs (1525 ms / 1511 ms). Operationally acceptable per Deputy 1 ruling.
+A dedicated multi-call benchmark is a future enhancement, not a blocking finding.
+
+### Architectural findings (forward-reserved parameters)
+1. **`heading_deg` is a pass-through** in current `server.py`: accepted in IPC payload,
+   passed to `_run_lightglue()` signature, but not used in matching logic. Forward-reserved
+   for future rotation-aware tile patch extraction.
+2. **`alt` is a pass-through** in current `server.py`: documented as "altitude above sea
+   level in metres" in `client.py`. Not used in matching logic — tile crop is determined
+   by fixed `TILE_PATCH_RADIUS_M=500.0 m` constant, independent of altitude. Forward-reserved
+   for future GSD-aware crop scaling.
+Both findings recorded in test script header (lines 20–43 of `hil_h6_nav_manager_geomatch.py`).
+
+### TILE_RESOLVER note
+Site 04 is not a built-in region. Registered via `LIGHTGLUE_EXTRA_TILES` env var before
+server spawn (same mechanism as H-4). `LIGHTGLUE_START_TIMEOUT` raised to 60 s (default
+15 s is below H-5 observed cold-start of 23.6 s).
+
+### Frozen file verification (SHA-256, Orin vs dev — exact match)
+
+| File | SHA-256 (first 16 hex) | Match |
+|---|---|---|
+| `core/ekf/error_state_ekf.py` | `aaeeb0d7617ff735…` | ✅ |
+| `core/fusion/vio_mode.py` | `6c8e9ae0df247292…` | ✅ |
+| `core/fusion/frame_utils.py` | `6425bd9b8d05e3ba…` | ✅ |
+| `core/bim/bim.py` | `9f98927252d5019b…` | ✅ |
+| `scenarios/bcmp1/bcmp1_runner.py` | `421b8e413e7d8c39…` | ✅ |
+
+### OI closure
+- OI-51: CLOSED. H5-AC-3 confirmed. Warm-path latency confirmed. NAV_LIGHTGLUE_CORRECTION
+  event confirmed with live IPC result. No new OIs raised.
