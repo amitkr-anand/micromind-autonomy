@@ -52,3 +52,12 @@ dashboard/micromind_demo_recording_*.mp4
 dashboard/demo_events_*.json
 dashboard/demo_report_*.html
 bcmp2_sb1_files.zip
+
+# Large terrain data — kept on disk only, not in git
+*.tif
+*.tiff
+*.jp2
+*.blend
+*.SAFE/
+data/terrain/
+simulation/terrain/
