@@ -2277,3 +2277,23 @@ Budget margin: 131× at steady-state mean
 - HIL H-5: `lightglue_client.match()` end-to-end on Orin with Shimla corridor replay
 - `test_navigation_manager_lightglue.py` gate test (OI-50)
 - `MICROMIND_PROJECT_CONTEXT.md` update (deferred from this session)
+
+---
+
+## Entry QA-048 — 21 April 2026
+**Session Type:** Documentation + Triage
+**HEAD at close:** a638408
+**SIL:** 485/485 — unchanged
+
+### Actions completed
+| Item | Deliverable | Commit |
+|---|---|---|
+| Priority 1 | AD-23 HIL notes appended; AD-24 status → PARTIALLY IMPLEMENTED; SAL-1/SAL-2 implementation records added; SAL-3 open status documented | `9e1adec` |
+| Priority 2 | Untracked file triage — 2 files: H-6 HIL test script + MicroMind V6 Part One PDF committed | `a638408` |
+| Session push | 13 commits pushed to origin/main | this entry |
+| Orin sync | Orin brought to HEAD | this session |
+
+### Open items
+- Gate 7 scoping — carried to next session (Priority 1)
+- SAL-3 sandbox definition — Deputy 1 to define scope
+
