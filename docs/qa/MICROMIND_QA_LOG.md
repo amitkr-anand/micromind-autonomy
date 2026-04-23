@@ -2324,3 +2324,48 @@ Budget margin: 131× at steady-state mean
 - Push to origin/main — blocked by 3.7GB pack history (filter-repo rewrites in progress)
 - Orin sync — pending after push
 - SAL-3 sandbox scoping — next session Priority 1
+
+---
+
+## Entry QA-050 — 23 April 2026
+**Session Type:** W1-P03 — OI-53 README correction + OI-54 CORRIDOR_VIOLATION structured log event
+**Prompt ID:** W1-P03
+**HEAD at close:** 9d99a75
+**SIL:** 510/510
+
+### Frozen file verification
+All 5 frozen file SHA-256 hashes verified before any code change:
+- core/ekf/error_state_ekf.py: aaeeb0d7... ✅
+- scenarios/bcmp1/bcmp1_runner.py: 421b8e41... ✅
+- core/fusion/vio_mode.py: 6c8e9ae0... ✅
+- core/fusion/frame_utils.py: 6425bd9b... ✅
+- core/bim/bim.py: 9f989272... ✅
+
+### Actions completed
+| Item | Deliverable | Commit |
+|---|---|---|
+| OI-53 | README_SYNTHETIC_TERRAIN.md corrected in data/terrain/ and simulation/terrain/ — paragraph body and first bullet updated to reflect real COP30 provenance | `9d99a75` |
+| OI-54 | `_log_corridor_violation_event()` added to NanoCorteXFSM; call inserted at 5 CORRIDOR_VIOLATION trigger sites | `9d99a75` |
+
+### Task A — OI-53 README correction
+- Old paragraph stated tiles were "synthetic EPSG:4326 replacement tiles" and "do NOT represent real terrain elevation data"
+- W1-P02 rasterio probe confirmed tiles are real COP30 Copernicus DEM data covering Jammu-Leh and Shimla-Manali corridors
+- Both README files updated: paragraph body corrected to real COP30 provenance; first bullet changed from "NOT real GLO-30 data" to Copernicus data policy notice
+- diff data/terrain/README... simulation/terrain/README...: no differences (both files identical)
+
+### Task B — OI-54 CORRIDOR_VIOLATION structured log event
+- `_log_corridor_violation_event(inputs)` private method added to NanoCorteXFSM
+- Method emits MissionLogEntry with category=SYSTEM_ALERT, structured JSON payload in notes field:
+  `{"event": "CORRIDOR_VIOLATION", "active_state": "...", "trigger": "CORRIDOR_VIOLATION", "mission_km": ..., "bim_state": "..."}`
+- Call inserted at 5 trigger sites: _from_nominal (line 297), _from_ew_aware (line 320), _from_gnss_denied (line 362), _from_nav_trn_only (line 401), _from_silent_ingress (line 443)
+- No new imports; no frozen files touched; existing MissionLogEntry/LogCategory infrastructure used
+- cross_track_error_m omitted — field not present on SystemInputs
+
+### Gate results
+- Certified baseline: 510/510 ✅
+- diff README files: no differences ✅
+- git diff state_machine.py: 5 call sites + 1 method, no other changes ✅
+
+### Awaiting Deputy 1 review
+- OI-53 acceptance ruling pending
+- OI-54 acceptance ruling pending
