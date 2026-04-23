@@ -90,6 +90,37 @@ Previous OI-40 record cited 4 FSM states. **Corrected: 5 states.** SRS v1.4 §16
 
 ---
 
+## Entry QA-051 — 23 April 2026
+**Session Type:** W1-P05 — Item 3 (§16 row) + OI-55 (cross_track_error_m) + Item 5 (PLN-02 read)
+**Prompt ID:** W1-P05
+**HEAD at close:** `3e79805`
+**SIL:** 510/510 — unchanged
+
+### Actions Completed
+
+| Task | Deliverable | Commit |
+|---|---|---|
+| Task A (Item 3) | Deputy 1 §16 Corridor Violation ownership ruling appended to `SB5_EC07_OwnershipVerification.md`. Ownership: Detects=Navigation Manager, Decides/Executes=NanoCorteXFSM (5 states), Logs=`_log_corridor_violation_event()`. SRS v1.4 §16 row text specified. | `3e79805` |
+| Task B (OI-55) | `cross_track_error_m: float = 0.0` added to SystemInputs (after `corridor_violation` field, line 104). `_log_corridor_violation_event()` payload extended to include breach magnitude field. | `3e79805` |
+| Task C (Item 5) | PLN-02 R-01..R-06 implementation read — read-only diagnostic. Full retask() method body read from `core/route_planner/route_planner.py:210`. All six R-corrections located. Deputy 1 rules on gaps. | — |
+
+### Task C — PLN-02 Item 5 Read Summary (read-only)
+
+**Primary file:** `core/route_planner/route_planner.py`
+
+| R-correction | Location | Evidence |
+|---|---|---|
+| R-01 Terrain regen before EW | line 307–321 | `self._terrain_regen_fn()` → `RETASK_TERRAIN_FIRST` event → `self._ew_refresh_fn()`. Ordering asserted by comments and log event. |
+| R-02 EW staleness check | line 271–284 | `ew_age_s = now_s - self._ew_map_last_updated_s`; `EW_MAP_STALENESS_THRESHOLD_S = 15.0`; `EW_MAP_STALE_ON_RETASK` WARNING logged; non-blocking (continues). |
+| R-03 Rollback (EW + terrain + ETA) | line 286–305 | Snapshots: `snap_ew_map`, `snap_terrain_corridor`, `snap_ew_map_last_updated`. Nested `_rollback()` restores all three. `snap_waypoints` also restored. |
+| R-04 Waypoint upload after validation | line 399–415 | `assert upload_indices == sorted(upload_indices)`; `WAYPOINT_UPLOAD_ORDER_VERIFIED` event; `self._px4_upload_fn(found_route)` called only on success path. |
+| R-05 INS_ONLY cross_track constraint | line 248–262 | `RetaskNavMode.INS_ONLY` rejection at top of method (failure-first). `RETASK_REJECTED_INS_ONLY` event emitted. No `cross_track_error_m` constraint found — see below. |
+| R-06 15 s timeout | line 324–378 | `RETASK_TIMEOUT_S = 15.0`; timeout checked at top of each constraint_level loop iteration and after each failed replan; `RETASK_TIMEOUT_ROLLBACK` + `_rollback()` on timeout. |
+
+**Note on R-05:** SRS spec states "INS_ONLY retask permitted only if cross_track_error_m ≤ (route_corridor_half_width_m − 100)". Current implementation rejects ALL INS_ONLY retasks unconditionally — no cross_track_error_m threshold evaluated. Deputy 1 rules on whether unconditional rejection satisfies or narrows the SRS spec.
+
+---
+
 ## Entry QA-040 — 19 April 2026
 **Session Type:** HIL H-4 — LightGlue subprocess IPC bridge  
 **Focus:** Design and implement production-quality Unix socket IPC bridge between micromind-autonomy (Python 3.11) and LightGlue (hil-h3 Python 3.10)  
