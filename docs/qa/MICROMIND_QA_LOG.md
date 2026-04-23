@@ -2486,3 +2486,48 @@ All 5 frozen file SHA-256 hashes verified before any code change:
 ### Awaiting Deputy 1 review
 - OI-53 acceptance ruling pending
 - OI-54 acceptance ruling pending
+
+---
+
+## Entry QA-052 — 23 April 2026
+**Session Type:** W1-P06 — PLN-02 R-05 conditional XTE fix + Task B ETA investigation
+**Prompt ID:** W1-P06
+**HEAD at close:** `ab083ce`
+**SIL:** 510/510
+
+### Actions completed
+
+| Item | Deliverable | Commit |
+|---|---|---|
+| Task C — R-05 conditional XTE fix | `retask()` INS_ONLY block updated: unconditional rejection replaced with conditional `cross_track_error_m > (corridor_half_width - 100 m)` check. Event renamed `RETASK_NAV_CONFIDENCE_TOO_LOW` with structured payload (nav_mode, cross_track_error_m, threshold_m). | `ab083ce` |
+| Task C — `retask()` signature | `cross_track_error_m: float = 0.0` parameter added to `retask()` method signature | `ab083ce` |
+| Task C — test update | `test_sb01_retask_rejected_in_ins_only` updated: `cross_track_error_m=600.0` (> threshold), new event name asserted, payload fields (nav_mode, cross_track_error_m, threshold_m) asserted | `ab083ce` |
+| Task B — R-03 ETA rollback investigation | Diagnostic read of `RoutePlanner` — NO ETA ATTRIBUTE found on the class. `_rollback()` restores ew_map, terrain_corridor, ew_map_last_updated, waypoints but has no eta field. Change not implemented. Deputy 1 notified in session status. | — |
+| Step E — commit | Staged exactly 2 files (`core/route_planner/route_planner.py`, `tests/test_sb5_phase_b.py`), committed with verbatim W1-P06 message | `ab083ce` |
+
+### Task C — R-05 conditional XTE fix detail
+
+**Before:** `retask()` rejected ALL INS_ONLY retasks unconditionally and emitted `RETASK_REJECTED_INS_ONLY`.
+
+**After:** INS_ONLY retask is rejected only when `cross_track_error_m > (corridor_half_width_m - 100.0)`. Event renamed to `RETASK_NAV_CONFIDENCE_TOO_LOW` with payload:
+```json
+{
+  "nav_mode": "INS_ONLY",
+  "cross_track_error_m": <value>,
+  "threshold_m": <corridor_half_width - 100>
+}
+```
+If cross_track_error_m is within margin, INS_ONLY retask is permitted to proceed.
+
+**Test:** `cross_track_error_m=600.0` with default `corridor_half_width_m=500.0` → threshold = 400.0 → 600 > 400 → rejection triggered ✅
+
+### Task B — ETA finding
+
+ETA attribute investigation: `RoutePlanner` has no `_eta` or `eta` attribute at any location in the class. The `_rollback()` method restores `_ew_map`, `_terrain_corridor`, `_ew_map_last_updated_s`, and `_waypoints` — no eta snapshot/restore pair. R-03 ETA rollback as described in the prompt requires either a new attribute or confirmation from Deputy 1 that ETA is not in scope. No code change made.
+
+### Gate results
+- Certified baseline: 510/510 (confirmed before session, unchanged) ✅
+- Staged file count: exactly 2 ✅
+- Untracked Deputy 1 prompt file (`docs/qa/deputy_1_final_two_week_prompt_markdown_2026_04_22.md`): NOT staged ✅
+- OI-55: CLOSED — confirmed, no change ✅
+- No new OIs opened ✅
