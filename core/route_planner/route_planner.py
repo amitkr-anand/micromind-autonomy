@@ -209,10 +209,11 @@ class RoutePlanner:
 
     def retask(
         self,
-        new_goal_north_m: float,
-        new_goal_east_m:  float,
-        cruise_alt_m:     float = 4_000.0,
-        trigger:          str   = "RETASK",
+        new_goal_north_m:    float,
+        new_goal_east_m:     float,
+        cruise_alt_m:        float = 4_000.0,
+        trigger:             str   = "RETASK",
+        cross_track_error_m: float = 0.0,
     ) -> bool:
         """
         Dynamically retask the vehicle to a new goal position.
@@ -245,21 +246,27 @@ class RoutePlanner:
         now_s = self._clock.now()         # §1.4: mission_clock only
         ts_ms = int(now_s * 1000)
 
-        # ── R-05: Reject if INS_ONLY (failure-first §9.1) ───────────────────
-        # Retask is unsafe when nav mode is INS_ONLY: the position estimate
-        # relies solely on IMU dead-reckoning, accumulated drift makes route
-        # validation unreliable, and a failed retask with rolled-back state
-        # may leave the vehicle navigating on a stale route. Reject early.
+        # ── R-05: Conditional INS_ONLY rejection (SRS §4.2 / Appendix B) ────
+        # Reject only when cross_track_error_m exceeds corridor margin.
+        # INS_ONLY retask is permitted when vehicle is within the safe margin.
         if self._nav_mode == RetaskNavMode.INS_ONLY:
-            self._event_log.append({
-                "event":        "RETASK_REJECTED_INS_ONLY",
-                "req_id":       "PLN-02",
-                "severity":     "WARNING",
-                "module_name":  "RoutePlanner",
-                "timestamp_ms": ts_ms,
-            })
-            self._cleanup_route_fragments(ts_ms)  # RS-04: no fragments generated
-            return False
+            half_width = getattr(
+                self, '_route_corridor_half_width_m', 500.0
+            )
+            if cross_track_error_m > (half_width - 100.0):
+                self._event_log.append({
+                    "event":               "RETASK_NAV_CONFIDENCE_TOO_LOW",
+                    "req_id":              "PLN-02",
+                    "severity":            "WARNING",
+                    "module_name":         "RoutePlanner",
+                    "timestamp_ms":        ts_ms,
+                    "nav_mode":            "INS_ONLY",
+                    "cross_track_error_m": cross_track_error_m,
+                    "threshold_m":         (half_width - 100.0),
+                })
+                self._cleanup_route_fragments(ts_ms)  # RS-04: no fragments generated
+                return False
+            # else: proceed — vehicle is within margin
 
         # ── TERMINAL rejection (non-INS_ONLY blocked mode) ──────────────────
         # Terminal approach: vehicle is in final engagement phase.

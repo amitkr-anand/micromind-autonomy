@@ -144,24 +144,29 @@ class TestSB01RetaskRejectedInINSOnly(unittest.TestCase):
 
     def test_sb01_retask_rejected_in_ins_only(self):
         """
-        Retask in INS_ONLY mode: returns False, RETASK_REJECTED_INS_ONLY logged
-        with correct req_id, severity, and module_name.
+        Retask in INS_ONLY mode with cross_track_error_m exceeding corridor margin:
+        returns False, RETASK_NAV_CONFIDENCE_TOO_LOW logged with correct fields.
+        Threshold = half_width (500 m default) - 100 m = 400 m; 600 m exceeds it.
         """
         self.planner.nav_mode = RetaskNavMode.INS_ONLY
         result = self.planner.retask(
-            new_goal_north_m = _GOAL_NORTH,
-            new_goal_east_m  = _GOAL_EAST,
+            new_goal_north_m    = _GOAL_NORTH,
+            new_goal_east_m     = _GOAL_EAST,
+            cross_track_error_m = 600.0,
         )
-        self.assertFalse(result, "Retask in INS_ONLY mode must return False")
+        self.assertFalse(result, "Retask in INS_ONLY mode with large XTE must return False")
 
-        events = _logged_events(self.event_log, "RETASK_REJECTED_INS_ONLY")
-        self.assertEqual(len(events), 1, "RETASK_REJECTED_INS_ONLY must be logged once")
+        events = _logged_events(self.event_log, "RETASK_NAV_CONFIDENCE_TOO_LOW")
+        self.assertEqual(len(events), 1, "RETASK_NAV_CONFIDENCE_TOO_LOW must be logged once")
 
         ev = events[0]
-        self.assertEqual(ev["req_id"],      "PLN-02")
-        self.assertEqual(ev["severity"],    "WARNING")
-        self.assertEqual(ev["module_name"], "RoutePlanner")
+        self.assertEqual(ev["req_id"],              "PLN-02")
+        self.assertEqual(ev["severity"],            "WARNING")
+        self.assertEqual(ev["module_name"],         "RoutePlanner")
         self.assertIn("timestamp_ms", ev)
+        self.assertEqual(ev["nav_mode"],            "INS_ONLY")
+        self.assertEqual(ev["cross_track_error_m"], 600.0)
+        self.assertEqual(ev["threshold_m"],         400.0)
 
 
 # ---------------------------------------------------------------------------
