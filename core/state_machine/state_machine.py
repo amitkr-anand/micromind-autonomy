@@ -102,6 +102,7 @@ class SystemInputs:
     key_mismatch:           bool     = False    # PQC signature failure
     tamper_detected:        bool     = False    # hardware tamper flag
     corridor_violation:     bool     = False    # predicted path exits envelope
+    cross_track_error_m:    float    = 0.0      # lateral drift from corridor centreline (m); populated by NavigationManager
 
     # L10s-SE decision (populated by L10s-SE module)
     l10s_abort_commanded:   bool     = False
@@ -505,7 +506,8 @@ class NanoCorteXFSM:
                 f'"active_state": "{self._state.value}", '
                 f'"trigger": "CORRIDOR_VIOLATION", '
                 f'"mission_km": {inputs.mission_km}, '
-                f'"bim_state": "{inputs.bim_state.value}"}}'
+                f'"bim_state": "{inputs.bim_state.value}", '
+                f'"cross_track_error_m": {inputs.cross_track_error_m}}}'
             ),
         ))
 

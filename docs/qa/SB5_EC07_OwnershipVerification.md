@@ -127,3 +127,34 @@ core/state_machine/state_machine.py:352: trigger = "EO_LOCK_LOSS"
 core/l10s_se/l10s_se.py:45:  LOCK_LOST_TIMEOUT = "LOCK_LOST_TIMEOUT"
 core/l10s_se/l10s_se.py:188: L10sDecision.ABORT, AbortReason.LOCK_LOST_TIMEOUT
 ```
+
+---
+
+## Deputy 1 §16 Row Ruling — Corridor Violation (Predicted)
+**Date:** 22 April 2026
+**Authority:** Deputy 1 (Architect Lead) — QA-050 W1-P02 implementation read
+**Status:** PENDING SRS v1.4 formal incorporation
+
+### Ownership Assignment
+
+| Role | Owner | Module | Evidence |
+|---|---|---|---|
+| Detects | Navigation Manager | `baseline_nav_sim.py` / live: NavigationManager position estimate vs corridor boundary; sets `corridor_violation=True` on SystemInputs when cross_track_error_m exceeds threshold | `scenarios/bcmp2/baseline_nav_sim.py:223-225` |
+| Decides | Mission Manager (NanoCorteXFSM) | `core/state_machine/state_machine.py` — unconditional ABORT from 5 armed states: NOMINAL (line 297), EW_AWARE (line 320), GNSS_DENIED (line 361), NAV_TRN_ONLY (line 399), SILENT_INGRESS (line 440) | `core/state_machine/state_machine.py` |
+| Executes | Mission Manager (NanoCorteXFSM) | `_transition(NCState.ABORT, "CORRIDOR_VIOLATION")` | `core/state_machine/state_machine.py` |
+| Logs | Mission Manager (NanoCorteXFSM) | `_log_corridor_violation_event()` emits `LogCategory.SYSTEM_ALERT` MissionLogEntry with payload: event, active_state, trigger, mission_km, bim_state. Committed at `9d99a75`. | `core/state_machine/state_machine.py` — `_log_corridor_violation_event()` |
+| Consumes | Navigation Manager (holds position on ABORT), PX4 Bridge (executes ABORT setpoint), All modules (log and halt) | Standard ABORT consumers | All modules |
+
+### Implementation Note
+
+`cross_track_error_m` is not currently a field on `SystemInputs`.
+The structured log event therefore cannot include breach magnitude.
+OI-55 tracks this gap. The §16 row cannot be marked fully compliant
+until OI-55 is resolved.
+
+### SRS v1.4 §16 Row to Be Inserted
+
+The following row must be inserted into SRS v1.4 §16 table
+between "Terminal Phase Failure" and the end of the table:
+
+| Corridor Violation (Predicted) | Navigation Manager — computes cross_track_error_m from position estimate vs corridor boundary; sets corridor_violation=True on SystemInputs | Mission Manager (NanoCorteXFSM) — unconditional ABORT from 5 states: NOMINAL, EW_AWARE, GNSS_DENIED, NAV_TRN_ONLY, SILENT_INGRESS | Mission Manager (NanoCorteXFSM) — _transition(NCState.ABORT, "CORRIDOR_VIOLATION") | Navigation Manager (hold position), PX4 Bridge (ABORT setpoint), All modules (log and halt). Structured event: CORRIDOR_VIOLATION SYSTEM_ALERT MissionLogEntry — see `_log_corridor_violation_event()` at 9d99a75. Note: cross_track_error_m absent from payload until OI-55 resolved. |
