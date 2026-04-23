@@ -7,17 +7,26 @@
 
 ## What This Directory Contains
 
-The `.tif` files in this directory are synthetic EPSG:4326 replacement
-tiles created after `git filter-repo` removed the original 3.7 GB GLO-30
-real terrain blobs from repository history.
+The `.tif` files in this directory are **real Copernicus DEM GLO-30
+(COP30) elevation tiles** covering the programme's operational corridors
+(Jammu-Leh, Shimla-Manali). They were acquired from the Copernicus Open
+Access Hub and are valid terrain data.
 
-These synthetic tiles exist solely to allow the SIL regression suite
-(`run_certified_baseline.sh`) to load tile files without `FileNotFoundError`.
-They do NOT represent real terrain elevation data.
+After `git filter-repo` removed large binary blobs from repository
+history, three tiles (TILE2/output_hh.tif, TILE3/output_hh.tif,
+manali_tile.tif) were re-committed at commit `3dc15b8` with a misleading
+commit message ("restore synthetic DEM tiles"). The commit message was
+incorrect — the tiles are real COP30 data, not synthetic placeholders.
+
+These tiles reside on the local filesystem (micromind-node01) and are
+excluded from remote pushes by `.gitignore`. They exist in the local
+repo to allow the SIL regression suite (`run_certified_baseline.sh`)
+to load tile files without `FileNotFoundError`.
 
 ## What These Tiles Are NOT
 
-- NOT real GLO-30 (Copernicus DEM 30m) elevation data
+- NOT cleared for unrestricted distribution — these are Copernicus
+  Open Access tiles; usage is subject to Copernicus data policy
 - NOT real CARTOSAT or equivalent satellite imagery
 - NOT valid inputs for navigation performance assessment
 - NOT representative of the Shimla-Manali, Jammu-Leh, or any other

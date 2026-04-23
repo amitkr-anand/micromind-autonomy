@@ -296,6 +296,7 @@ class NanoCorteXFSM:
         # NOMINAL → ABORT: corridor violation
         if inputs.corridor_violation:
             guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            self._log_corridor_violation_event(inputs)
             return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
 
         # NOMINAL → EW_AWARE: jammer hypothesis confidence > 0.6
@@ -319,6 +320,7 @@ class NanoCorteXFSM:
         # EW_AWARE → ABORT: corridor violation
         if inputs.corridor_violation:
             guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            self._log_corridor_violation_event(inputs)
             return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
 
         # EW_AWARE → GNSS_DENIED: BIM Red + nav ready
@@ -360,6 +362,7 @@ class NanoCorteXFSM:
         # GNSS_DENIED → ABORT: corridor violation
         if inputs.corridor_violation:
             guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            self._log_corridor_violation_event(inputs)
             return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
 
         # GNSS_DENIED → SILENT_INGRESS: terminal zone boundary crossed
@@ -398,6 +401,7 @@ class NanoCorteXFSM:
         # NAV_TRN_ONLY → ABORT: corridor violation
         if inputs.corridor_violation:
             guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            self._log_corridor_violation_event(inputs)
             return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
 
         # NAV_TRN_ONLY → SILENT_INGRESS: terminal zone boundary crossed
@@ -439,6 +443,7 @@ class NanoCorteXFSM:
         # SILENT_INGRESS → ABORT: corridor violation
         if inputs.corridor_violation:
             guards = [GuardEvaluation("corridor_violation", True, True, True)]
+            self._log_corridor_violation_event(inputs)
             return self._transition(NCState.ABORT, "CORRIDOR_VIOLATION", guards, inputs)
 
         # SILENT_INGRESS → SHM_ACTIVE: L10s-SE window engaged
@@ -483,6 +488,26 @@ class NanoCorteXFSM:
     def _from_mission_freeze(self, _: SystemInputs) -> Optional[TransitionResult]:
         # MISSION_FREEZE is terminal. No output. No transition.
         return None
+
+    # ------------------------------------------------------------------
+    # Structured corridor violation event emitter (SRS §16, OI-54)
+    # ------------------------------------------------------------------
+
+    def _log_corridor_violation_event(self, inputs: SystemInputs) -> None:
+        self._log.append(MissionLogEntry(
+            timestamp_s = self._clock.now(),
+            tick        = self._clock.tick(),
+            category    = LogCategory.SYSTEM_ALERT,
+            mission_id  = self._mission_id,
+            state       = self._state.value,
+            notes       = (
+                f'{{"event": "CORRIDOR_VIOLATION", '
+                f'"active_state": "{self._state.value}", '
+                f'"trigger": "CORRIDOR_VIOLATION", '
+                f'"mission_km": {inputs.mission_km}, '
+                f'"bim_state": "{inputs.bim_state.value}"}}'
+            ),
+        ))
 
     # ------------------------------------------------------------------
     # Transition executor
