@@ -4,6 +4,92 @@
 
 ---
 
+## Entry QA-050 — 22 April 2026
+**Session Type:** Week 1 Day 1 — SRS Compliance Matrix baseline + OI-53/OI-54 resolution
+**Governance ref:** Code Governance Manual v3.4; Anti-Bias Protocol AB-01..AB-06
+**HEAD at close:** `9d99a75` (W1-P03: README provenance correction + OI-54 structured log event)
+**SIL:** 510/510 — unchanged
+
+---
+
+### Actions Completed
+
+| Prompt | OI | Deliverable | Commit |
+|---|---|---|---|
+| Session init | — | Frozen file verification: all 5 SHA-256 hashes confirmed MATCH against QA-049 baseline | — |
+| Item 4 (Deputy 1) | — | `SRS_COMPLIANCE_MATRIX.md` v3 produced — executive dashboard, 99-item requirement traceability (incl. Appendix B/C/E), 82-test coverage matrix, Appendix D individual rows D1..D10, adversarial coverage section, AVP profile traceability, governance register with QA/Gate reference column throughout | local → committed this prompt |
+| W1-P01 | OI-53 (raised) | `README_SYNTHETIC_TERRAIN.md` committed to `data/terrain/` and `simulation/terrain/` (git add -f). SIL 510/510. | `bc8230a` |
+| W1-P02 | OI-53 investigation | Rasterio probe: tiles are REAL COP30 data (EPSG:4326, valid geographic bounds for Jammu-Leh and Shimla-Manali corridors, elevation ranges 270–5465m). README provenance claim "NOT real GLO-30" was factually incorrect. Five FSM trigger states for CORRIDOR_VIOLATION confirmed (not four as recorded in prior OI-40 — NAV_TRN_ONLY is the fifth state). | — |
+| W1-P03 | OI-53 CLOSED | README provenance body paragraph corrected: tiles are real COP30 data. Copernicus data policy bullet added. Both README files identical. | `9d99a75` |
+| W1-P03 | OI-54 CLOSED | `_log_corridor_violation_event()` added to `NanoCorteXFSM`. `LogCategory.SYSTEM_ALERT` MissionLogEntry emitted at all 5 CORRIDOR_VIOLATION trigger sites before `_transition(NCState.ABORT)`. Payload: event, active_state, trigger, mission_km, bim_state. `cross_track_error_m` absent from SystemInputs — OI-55 raised. | `9d99a75` |
+| W1-P04 | — | QA log, Project Context, SRS_COMPLIANCE_MATRIX.md committed to repository | this commit |
+
+---
+
+### Frozen File Verification (all prompts)
+
+| File | Hash | Status |
+|---|---|---|
+| `core/ekf/error_state_ekf.py` | `aaeeb0d7...` | ✅ MATCH |
+| `scenarios/bcmp1/bcmp1_runner.py` | `421b8e41...` | ✅ MATCH |
+| `core/fusion/vio_mode.py` | `6c8e9ae0...` | ✅ MATCH |
+| `core/fusion/frame_utils.py` | `6425bd9b...` | ✅ MATCH |
+| `core/bim/bim.py` | `9f989272...` | ✅ MATCH |
+
+---
+
+### Deputy 1 Rulings This Session
+
+**OI-40 — §16 Corridor Violation ownership:** Implementation read (W1-P02) confirmed:
+- Detects: Navigation Manager (computes corridor_violation flag)
+- Decides: Mission Manager / NanoCorteXFSM (unconditional ABORT from 5 states: NOMINAL line 297, EW_AWARE line 320, GNSS_DENIED line 361, NAV_TRN_ONLY line 399, SILENT_INGRESS line 440)
+- Executes: Mission Manager / NanoCorteXFSM (`_transition(NCState.ABORT)`)
+- Logs: Mission Manager (structured SYSTEM_ALERT event after OI-54 fix at `9d99a75`)
+- Consumes: Navigation Manager, PX4 Bridge, All modules
+
+Previous OI-40 record cited 4 FSM states. **Corrected: 5 states.** SRS v1.4 §16 row pending commit (Week 1 Item 3).
+
+**NAV-02 downgraded:** SRS v1.2 traceability listed as Complete. Corrected to PARTIAL — SRS v1.3 replaced RADALT-NCC with orthophoto matching. UT-NAV-02-A/B are now OBSOLETE. No valid SIL tests for OM mechanism exist.
+
+**EC-01 downgraded:** Phase A label implied CLOSED. Corrected to PARTIAL — 30-minute OFFBOARD endurance exit gate not formally confirmed PASS. S-PX4-09 62s run does not satisfy §8.3 EC-01 exit criterion.
+
+**OI-53 CLOSED** at `9d99a75`. Terrain tiles are real COP30 data. README corrected.
+
+**OI-54 CLOSED** at `9d99a75`. Structured CORRIDOR_VIOLATION event added to all 5 FSM sites. SIL 510/510.
+
+---
+
+### New OIs Raised This Session
+
+| OI | Description | Priority |
+|---|---|---|
+| ~~OI-53~~ | **CLOSED** `9d99a75` — README terrain provenance corrected | — |
+| ~~OI-54~~ | **CLOSED** `9d99a75` — Structured CORRIDOR_VIOLATION event added | — |
+| OI-55 | `cross_track_error_m` absent from `SystemInputs` — CORRIDOR_VIOLATION event payload cannot include breach magnitude. Fix: add field to SystemInputs dataclass; populate from NavigationManager before FSM call. Not a frozen file change. | MEDIUM — before HIL |
+
+---
+
+### Week 1 Item Status at Session Close
+
+| Item | Description | Status |
+|---|---|---|
+| Item 1 | SAL-3 sandbox scope definition (Deputy 1 only) | NOT STARTED — next session |
+| Item 2 | Synthetic terrain README caveat | ✅ CLOSED (`bc8230a`, corrected `9d99a75`) |
+| Item 3 | EC-07 Corridor Violation §16 row | PARTIALLY RESOLVED — ownership defined; SRS v1.4 pending |
+| Item 4 | SRS_COMPLIANCE_MATRIX.md baseline | ✅ COMPLETE (committed this prompt) |
+| Items 5–12 | Retask/recovery/OFFBOARD cluster | NOT STARTED |
+
+---
+
+### Next Session Priorities
+
+1. Item 1 — SAL-3 sandbox scope definition (Deputy 1 only, no Agent 2)
+2. Item 3 — SRS v1.4 §16 Corridor Violation row commit (Agent 2)
+3. OI-55 — Add `cross_track_error_m` to SystemInputs (Agent 2)
+4. Items 5/6 — Read PLN-02 R-01..R-06 implementation before any prompt
+
+---
+
 ## Entry QA-040 — 19 April 2026
 **Session Type:** HIL H-4 — LightGlue subprocess IPC bridge  
 **Focus:** Design and implement production-quality Unix socket IPC bridge between micromind-autonomy (Python 3.11) and LightGlue (hil-h3 Python 3.10)  
