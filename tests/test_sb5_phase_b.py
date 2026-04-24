@@ -512,6 +512,109 @@ class TestSB05DeadEndReturnsToLastWaypoint(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# R-03 ETA rollback gate (OI-56) — PLN-02 Appendix B ROLLBACK action (5)
+# ---------------------------------------------------------------------------
+
+class TestR03ETARollback(unittest.TestCase):
+    """
+    R-03: On retask failure, _rollback() must restore _eta_s to the pre-retask
+    value, and RETASK_ROLLBACK must be logged immediately after _rollback() with
+    eta_s_restored in the payload.
+
+    Requirements: PLN-02 R-03, OI-56
+    SRS ref:      §4.2 Appendix B ROLLBACK action (5)
+    Governance:   Code Governance Manual v3.4 §1.3, §1.4, §9.1
+    """
+
+    def setUp(self):
+        self.engine = _make_engine()
+        self.clock  = _make_clock(0.0)
+        self.planner, self.event_log = _make_planner(
+            engine = self.engine,
+            clock  = self.clock,
+        )
+        self.planner.load_route([_START_WP])
+        self.planner.nav_mode = RetaskNavMode.CRUISE
+        # Establish a known pre-retask ETA (1 500 s — arbitrary non-zero sentinel)
+        self._pre_retask_eta_s = 1500.0
+        self.planner._eta_s    = self._pre_retask_eta_s
+
+    def tearDown(self):
+        del self.planner, self.event_log, self.engine, self.clock
+
+    def test_r03_eta_rollback(self):
+        """
+        Force retask failure via dead-end (all replans return success=False,
+        no timeout so mock clock stays at 0.0).
+
+        Assertions:
+          (a) _eta_s restored to pre-retask value after rollback
+          (b) RETASK_ROLLBACK logged exactly once
+          (c) RETASK_ROLLBACK payload contains eta_s_restored field
+          (d) eta_s_restored equals the pre-retask _eta_s sentinel
+        """
+        def _fail_replan(*args, **kwargs) -> ReplanResult:
+            return ReplanResult(
+                replan_id            = "FAIL-R03",
+                trigger              = "test",
+                mission_time_s       = 0.0,
+                wall_latency_ms      = 0.5,
+                success              = False,
+                waypoints            = [],
+                original_waypoints   = [],
+                max_east_deviation_m = 0.0,
+                kpi_ew02_pass        = True,
+                nodes_explored       = 0,
+            )
+
+        with patch.object(self.planner._astar, "replan", side_effect=_fail_replan):
+            result = self.planner.retask(
+                new_goal_north_m = _GOAL_NORTH,
+                new_goal_east_m  = _GOAL_EAST,
+                trigger          = "R03-ETA-TEST",
+            )
+
+        self.assertFalse(result, "Retask must return False on dead-end")
+
+        # (a) _eta_s restored to pre-retask value
+        self.assertAlmostEqual(
+            self.planner._eta_s,
+            self._pre_retask_eta_s,
+            places=6,
+            msg=f"_eta_s must be restored to {self._pre_retask_eta_s} s after rollback",
+        )
+
+        # (b) RETASK_ROLLBACK logged exactly once
+        rollback_events = _logged_events(self.event_log, "RETASK_ROLLBACK")
+        self.assertEqual(
+            len(rollback_events), 1,
+            "RETASK_ROLLBACK must be logged exactly once on retask failure",
+        )
+
+        # (c) RETASK_ROLLBACK payload contains eta_s_restored
+        ev = rollback_events[0]
+        self.assertIn(
+            "eta_s_restored", ev,
+            "RETASK_ROLLBACK event must contain eta_s_restored field",
+        )
+        self.assertEqual(ev["req_id"],      "PLN-02")
+        self.assertEqual(ev["severity"],    "WARNING")
+        self.assertEqual(ev["module_name"], "RoutePlanner")
+        self.assertIn("timestamp_ms", ev)
+
+        # (d) eta_s_restored equals the pre-retask sentinel
+        self.assertAlmostEqual(
+            ev["eta_s_restored"],
+            self._pre_retask_eta_s,
+            places=6,
+            msg=(
+                f"eta_s_restored must equal pre-retask _eta_s "
+                f"({self._pre_retask_eta_s} s)"
+            ),
+        )
+
+
+# ---------------------------------------------------------------------------
 # SB-06 — UT-MM-04 queue latency under load
 # ---------------------------------------------------------------------------
 

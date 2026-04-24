@@ -22,6 +22,7 @@ Forbidden behaviour (Code Governance Manual v3.2 §1.3):
 from __future__ import annotations
 
 import logging
+import math
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -42,6 +43,7 @@ EW_MAP_STALENESS_THRESHOLD_S  = 15.0   # PLN-02 §R-02: EW map max age before wa
 WAYPOINT_POSITION_TOLERANCE_M = 15.0   # SRS §5.2: waypoint proximity threshold (m)
 RETASK_CONSTRAINT_LEVELS      = 3      # Number of constraint relaxation levels to try
 ROUTE_FRAGMENT_BYTES_PER_WP   = 24     # RS-04: bytes per waypoint (3 floats × 8 bytes)
+CRUISE_SPEED_MS_DEFAULT       = 27.78  # AVP-02 cruise speed: 100 km/h in m/s
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +109,7 @@ class RoutePlanner:
         terrain_regen_fn: Optional[Callable[[], None]] = None,
         ew_refresh_fn:    Optional[Callable[[], None]] = None,
         px4_upload_fn:    Optional[Callable[[List], None]] = None,
+        cruise_speed_ms:  float = CRUISE_SPEED_MS_DEFAULT,
     ):
         """
         Args:
@@ -121,6 +124,9 @@ class RoutePlanner:
             px4_upload_fn:    Callback to upload waypoints to PX4 in index
                               order (R-04). Must NOT issue commands directly;
                               delegation to PX4 bridge only.
+            cruise_speed_ms:  Cruise speed in metres per second used to compute
+                              ETA after successful route acceptance (R-03, OI-56).
+                              Default: CRUISE_SPEED_MS_DEFAULT (AVP-02, 100 km/h).
         """
         self._engine    = ew_engine
         self._clock     = mission_clock
@@ -146,6 +152,12 @@ class RoutePlanner:
         # RS-04: intermediate route fragments accumulated during retask search
         # (waypoint lists from non-adopted replan attempts at each constraint level)
         self._intermediate_fragments: List[List[Tuple[float, float, float]]] = []
+
+        # R-03 (PLN-02): live ETA in seconds at cruise speed from current position
+        # to destination. Updated on every successful retask. Snapshot/restored on
+        # every rollback per SRS §4.2 Appendix B ROLLBACK action (5) — OI-56.
+        self._eta_s:           float = 0.0
+        self._cruise_speed_ms: float = cruise_speed_ms
 
     # ------------------------------------------------------------------
     # Properties
@@ -317,8 +329,8 @@ class RoutePlanner:
                 # is the caller's responsibility via the EW engine
 
         # ── R-03: Snapshot state for rollback ───────────────────────────────
-        # Snapshot ALL three state components before any modification.
-        # Rollback must restore all three — not just waypoints.
+        # Snapshot ALL five state components before any modification.
+        # Rollback must restore all five — SRS §4.2 Appendix B ROLLBACK actions 1–5.
         snap_waypoints           = list(self._waypoints)
         snap_ew_map              = self._engine.cost_map.copy()
         snap_terrain_corridor    = (
@@ -326,16 +338,18 @@ class RoutePlanner:
             if self._terrain_corridor is not None else None
         )
         snap_ew_map_last_updated = self._ew_map_last_updated_s
+        snap_eta_s               = self._eta_s                  # action (5) — OI-56
 
-        def _rollback() -> None:
+        def _rollback(snap_eta_s_val: float) -> None:
             """
-            R-03 rollback: restore EW map, terrain corridor, and waypoints
-            to pre-retask snapshot values.
+            R-03 rollback: restore EW map, terrain corridor, waypoints, and ETA
+            to pre-retask snapshot values (SRS §4.2 Appendix B ROLLBACK actions 1–5).
             """
             self._waypoints              = snap_waypoints
             self._engine.cost_map[:]     = snap_ew_map          # in-place restore
             self._terrain_corridor       = snap_terrain_corridor
             self._ew_map_last_updated_s  = snap_ew_map_last_updated
+            self._eta_s                  = snap_eta_s_val       # action (5) — OI-56
 
         # ── R-01: Terrain regeneration BEFORE EW map refresh ────────────────
         # INVARIANT: terrain regen must always precede EW map refresh on retask.
@@ -406,7 +420,15 @@ class RoutePlanner:
                 "module_name":  "RoutePlanner",
                 "timestamp_ms": final_ts_ms,
             })
-            _rollback()
+            _rollback(snap_eta_s)
+            self._event_log.append({
+                "event":          "RETASK_ROLLBACK",
+                "req_id":         "PLN-02",
+                "severity":       "WARNING",
+                "module_name":    "RoutePlanner",
+                "timestamp_ms":   final_ts_ms,
+                "eta_s_restored": snap_eta_s,
+            })
             self._cleanup_route_fragments(final_ts_ms)  # RS-04
             return False
 
@@ -423,7 +445,15 @@ class RoutePlanner:
                 "timestamp_ms": final_ts_ms,
             })
             # Restore state and set route to last valid waypoint
-            _rollback()
+            _rollback(snap_eta_s)
+            self._event_log.append({
+                "event":          "RETASK_ROLLBACK",
+                "req_id":         "PLN-02",
+                "severity":       "WARNING",
+                "module_name":    "RoutePlanner",
+                "timestamp_ms":   final_ts_ms,
+                "eta_s_restored": snap_eta_s,
+            })
             if self._last_valid_waypoint is not None:
                 self._waypoints = [self._last_valid_waypoint]
             self._cleanup_route_fragments(final_ts_ms)  # RS-04
@@ -446,6 +476,20 @@ class RoutePlanner:
             "timestamp_ms": final_ts_ms,
         })
         self._px4_upload_fn(found_route)   # delegate to bridge — no direct PX4 cmds (§1.3)
+
+        # ── R-03 (PLN-02): update live ETA from accepted route length (OI-56) ─
+        # Compute 2-D (north-east) segment sum; cruise speed converts to seconds.
+        if len(found_route) > 1:
+            _route_len_m = sum(
+                math.hypot(b[0] - a[0], b[1] - a[1])
+                for a, b in zip(found_route[:-1], found_route[1:])
+            )
+        else:
+            _route_len_m = 0.0
+        self._eta_s = (
+            _route_len_m / self._cruise_speed_ms
+            if self._cruise_speed_ms > 0.0 else 0.0
+        )
 
         # ── Nominal success path ──────────────────────────────────────────────
         self._waypoints = found_route
