@@ -275,9 +275,13 @@ class RoutePlanner:
             self._cleanup_route_fragments(ts_ms)  # RS-04: no fragments generated
             return False
 
-        # ── R-02: EW map staleness check (non-blocking warning) ─────────────
-        # If the EW cost map is older than EW_MAP_STALENESS_THRESHOLD_S, warn
-        # but continue — use last valid map rather than aborting the retask.
+        # ── R-02: EW map staleness check with refresh attempt ───────────────
+        # If the EW cost map is stale, attempt a refresh via the
+        # callback before proceeding. In the live system,
+        # _ew_refresh_fn() blocks up to EW_STALE_WAIT_S (2.0 s)
+        # waiting for a fresh update over the data link.
+        # In SIL, the callback is synchronous. Either way, we
+        # re-read ew_age_s after the call to determine outcome.
         ew_age_s = now_s - self._ew_map_last_updated_s
         if ew_age_s > EW_MAP_STALENESS_THRESHOLD_S:
             self._event_log.append({
@@ -288,7 +292,29 @@ class RoutePlanner:
                 "timestamp_ms": ts_ms,
                 "ew_age_s":     ew_age_s,
             })
-            # Continue — last valid map is used; do not abort on staleness alone
+            # Attempt refresh — honours EW_STALE_WAIT_S contract
+            self._ew_refresh_fn()
+            # Re-read age after refresh attempt
+            ew_age_s_post = now_s - self._ew_map_last_updated_s
+            if ew_age_s_post <= EW_MAP_STALENESS_THRESHOLD_S:
+                self._event_log.append({
+                    "event":        "RETASK_EW_MAP_REFRESHED",
+                    "req_id":       "PLN-02",
+                    "severity":     "INFO",
+                    "module_name":  "RoutePlanner",
+                    "timestamp_ms": ts_ms,
+                })
+            else:
+                self._event_log.append({
+                    "event":        "RETASK_EW_MAP_STALE_PROCEED",
+                    "req_id":       "PLN-02",
+                    "severity":     "WARNING",
+                    "module_name":  "RoutePlanner",
+                    "timestamp_ms": ts_ms,
+                    "ew_age_s":     ew_age_s_post,
+                })
+                # Proceed with stale map — elevated threat weight
+                # is the caller's responsibility via the EW engine
 
         # ── R-03: Snapshot state for rollback ───────────────────────────────
         # Snapshot ALL three state components before any modification.

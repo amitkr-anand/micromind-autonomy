@@ -92,13 +92,80 @@ class TestSB5AdversarialD2(unittest.TestCase):
         # Assert EW_MAP_STALE_ON_RETASK logged
         stale_events = _logged_events(self.event_log, "EW_MAP_STALE_ON_RETASK")
         self.assertEqual(len(stale_events), 1, "Must log EW_MAP_STALE_ON_RETASK")
-        
+        outcome_events = (
+            _logged_events(self.event_log, "RETASK_EW_MAP_REFRESHED") +
+            _logged_events(self.event_log, "RETASK_EW_MAP_STALE_PROCEED")
+        )
+        self.assertEqual(
+            len(outcome_events), 1,
+            "Exactly one of RETASK_EW_MAP_REFRESHED or "
+            "RETASK_EW_MAP_STALE_PROCEED must be logged after "
+            "R-02 staleness detection"
+        )
+
         # Assert retask continues despite stale map
         self.assertTrue(result, "Retask must complete successfully in GNSS_DENIED")
         
         # Assert NOT demoted to INS_ONLY silently
         ins_only_events = _logged_events(self.event_log, "RETASK_REJECTED_INS_ONLY")
         self.assertEqual(len(ins_only_events), 0, "RETASK_REJECTED_INS_ONLY must not be logged")
+
+    def test_adv_01b_ew_map_refreshed_during_wait(self):
+        """
+        R-02 refresh path: EW map is stale at retask time, but
+        _ew_refresh_fn() updates the map timestamp. After
+        refresh, ew_age_s_post <= threshold:
+        RETASK_EW_MAP_REFRESHED is logged; retask succeeds.
+        """
+        self.planner.nav_mode = RetaskNavMode.GNSS_DENIED
+        # Set clock to 20s; initial map timestamp = 0 → stale
+        self.clock.now.return_value = 20.0
+        self.planner._ew_map_last_updated_s = 0.0
+
+        # Override _ew_refresh_fn to simulate a fresh update:
+        # after the callback runs, the map timestamp equals
+        # clock.now() — no longer stale
+        def _fresh_refresh():
+            self.planner._ew_map_last_updated_s = \
+                self.clock.now()
+
+        self.planner._ew_refresh_fn = _fresh_refresh
+
+        result = self.planner.retask(
+            new_goal_north_m=60000.0,
+            new_goal_east_m=0.0,
+            trigger="ADV-1b-REFRESH-CHECK",
+        )
+
+        # Both the stale detection event AND the refresh
+        # outcome event must be present
+        stale_events = _logged_events(
+            self.event_log, "EW_MAP_STALE_ON_RETASK"
+        )
+        self.assertEqual(
+            len(stale_events), 1,
+            "EW_MAP_STALE_ON_RETASK must be logged on first detection"
+        )
+        refreshed_events = _logged_events(
+            self.event_log, "RETASK_EW_MAP_REFRESHED"
+        )
+        self.assertEqual(
+            len(refreshed_events), 1,
+            "RETASK_EW_MAP_REFRESHED must be logged when "
+            "refresh callback updates the map"
+        )
+        stale_proceed = _logged_events(
+            self.event_log, "RETASK_EW_MAP_STALE_PROCEED"
+        )
+        self.assertEqual(
+            len(stale_proceed), 0,
+            "RETASK_EW_MAP_STALE_PROCEED must NOT be logged "
+            "when refresh succeeds"
+        )
+        self.assertTrue(
+            result,
+            "Retask must succeed when EW map is refreshed"
+        )
 
     def test_adv_02_memory_stability_20_failures(self):
         """Adversarial 2: Memory Stability under 20 consecutive retask failures."""
