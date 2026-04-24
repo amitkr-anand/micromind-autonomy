@@ -2534,6 +2534,95 @@ ETA attribute investigation: `RoutePlanner` has no `_eta` or `eta` attribute at 
 
 ---
 
+## Entry QA-054 — 24 April 2026
+**Session Type:** W1-P09 — PLN-02 R-02 callback-based EW map refresh
+**Prompt ID:** W1-P09
+**HEAD at close:** `168b1d5`
+**SIL:** 511/511 (+1 vs prior baseline: test_adv_01b added)
+
+---
+
+### Actions Completed
+
+| Step | Deliverable | Commit |
+|---|---|---|
+| Step 1 | R-01 block read (lines 305–330) — confirmed existing `_ew_refresh_fn()` call pattern | — |
+| Step 2 | R-02 block read (lines 272–300) — confirmed current non-blocking warn-and-continue state | — |
+| Step 3 | R-02 replaced with Option C: `_ew_refresh_fn()` called at staleness point; `ew_age_s_post` checked; `RETASK_EW_MAP_REFRESHED` (INFO) or `RETASK_EW_MAP_STALE_PROCEED` (WARNING) logged | `168b1d5` |
+| Step 4 | `test_adv_01` updated: `outcome_events` assertion added (exactly one of `RETASK_EW_MAP_REFRESHED` / `RETASK_EW_MAP_STALE_PROCEED`) | `168b1d5` |
+| Step 5 | `test_adv_01b` added: `_ew_refresh_fn` overridden to update `_ew_map_last_updated_s = clock.now()` → `RETASK_EW_MAP_REFRESHED` logged, retask returns `True` | `168b1d5` |
+| Step 6 | Short suite: `test_sb5_adversarial_d2.py` + `test_sb5_phase_b.py` | **15/15 PASS** in 1.33s |
+| Step 7 | Certified baseline | **511/511 PASS** (exit 0, zero failures) |
+| Step 8 | Staged exactly 2 files (`route_planner.py`, `test_sb5_adversarial_d2.py`); committed | `168b1d5` |
+
+---
+
+### R-02 Implementation Detail
+
+**Design decision (Deputy 1 Option C):** Single synchronous callback at staleness detection, re-read age after callback, dual-outcome log. No spin-wait, no new instance variables, no return type change, no caller changes.
+
+**Before:**
+```python
+# ── R-02: EW map staleness check (non-blocking warning) ─
+ew_age_s = now_s - self._ew_map_last_updated_s
+if ew_age_s > EW_MAP_STALENESS_THRESHOLD_S:
+    self._event_log.append({"event": "EW_MAP_STALE_ON_RETASK", ...})
+    # Continue — last valid map is used; do not abort on staleness alone
+```
+
+**After:**
+```python
+# ── R-02: EW map staleness check with refresh attempt ───
+ew_age_s = now_s - self._ew_map_last_updated_s
+if ew_age_s > EW_MAP_STALENESS_THRESHOLD_S:
+    self._event_log.append({"event": "EW_MAP_STALE_ON_RETASK", ...})
+    # Attempt refresh — honours EW_STALE_WAIT_S contract
+    self._ew_refresh_fn()
+    # Re-read age after refresh attempt
+    ew_age_s_post = now_s - self._ew_map_last_updated_s
+    if ew_age_s_post <= EW_MAP_STALENESS_THRESHOLD_S:
+        self._event_log.append({"event": "RETASK_EW_MAP_REFRESHED", ...})
+    else:
+        self._event_log.append({"event": "RETASK_EW_MAP_STALE_PROCEED", ...})
+        # Proceed with stale map — elevated threat weight
+        # is the caller's responsibility via the EW engine
+```
+
+**EW_STALE_WAIT_S = 2.0** retained as timeout contract on callback (live system blocks up to 2s; SIL callback is synchronous).
+
+---
+
+### SIL delta
+
+| Suite | Count | Delta |
+|---|---|---|
+| Combined baseline block (incl. adv d2 + phase b) | 130 passed, 1 deselected | +1 (test_adv_01b) |
+| All other suites | unchanged | 0 |
+| **TOTAL** | **511** | **+1** |
+
+---
+
+### Gate Results
+
+| Gate | Result |
+|---|---|
+| `test_sb5_adversarial_d2.py` (6 tests) | **6/6 PASS** |
+| `test_sb5_phase_b.py` (9 tests) | **9/9 PASS** |
+| Combined short suite | **15/15 PASS** in 1.33s |
+| Certified baseline | **511/511 PASS** (exit 0, zero failures) |
+
+---
+
+### New OIs Raised
+
+None.
+
+### Frozen File Verification
+
+All 5 SHA-256 hashes match expected values at session start. Confirmed via Gate 7 parametrised test in baseline run.
+
+---
+
 ## Entry QA-053 — 24 April 2026
 **Session Type:** W1-P07-REVERT — Emergency revert: remove R-02 busy-wait loop from route_planner.py
 **Prompt ID:** W1-P07-REVERT
