@@ -4,6 +4,107 @@
 
 ---
 
+## Entry QA-054 — 23 April 2026
+**Session Type:** Week 1 Day 2 — PLN-02 R-corrections, R-02 busy-wait incident, R-02 callback-based fix
+**Governance ref:** Code Governance Manual v3.4; Anti-Bias Protocol AB-01..AB-06
+**HEAD at close:** `168b1d5` (W1-P09 — R-02 EW staleness fix)
+**SIL:** 511/511
+
+---
+
+### Actions Completed
+
+| Prompt | Item | Deliverable | Commit |
+|---|---|---|---|
+| W1-P07-REVERT | Emergency | Removed infinite busy-wait loop (never committed — only in working tree). Root cause: Deputy 1 prompt error — `self._clock.now()` is simulation time, does not advance within synchronous call stack. No code commit required. Session-close docs committed. | `d337a75` |
+| W1-P08 | Item 6 diagnostic | Read retask() caller structure. Key findings: `-> bool` return type only; 13 call sites all handle True/False; `test_adv_01` covers stale EW map with non-blocking behaviour; no caller retry loop exists. | — |
+| W1-P09 | R-02 | Implemented callback-based EW refresh at staleness detection point. `_ew_refresh_fn()` called before proceeding. Dual-outcome log: `RETASK_EW_MAP_REFRESHED` (fresh map arrived) or `RETASK_EW_MAP_STALE_PROCEED` (still stale after callback). `test_adv_01` updated; `test_adv_01b` added for refresh path. SIL 511/511. | `168b1d5` |
+
+---
+
+### PLN-02 R-Correction Status at Session Close
+
+| Correction | Status | Evidence |
+|---|---|---|
+| R-01 | ✅ COMPLIANT | Pre-existing — terrain regen before EW refresh at line 307 |
+| R-02 | ✅ COMPLIANT | `168b1d5` — `_ew_refresh_fn()` callback at staleness point; dual-outcome log |
+| R-03 | ❌ OPEN — OI-56 | ETA attribute not found on RoutePlanner. Location unknown. |
+| R-04 | ✅ COMPLIANT | Pre-existing — waypoint upload gated behind validation at lines 399–415 |
+| R-05 | ✅ COMPLIANT | `ab083ce` — conditional XTE check; `RETASK_NAV_CONFIDENCE_TOO_LOW` |
+| R-06 | ✅ COMPLIANT | Pre-existing — 15s timeout loop with mission clock |
+
+---
+
+### Frozen File Verification (all prompts)
+
+| File | Hash | Status |
+|---|---|---|
+| `core/ekf/error_state_ekf.py` | `aaeeb0d7...` | ✅ MATCH |
+| `scenarios/bcmp1/bcmp1_runner.py` | `421b8e41...` | ✅ MATCH |
+| `core/fusion/vio_mode.py` | `6c8e9ae0...` | ✅ MATCH |
+| `core/fusion/frame_utils.py` | `6425bd9b...` | ✅ MATCH |
+| `core/bim/bim.py` | `9f989272...` | ✅ MATCH |
+
+---
+
+### Deputy 1 Rulings
+
+**R-02 COMPLIANT** — `168b1d5`. The callback-based refresh satisfies SRS §4.2: staleness detected, refresh attempted, dual-outcome logged, retask proceeds. `EW_STALE_WAIT_S` is the timeout contract on `_ew_refresh_fn()` — live system blocks up to 2s; SIL is synchronous. No spin-wait. Architecturally consistent with R-01 pattern.
+
+**Busy-wait incident (W1-P07):** Root cause was a Deputy 1 prompt design error. `self._clock.now()` returns simulation time that does not advance within a synchronous Python call stack. The while-loop was never committed — it existed only in the working tree. Reverted cleanly. Standing rule added: **no while/polling loops using `self._clock.now()` in any synchronous method of RoutePlanner or any module that uses the simulation clock**.
+
+**Option A (deferred False return) REJECTED** — no guaranteed caller retry exists. Programme Director constraint: "Deferred retask must be guaranteed to be re-invoked by the caller; otherwise the system may stall in a deferred state."
+
+---
+
+### New OIs Raised
+
+| OI | Description | Priority |
+|---|---|---|
+| OI-56 | R-03 ETA rollback gap — `_rollback()` in route_planner.py does not restore ETA. ETA attribute not found on RoutePlanner (`_eta_s` absent). ETA may be held in MissionManager or RetaskCommand. Requires targeted read of MissionManager before fix can be designed. Blocks Item 7 rollback gate and full PLN-02 closure. | MEDIUM — next session |
+
+---
+
+### Week 1 Item Status at Close
+
+| Item | Description | Status |
+|---|---|---|
+| 1 | SAL-3 sandbox scope (Deputy 1 only) | ⏳ NOT STARTED — deferred to Week 2 |
+| 2 | Synthetic terrain README | ✅ CLOSED |
+| 3 | EC-07 §16 Corridor Violation row | ✅ DOCUMENTED (`3e79805`) |
+| 4 | SRS_COMPLIANCE_MATRIX.md baseline | ✅ CLOSED |
+| 5 | PLN-02 R-01..R-06 read | ✅ COMPLETE |
+| 6 | Route invalidation + R-corrections | ⚠ PARTIAL — 5/6 compliant, R-03 open (OI-56) |
+| 7 | Rollback behaviour gate | ⏳ BLOCKED on OI-56 |
+| 8 | Waypoint upload sequencing gate (EC-01) | ⏳ NOT STARTED |
+| 9 | OFFBOARD continuity hardening | ⏳ NOT STARTED |
+| 10 | Checkpoint retention/purge (EC-02) | ⏳ NOT STARTED |
+| 11 | PX4 reboot recovery gap (EC-03/D10) | ⏳ NOT STARTED |
+| 12 | Full GNSS-denied retask integration test | ⏳ BLOCKED on Items 6/7 |
+
+---
+
+### Standing Rule Added
+
+No while-loop or polling construct using `self._clock.now()` (simulation clock) may be
+placed inside any synchronous method in RoutePlanner or any module that operates on the
+simulation clock. Simulation clock does not advance within a synchronous Python call stack.
+Any time-bounded wait must use a state-based deferred pattern (record timestamp on first
+call; check elapsed time on subsequent calls) or a callback contract model (as implemented
+for R-02).
+
+---
+
+### Next Session Priorities (Week 2 start)
+
+1. OI-56 — Locate ETA ownership (MissionManager read)
+2. Item 7 — R-03 ETA rollback fix once OI-56 resolved
+3. Item 1 — SAL-3 scope definition (Deputy 1 only, no Agent 2)
+4. Item 8 — EC-01 OFFBOARD 30-min endurance gate
+5. Item 10 — EC-02 checkpoint purge confirmation
+
+---
+
 ## Entry QA-050 — 22 April 2026
 **Session Type:** Week 1 Day 1 — SRS Compliance Matrix baseline + OI-53/OI-54 resolution
 **Governance ref:** Code Governance Manual v3.4; Anti-Bias Protocol AB-01..AB-06

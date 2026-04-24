@@ -1,8 +1,8 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `9d99a75` (W1-P03 — OI-53/OI-54 closed)
-**SIL at baseline:** 510/510 (`run_certified_baseline.sh`)
+**Baseline HEAD:** `168b1d5` (W1-P09 — R-02 EW staleness fix)
+**SIL at baseline:** 511/511 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
 **Classification:** Programme Confidential
@@ -71,6 +71,7 @@
 | Week 1 opening — 22 Apr | — | OI-53, OI-54 (both later closed same session) | NAV-02, EC-01 | RS-01 |
 | W1-P01 — bc8230a | Terrain README | — | — | RS-01 |
 | W1-P03 — 9d99a75 | OI-53, OI-54 | OI-55 (cross_track_error_m) | — | RS-01 |
+| W1 close — 23 Apr | R-02 COMPLIANT (168b1d5), R-05 COMPLIANT (ab083ce), OI-55 CLOSED (3e79805), OI-54 CLOSED (9d99a75) | OI-56 (R-03 ETA rollback gap) | — | RS-01 |
 
 ---
 
@@ -106,7 +107,7 @@
 | SRS § | Req ID | Title | Priority | AVP Scope | Historical Status | Current Status | Downgraded? | Impl Status | Test Status | Evidence | Commit / Tag | Linked Tests | Confidence | Owner | Open Gap / Risk | Next Action | QA / Gate Ref |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | §4.1 | PLN-01 | Hybrid A* Route Planner Response Time | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | ≤2s nominal / 5s max. Route ≤120%. S4. | `a7633ab` | UT-PLN-01, IT-PLN-01 | High | Deputy 1 | None | None | QA-049 |
-| §4.2 | PLN-02 | Dynamic Retask — Mid-Mission | Medium | AVP-02 ⚠ AVP-03 ❌ | PARTIAL | PARTIAL | NO | Partially Implemented | Partially Tested | Phase B gates. R-01..R-06 in spec. Code coverage of each R-correction unconfirmed. R-05 INS_ONLY corridor test missing. | `c35122a`, Phase B | UT-PLN-02, IT-PLN-01/02 | Medium | Deputy 1 | Each R-correction must be confirmed in code (Item 5/6). R-05 INS_ONLY corridor test absent. | Read PLN-02 implementation before any prompt | Phase B closure; OI-38 |
+| §4.2 | PLN-02 | Dynamic Retask — Mid-Mission | Medium | AVP-02 ⚠ AVP-03 ❌ | PARTIAL | PARTIAL | NO | Implemented | Tested and Verified | R-01 ✅ (pre-existing), R-02 ✅ (168b1d5 — callback-based EW refresh, dual-outcome log), R-03 ❌ (OI-56 — ETA attribute not found on RoutePlanner), R-04 ✅ (pre-existing), R-05 ✅ (ab083ce — conditional XTE check, RETASK_NAV_CONFIDENCE_TOO_LOW), R-06 ✅ (pre-existing). 5/6 R-corrections compliant. Blocked on R-03. | `ab083ce` (R-05), `168b1d5` (R-02) | UT-PLN-02, IT-PLN-01, IT-PLN-02, test_adv_01 (updated), test_adv_01b (new) | Medium | Deputy 1 | R-03 ETA rollback gap (OI-56). ETA attribute not found on RoutePlanner — location unknown. Blocks Item 7 rollback gate and full PLN-02 closure. Next Action: OI-56 investigation next session. | OI-56 investigation next session | W1-P05/P06/P09; OI-56 |
 | §4.3 | PLN-03 | Route Dead-End Recovery | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Constraint relaxation levels 1–3. UT-PLN-03. | Phase B | UT-PLN-03, IT-EW-02 | High | Deputy 1 | None | None | Phase B closure |
 
 ---

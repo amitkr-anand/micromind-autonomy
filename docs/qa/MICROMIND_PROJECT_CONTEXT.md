@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 24 April 2026 (QA-054 — W1-P09: PLN-02 R-02 callback-based EW refresh implemented; SIL 511/511)  
+**Last Updated:** 23 April 2026 (QA-054 — Week 1 Day 2: PLN-02 R-02/R-05 COMPLIANT, R-03 open OI-56)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -56,14 +56,14 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 510/510 certified baseline, HEAD ab083ce (W1-P06 PLN-02 R-05 — 23 Apr 2026) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 511/511 certified baseline, HEAD 168b1d5 (W1-P09 — R-02 EW staleness callback fix, 23 Apr 2026) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment (dev):** Python 3.11 conda micromind-autonomy / Ubuntu 24.04.4 / micromind-node01 (192.168.1.44)
 **Environment (Orin):** mmuser-orin@192.168.1.53 | Python 3.11 conda micromind-autonomy + Python 3.10 conda hil-h3 (LightGlue GPU) | SSH key-based both directions  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
 **Certified baseline runner:** `run_certified_baseline.sh` (includes NM-LG 6 + Gate 7 21) — use before every gate commit and handoff  
-**Total regression baseline:** 510 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
+**Total regression baseline:** 511 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
 
 ---
 
@@ -273,6 +273,10 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | ~~OI-53~~ | **CLOSED** `9d99a75` — README_SYNTHETIC_TERRAIN.md corrected. Tiles ARE real Copernicus DEM COP30 elevation data covering Jammu-Leh and Shimla-Manali corridors. Commit message at `3dc15b8` stated "synthetic" incorrectly. Rasterio probe (W1-P02) confirmed real geographic bounds and elevation ranges 270–5465m. Provenance body paragraph corrected; Copernicus data policy bullet added. Header Status field has minor residual "SYNTHETIC TEST INFRASTRUCTURE" — noted, not blocking. | Documentation | CLOSED |
 | ~~OI-54~~ | **CLOSED** `9d99a75` — `_log_corridor_violation_event()` added to NanoCorteXFSM. `LogCategory.SYSTEM_ALERT` MissionLogEntry emitted at all 5 CORRIDOR_VIOLATION trigger sites (NOMINAL line 297, EW_AWARE line 320, GNSS_DENIED line 361, NAV_TRN_ONLY line 399, SILENT_INGRESS line 440) before `_transition(NCState.ABORT)`. Payload: event, active_state, trigger, mission_km, bim_state. SIL 510/510. OI-55 raised for `cross_track_error_m` gap. | Code | CLOSED |
 | ~~OI-55~~ | **CLOSED** `3e79805` — `cross_track_error_m: float = 0.0` added to SystemInputs dataclass (after `corridor_violation` field). `_log_corridor_violation_event()` payload updated to include `cross_track_error_m` field. SIL 510/510. | Code | CLOSED |
+| OI-56 | R-03 ETA rollback gap — `_rollback()` in `route_planner.py` does not restore ETA. `_eta_s` attribute not found on RoutePlanner. ETA may be held in MissionManager or RetaskCommand dataclass. Requires targeted read of MissionManager before fix can be designed. Blocks Item 7 (rollback behaviour gate) and full PLN-02 closure. | Architecture | MEDIUM — next session |
+
+---
+**Standing rule added QA-054:** No while-loop or polling construct using `self._clock.now()` (simulation clock) may be placed inside any synchronous method in RoutePlanner or any module operating on the simulation clock. Any time-bounded wait must use state-based deferred pattern or callback contract model (as implemented R-02 at `168b1d5`).
 
 ---
 **SRS_COMPLIANCE_MATRIX.md downgrade record (QA-050):**
