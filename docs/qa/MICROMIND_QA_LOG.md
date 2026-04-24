@@ -2802,3 +2802,108 @@ R-02 EW map staleness (2 s wait for fresh update) remains **OPEN**. The correct 
 ### Frozen File Verification
 
 Verified via Gate 7 parametrised SHA-256 test in certified baseline — all 5 frozen files MATCH.
+
+---
+
+## Entry QA-055 — 24 April 2026
+**Session Type:** W2-2 — PLN-02 R-03 ETA snapshot/restore + RETASK_ROLLBACK event (OI-56)
+**Prompt ID:** W2-2
+**HEAD at close:** `e7d3d42`
+**SIL:** 512/512 — confirmed
+
+---
+
+### Situation at Session Start
+
+OI-56 open: R-03 ETA rollback gap. Prior session (W2-1b) ran a full diagnostic — confirmed MissionManager has zero ETA attributes, no retask() method, and is architecturally decoupled from RoutePlanner. The only ETA in the system was `Checkpoint.eta_to_destination_ms` (persistence field). W2-2 directive specified the fix design.
+
+---
+
+### Actions Completed
+
+| Step | Action | Result |
+|---|---|---|
+| Frozen file pre-check | SHA-256 all 5 frozen files | All match expected hashes |
+| PART A | Add `_eta_s: float = 0.0` and `_cruise_speed_ms: float` to RoutePlanner.__init__() | Done — new param `cruise_speed_ms` (default CRUISE_SPEED_MS_DEFAULT=27.78 m/s) |
+| PART A | Add named constant `CRUISE_SPEED_MS_DEFAULT = 27.78` | Done — line 46 |
+| PART B | Extend R-03 snapshot block with `snap_eta_s = self._eta_s` | Done — 5th snapshot variable |
+| PART B | Change `_rollback()` signature to accept `snap_eta_s_val: float` | Done — action (5) added inside |
+| PART B | Update both call sites: `_rollback(snap_eta_s)` | Done — timeout path (line 423) + dead-end path (line 448) |
+| PART C | Add RETASK_ROLLBACK event after each _rollback() call | Done — both paths; RETASK_TIMEOUT_ROLLBACK retained on timeout path |
+| Nominal path | Compute `self._eta_s` from 2-D route length / cruise speed | Done — after px4_upload_fn, before waypoints assigned |
+| PART D | Add `test_r03_eta_rollback` to test_sb5_phase_b.py | Done — 4 assertions (ETA restored, event logged, field present, value correct) |
+| Baseline | Update run_certified_baseline.sh expected: 511 → 512 | Done |
+| Run tests | `pytest tests/test_sb5_phase_b.py` | 10/10 PASS |
+| Run baseline | `bash run_certified_baseline.sh` | 512/512 PASS |
+| Frozen file post-check | SHA-256 all 5 frozen files | All unchanged |
+
+---
+
+### Deviations from Directive (Reported)
+
+1. **`self._config['cruise_speed_ms']` does not exist** — RoutePlanner has no `_config` dict and no config file linkage. Implemented as `cruise_speed_ms` constructor parameter stored as `self._cruise_speed_ms`, with named constant `CRUISE_SPEED_MS_DEFAULT`. This matches the existing injection pattern (terrain_regen_fn, ew_refresh_fn, px4_upload_fn).
+
+2. **Formula dimensional correction** — Directive wrote `route_length_km / self._config['cruise_speed_ms']`. With `cruise_speed_ms` in m/s and length in km, units are km/(m/s) = 1000 s/km (off by 1000×). Implemented as `route_length_m / self._cruise_speed_ms`, giving correct ETA in seconds.
+
+---
+
+### `_rollback()` Verbatim (post-change)
+
+```python
+def _rollback(snap_eta_s_val: float) -> None:
+    """
+    R-03 rollback: restore EW map, terrain corridor, waypoints, and ETA
+    to pre-retask snapshot values (SRS §4.2 Appendix B ROLLBACK actions 1–5).
+    """
+    self._waypoints              = snap_waypoints
+    self._engine.cost_map[:]     = snap_ew_map          # in-place restore
+    self._terrain_corridor       = snap_terrain_corridor
+    self._ew_map_last_updated_s  = snap_ew_map_last_updated
+    self._eta_s                  = snap_eta_s_val       # action (5) — OI-56
+```
+
+---
+
+### Changed Lines Summary
+
+| File | Change | Lines |
+|---|---|---|
+| `core/route_planner/route_planner.py` | `import math` added | 25 |
+| `core/route_planner/route_planner.py` | `CRUISE_SPEED_MS_DEFAULT = 27.78` constant | 46 |
+| `core/route_planner/route_planner.py` | `cruise_speed_ms: float` constructor param | 112 |
+| `core/route_planner/route_planner.py` | `cruise_speed_ms` docstring | 131–133 |
+| `core/route_planner/route_planner.py` | `_eta_s` + `_cruise_speed_ms` in __init__ body | 156–160 |
+| `core/route_planner/route_planner.py` | R-03 snapshot comment updated; `snap_eta_s` added | 331–341 |
+| `core/route_planner/route_planner.py` | `_rollback()` signature + action (5) | 343–352 |
+| `core/route_planner/route_planner.py` | Timeout path: `_rollback(snap_eta_s)` + RETASK_ROLLBACK | 423–431 |
+| `core/route_planner/route_planner.py` | Dead-end path: `_rollback(snap_eta_s)` + RETASK_ROLLBACK | 448–456 |
+| `core/route_planner/route_planner.py` | Nominal path: ETA computation | 480–492 |
+| `tests/test_sb5_phase_b.py` | `TestR03ETARollback` class + `test_r03_eta_rollback` | inserted after SB-05 |
+| `run_certified_baseline.sh` | Expected count 511 → 512 | 54 |
+
+---
+
+### Gate Results
+
+| Gate | Result |
+|---|---|
+| `test_sb5_phase_b.py` (10 tests) | **10/10 PASS** in 0.84s |
+| Certified baseline | **512/512 PASS** (exit 0) |
+
+---
+
+### OIs Closed
+
+| ID | Resolution |
+|---|---|
+| OI-56 | CLOSED `e7d3d42` — R-03 ETA rollback implemented. PLN-02 R-03 → COMPLIANT. PLN-02 now 6/6 compliant (R-01 through R-06). |
+
+### Frozen File Verification
+
+| File | SHA-256 (pre) | SHA-256 (post) | Match |
+|---|---|---|---|
+| core/ekf/error_state_ekf.py | aaeeb0d7... | aaeeb0d7... | ✅ |
+| core/fusion/vio_mode.py | 6c8e9ae0... | 6c8e9ae0... | ✅ |
+| core/fusion/frame_utils.py | 6425bd9b... | 6425bd9b... | ✅ |
+| core/bim/bim.py | 9f989272... | 9f989272... | ✅ |
+| scenarios/bcmp1/bcmp1_runner.py | 421b8e41... | 421b8e41... | ✅ |
