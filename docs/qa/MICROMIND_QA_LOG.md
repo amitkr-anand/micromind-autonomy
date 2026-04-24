@@ -2531,3 +2531,84 @@ ETA attribute investigation: `RoutePlanner` has no `_eta` or `eta` attribute at 
 - Untracked Deputy 1 prompt file (`docs/qa/deputy_1_final_two_week_prompt_markdown_2026_04_22.md`): NOT staged ✅
 - OI-55: CLOSED — confirmed, no change ✅
 - No new OIs opened ✅
+
+---
+
+## Entry QA-053 — 24 April 2026
+**Session Type:** W1-P07-REVERT — Emergency revert: remove R-02 busy-wait loop from route_planner.py
+**Prompt ID:** W1-P07-REVERT
+**HEAD at close:** `fa1ff5f` (no code commit — loop was unstaged, never committed)
+**SIL:** 510/510 — confirmed
+
+---
+
+### Situation at Session Start
+
+`git status` showed `core/route_planner/route_planner.py` **modified, unstaged**. No pytest or baseline processes were running (pgrep false-positive — matched its own invocation string). Workstation was not frozen. The while-loop change existed only in the working tree.
+
+---
+
+### Actions Completed
+
+| Step | Action | Result |
+|---|---|---|
+| pkill | Kill pytest / baseline processes | No processes running (exit code confirms no match) |
+| Step 1 | `git log --since=2026-04-23` | 7 commits identified on 23 April (see below) |
+| Step 2 | `grep -n "while\|STALE_WAIT"` | Line 295: `while (self._clock.now() - wait_start_s) < EW_STALE_WAIT_S:` confirmed |
+| Step 3 | `git diff ab083ce -- route_planner.py` | Full diff: 24-line while-loop block added to working tree only (not in any commit) |
+| Step 4 | Files changed since `ab083ce` | `route_planner.py` (WT), `MICROMIND_PROJECT_CONTEXT.md`, `MICROMIND_QA_LOG.md` (both in `fa1ff5f`) |
+| Step 4 | Commits since `ab083ce` | One commit: `fa1ff5f` docs-only (context + QA log) |
+| Step 5 | `git checkout ab083ce -- route_planner.py` | Loop removed. Grep clean — zero matches for `while`, `STALE_WAIT`, `EW_STALE_WAIT_S` |
+| Step 6 | `timeout 60 pytest test_sb5_phase_b.py` | **9/9 PASS in 0.98s** — R-05 conditional XTE fix preserved |
+| Step 7 | `timeout 300 bash run_certified_baseline.sh` | **510/510 PASS** — exit 0, zero failures |
+| Step 8 | Commit decision | **No commit required** — loop was never committed; working tree clean; HEAD unchanged at `fa1ff5f` |
+
+---
+
+### Commits on 23 April 2026 (Step 1 output)
+
+| Hash | Subject |
+|---|---|
+| `fa1ff5f` | `docs(qa): QA-052 — W1-P06 session close, PLN-02 R-05 committed, ab083ce` |
+| `ab083ce` | `fix(planner): PLN-02 R-05 — conditional INS_ONLY rejection by XTE margin` |
+| `ec56bac` | `docs(qa): QA-051 — W1-P05 session close, OI-55 closed, §16 row documented` |
+| `3e79805` | `fix(fsm): OI-55 — add cross_track_error_m to SystemInputs` |
+| `d40c035` | `docs(qa): QA-050 session close — SRS matrix v3, QA log, project context` |
+| `3c43871` | `docs(qa): QA-050 — W1-P03 OI-53+OI-54 submitted, context updated` |
+| `9d99a75` | `fix(terrain): correct README provenance claim — tiles are real COP30 data` |
+
+---
+
+### Root Cause Analysis — R-02 Busy-Wait
+
+The W1-P07 Deputy 1 prompt introduced a `while (self._clock.now() - wait_start_s) < EW_STALE_WAIT_S` loop (2.0 s budget) to poll for a fresh EW map update.
+
+**Root cause:** `self._clock.now()` returns simulation time from an injected clock object. Within a synchronous call stack (no `await`, no thread switch, no simulation step), the simulation clock does not advance. The condition `(now - start) < 2.0` is always True — the loop never exits. This is an **infinite busy-wait** that freezes any process that enters the stale-EW code path.
+
+**Correct implementation strategy for R-02:** Record `_ew_stale_at_ms` timestamp when staleness is detected; on next `retask()` call, check if a fresh update has arrived since then. Do not spin-wait — use deferred retask or timestamp-based polling. R-02 remains an open implementation gap.
+
+---
+
+### Gate Results
+
+| Gate | Result |
+|---|---|
+| `test_sb5_phase_b.py` (9 tests) | **9/9 PASS** in 0.98s |
+| Certified baseline | **510/510 PASS** (exit 0, zero failures) |
+| Frozen file SHA-256 (Gate 7 gate) | ✅ MATCH (confirmed by Gate 7 in baseline) |
+
+---
+
+### New OIs Raised
+
+None.
+
+### R-02 Status
+
+R-02 EW map staleness (2 s wait for fresh update) remains **OPEN**. The correct implementation requires a timestamp-based deferred approach. Deputy 1 rules on next implementation prompt.
+
+---
+
+### Frozen File Verification
+
+Verified via Gate 7 parametrised SHA-256 test in certified baseline — all 5 frozen files MATCH.
