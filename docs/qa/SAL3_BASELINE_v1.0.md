@@ -55,6 +55,18 @@ Drift vector availability: Gate 3 requires an established INS drift vector. Sour
 SAL3_CONSISTENCY_WINDOW_KM scope: must be defined as a named constant before implementation, not inferred from activation window. These are independent parameters.
 
 
+Prerequisite 8: Landmark map must carry acquisition_season tag
+with defined validity window. Seasonality risk confirmed: Kashmir
+valley and riverbank corridors have high seasonal variation
+(monsoon flooding, crop rotation). Separate summer/winter maps
+required for mountain passes (Rohtang, Zoji La).
+
+Prerequisite 9: CAUTION-band EO correction temporal gate must
+be implemented in NavigationManager before SAL-3 implementation
+begins. This gate defines the source selection logic that SAL-3
+interacts with. See CAUTION_BAND_EO_POLICY_v1.md.
+
+
 PART F — FINAL CONFIRMATION
 SAL-3 v1.0 is internally consistent. All prior contradictions (activation timing, residual gate logical trap, SAL-2 interaction instability, single-frame validity) have been explicitly resolved. The co-directional map staleness error case is an accepted limitation — bounded EKF influence is the documented mitigation. The design is non-blocking, integrates with existing NavigationManager schema, and produces no hidden state beyond the temporal consistency candidate buffer.
 SAL-3 v1.0 is ready for simulation-based validation.
