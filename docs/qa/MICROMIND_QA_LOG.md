@@ -4,6 +4,42 @@
 
 ---
 
+## Entry QA-060 — 25 April 2026 (continued session)
+**Session Type:** IT-D9-CHAIN-01 + IT-ROLLBACK-01 + UT-PX4-COR-01
+**HEAD at close:** 20a6551
+**SIL:** 532/532
+
+### Work Completed
+
+**IT-ROLLBACK-01 CLOSED (17330fa):**
+TERRAIN_GEN_FAIL and COMMIT_FAIL rollback triggers implemented.
+RETASK_ROLLBACK payload completed to 10 fields (SRS Appendix B).
+3 tests / 19 assertions. Matrix correction at 537fab1.
+
+**UT-PX4-COR-01 CLOSED (c3e7838):**
+CheckpointCorruptError, _emit_corrupt(), from_dict() mandatory
+field validation, schema version check. 6 tests. Silent defaults
+safety gap closed — mission_abort_flag missing field now raises
+rather than defaulting to False.
+
+**IT-D9-CHAIN-01 CLOSED (208a5a1 + 5863020):**
+Full D7→D8→D8a→D9 live SITL reboot chain confirmed.
+Production fixes: seq_reset_value/recovery_start_ms in
+PX4_REBOOT_DETECTED; checkpoint_age_ms/waypoint_index in
+CHECKPOINT_RESTORED; AUTONOMOUS_RESUME_APPROVED added to D8a.
+G1=1980ms (≤3s) PASS. G2=0ms (≤15s) PASS.
+G3=AUTONOMOUS_RESUME_APPROVED confirmed PASS.
+G4=position_discrepancy_m=43.678m (<50m) PASS.
+Wall clock 8.61s. EC-03 Full Appendix D: CLOSED.
+
+### Open Items Carried Forward
+- IT-D6-TIMEOUT-01: full 10s OFFBOARD timeout chain (SITL)
+- UT-RS-03: SIGKILL restartability test (Phase D)
+- Orin /etc/hosts: DHCP hostname stability
+- run_certified_baseline.sh: stale # 406 tests comment
+
+---
+
 ## Entry QA-059 — 25 April 2026
 **Session Type:** Week 2 Day 4 (cont.) — IT-D9-CHAIN-01 SITL execution
 **Governance ref:** Code Governance Manual v3.4; SRS §8.4 PX4-04

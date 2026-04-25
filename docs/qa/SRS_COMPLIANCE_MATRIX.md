@@ -1,7 +1,7 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `17330fa` → UT-PX4-COR-01 (checkpoint corruption handling complete)
+**Baseline HEAD:** `20a6551` → IT-D9-CHAIN-01 CLOSED + EC-03 CLOSED (QA-059/QA-060)
 **SIL at baseline:** 532/532 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
@@ -134,7 +134,7 @@
 | §8.5 | PX4-05 | Checkpoint Schema v1.2 | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | 6 fields confirmed. P-01..P-04 applied. UT-PX4-05. | `fcb5106` | UT-PX4-05, SA-01..SA-04 | High | Deputy 1 | None | None | QA-025; SA-01..04 |
 | §8.3 | EC-01 | Waypoint Upload Sequencing + OFFBOARD Continuity | High | ALL AVP | CLOSED | PARTIAL | **YES** | Partially Implemented | Partially Tested | SITL 62s PASS (S-PX4-09). 30-min exit gate NOT confirmed. | `97b2f5a` | IT-PX4-01 (short), SA-05..SA-07 | Medium | Deputy 1 | 30-min exit gate unconfirmed. Incorrectly assumed closed. | Week 1 Item 8/9: execute 30-min gate | QA-050 downgrade |
 | §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | CLOSED | NO | Implemented | Tested and Verified | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. E-01 purge confirmed c38357a — 8 assertions, max_retained=5 enforced. | `fcb5106`, `c38357a` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed. CHECKPOINT_PURGED req_id='PX4-05' in code (historical implementation label) — EC-02 SRS §13 compliance confirmed. Purge confirmed c38357a. | Week 1 Item 10 | Phase A closure |
-| §13 | EC-03 | PX4 Reboot Recovery — Full Appendix D | High | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Partially Tested | D1..D9 implemented. D8a confirmed. D10 not tested. | `787ecd4` | SA-05..SA-07, IT-PX4-02 | Medium | Deputy 1 | D10 CLOSED 711bf6d. Remaining: IT-D9-CHAIN-01. | Week 1 Item 11 | QA-025 |
+| §13 | EC-03 | PX4 Reboot Recovery — Full Appendix D | High | ALL AVP | CLOSED | CLOSED | NO | Implemented | Tested and Verified | D1..D9 implemented. D8a confirmed. D10 CLOSED 711bf6d. D7→D9 chain CLOSED 208a5a1. Full Appendix D coverage confirmed. | `787ecd4`, `711bf6d`, `208a5a1` | SA-05..SA-07, IT-PX4-02, IT-D9-CHAIN-01 | Medium | Deputy 1 | None | None | QA-025; QA-059 |
 
 ---
 
@@ -151,7 +151,7 @@
 | D7 | PX4 reboot detected (HEARTBEAT seq reset) | Log PX4_REBOOT_DETECTED. Enter SHM. Begin D1. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | RebootDetector seq-reset. PX4_REBOOT_DETECTED. SA-05. | SA-05, IT-PX4-02 | High | Deputy 1 | None | None | QA-025; SA-05 |
 | D8 | PX4 reconnect success (post-reboot) | Load Checkpoint v1.2. Restore nav state. Command OFFBOARD re-entry. Timeout 15s total. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Checkpoint load SA-06. 6-field schema UT-PX4-05. | SA-06, UT-PX4-05 | High | Deputy 1 | None | None | QA-025; SA-06 |
 | D8a | D8 complete — NEW v1.2 | MM evaluates Checkpoint: abort_flag → ABORT_MISS; shm_active or clearance_required → SHM hold; all clear → autonomous_resume_approved → D9. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Three-branch logic SA-07. MISSION_RESUME_AUTHORISED nominal path. P-02 applied. | SA-07 | High | Deputy 1 | None | None | QA-025; SA-07 |
-| D9 | autonomous_resume_approved=True | Restore setpoint stream. Command new waypoint queue. Log MISSION_RESUMED. | PARTIAL | PARTIAL | NO | Implemented | Partially Tested | Nominal D9 SA-07 (synthetic). No SITL end-to-end D7→D8→D8a→D9 chain with real PX4 reboot. | SA-07 | Medium | Deputy 1 | No SITL-level full chain test | IT-D9-CHAIN-01: extend IT-PX4-02 | QA-025; SA-07 |
+| D9 | autonomous_resume_approved=True | Restore setpoint stream. Command new waypoint queue. Log MISSION_RESUMED. | CLOSED | CLOSED | NO | Implemented | Tested and Verified | Nominal D9 SA-07 (synthetic). IT-D9-CHAIN-01 PASS. Live SITL reboot injection. G4 position_discrepancy_m=43.678m (<50m threshold). Wall clock 8.61s. 208a5a1/5863020. | SA-07, IT-D9-CHAIN-01 | Medium | Deputy 1 | None | None | QA-025; SA-07; QA-059 |
 | D10 | PX4 returns in HOLD (post-reboot) | Command SET_MODE OFFBOARD within 1s. Retry 3× at 2s. Proceed to D8a on success. | OPEN | CLOSED | NO | Implemented | Tested and Verified | HoldRecoveryHandler (integration/bridge/hold_recovery.py). PX4_HOLD_CUSTOM_MODE=50_593_792. 4 tests / 20 assertions. IT-D10-GNSS-01 PASS. 711bf6d. | IT-D10-GNSS-01 | Medium | Deputy 1 | IT-D9-CHAIN-01 (D7→D8→D8a→D9 full SITL chain) still NOT STARTED. D10 SIL coverage confirmed. | Define IT-D9-CHAIN-01 to close EC-03 fully | OI-40 analogue; GAP per QA-050 |
 
 ---
@@ -302,7 +302,7 @@
 | IT-PX4-01 | OFFBOARD Continuity — Short Run | PX4-01, EC-01 | §8.1, §8.3 | ALL AVP | Integration | SITL | PARTIAL | S-PX4-09 | 62s PASS | SITL logs | 30-min exit gate not confirmed | Week 1 Item 8/9 | QA-050 downgrade |
 | IT-PX4-02 | PX4 Reboot Recovery Integration | PX4-04, EC-03 | §8.4, §13 | ALL AVP | Integration | SITL | PARTIAL | SA-05..SA-07 | Synthetic PASS | `787ecd4` | D9 chain (D7→D9) not SITL-tested; D10 not tested | Week 1 Item 11 | QA-025; SA-05..07 |
 | IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | Full 10s timeout path (D6 → OFFBOARD_UNRECOVERED → ABORT_MISS) not exercised in integration. | Define and implement | D6 gap |
-| IT-D9-CHAIN-01 | MISSION_RESUME_AUTHORISED / Full D7→D8→D8a→D9 Chain | PX4-04, EC-03, D7..D9 | §8.4, §13 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | No SITL-level end-to-end test of D7→D8→D8a→D9 with real PX4 reboot injection. Nominal D9 confirmed only in synthetic SA-07. | Extend IT-PX4-02 | D9 gap; SA-07 context |
+| IT-D9-CHAIN-01 | MISSION_RESUME_AUTHORISED / Full D7→D8→D8a→D9 Chain | PX4-04, EC-03, D7..D9 | §8.4, §13 | ALL AVP | Integration | SITL | PASSED | QA-059 | 4 gates / live SITL. G1=1980ms, G2=0ms, G3=confirmed, G4=43.678m. 208a5a1. | `208a5a1`, `5863020` | None | D9 gap; SA-07 context |
 | IT-D10-GNSS-01 | D10 GNSS-Denied PX4 HOLD Recovery Test | PX4-04, EC-03, D10 | §8.4, §13 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D10 path completely untested. PX4 returns in HOLD during GNSS-denied corridor flight. | Week 1 Item 11: define test | D10 OPEN; QA-050 |
 | IT-CLR-GATE-01 | pending_operator_clearance_required=True Gate Validation | PX4-04, PX4-05, MM-03, D8a | §8.4, §8.5, §5 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D8a branch 2 (shm_active=True or clearance_required=True → SHM hold, AWAITING_OPERATOR_CLEARANCE) exercised only as synthetic SA-07 branch. No SITL validation. | Define SITL test with clearance_required=True checkpoint | SA-07 context |
 | SA-01 | Checkpoint — SHM Field | PX4-05, MM-03 | §8.5, §5 | ALL AVP | Gate | SIL | PASSED | Phase A | PASS | `fcb5106` | None | None | SA-01 |
