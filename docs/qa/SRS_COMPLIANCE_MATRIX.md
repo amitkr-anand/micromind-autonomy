@@ -1,8 +1,8 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `e7d3d42` (W2-2 — R-03 ETA rollback fix)
-**SIL at baseline:** 512/512 (`run_certified_baseline.sh`)
+**Baseline HEAD:** `711bf6d` (W2-6 — D10 HOLD recovery)
+**SIL at baseline:** 517/517 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
 **Classification:** Programme Confidential
@@ -133,8 +133,8 @@
 | §8.4 | PX4-04 | PX4 Reboot Recovery and State Restore | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | RebootDetector. D8a gate. SA-05..SA-07. | `787ecd4`, `fcb5106` | SA-05..SA-07, IT-PX4-02 | High | Deputy 1 | D10 path (GNSS-denied reboot) not explicitly tested | Define IT-D10-GNSS-01 | QA-025; SA-05..07 |
 | §8.5 | PX4-05 | Checkpoint Schema v1.2 | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | 6 fields confirmed. P-01..P-04 applied. UT-PX4-05. | `fcb5106` | UT-PX4-05, SA-01..SA-04 | High | Deputy 1 | None | None | QA-025; SA-01..04 |
 | §8.3 | EC-01 | Waypoint Upload Sequencing + OFFBOARD Continuity | High | ALL AVP | CLOSED | PARTIAL | **YES** | Partially Implemented | Partially Tested | SITL 62s PASS (S-PX4-09). 30-min exit gate NOT confirmed. | `97b2f5a` | IT-PX4-01 (short), SA-05..SA-07 | Medium | Deputy 1 | 30-min exit gate unconfirmed. Incorrectly assumed closed. | Week 1 Item 8/9: execute 30-min gate | QA-050 downgrade |
-| §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | PARTIAL | NO | Implemented | Partially Tested | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. | `fcb5106` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed | Week 1 Item 10 | Phase A closure |
-| §13 | EC-03 | PX4 Reboot Recovery — Full Appendix D | High | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Partially Tested | D1..D9 implemented. D8a confirmed. D10 not tested. | `787ecd4` | SA-05..SA-07, IT-PX4-02 | Medium | Deputy 1 | D10 coverage gap — highest-risk untested recovery path | Week 1 Item 11 | QA-025 |
+| §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | CLOSED | NO | Implemented | Tested and Verified | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. E-01 purge confirmed c38357a — 8 assertions, max_retained=5 enforced. | `fcb5106`, `c38357a` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed. CHECKPOINT_PURGED req_id='PX4-05' in code (historical implementation label) — EC-02 SRS §13 compliance confirmed. Purge confirmed c38357a. | Week 1 Item 10 | Phase A closure |
+| §13 | EC-03 | PX4 Reboot Recovery — Full Appendix D | High | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Partially Tested | D1..D9 implemented. D8a confirmed. D10 not tested. | `787ecd4` | SA-05..SA-07, IT-PX4-02 | Medium | Deputy 1 | D10 CLOSED 711bf6d. Remaining: IT-D9-CHAIN-01. | Week 1 Item 11 | QA-025 |
 
 ---
 
@@ -152,7 +152,7 @@
 | D8 | PX4 reconnect success (post-reboot) | Load Checkpoint v1.2. Restore nav state. Command OFFBOARD re-entry. Timeout 15s total. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Checkpoint load SA-06. 6-field schema UT-PX4-05. | SA-06, UT-PX4-05 | High | Deputy 1 | None | None | QA-025; SA-06 |
 | D8a | D8 complete — NEW v1.2 | MM evaluates Checkpoint: abort_flag → ABORT_MISS; shm_active or clearance_required → SHM hold; all clear → autonomous_resume_approved → D9. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Three-branch logic SA-07. MISSION_RESUME_AUTHORISED nominal path. P-02 applied. | SA-07 | High | Deputy 1 | None | None | QA-025; SA-07 |
 | D9 | autonomous_resume_approved=True | Restore setpoint stream. Command new waypoint queue. Log MISSION_RESUMED. | PARTIAL | PARTIAL | NO | Implemented | Partially Tested | Nominal D9 SA-07 (synthetic). No SITL end-to-end D7→D8→D8a→D9 chain with real PX4 reboot. | SA-07 | Medium | Deputy 1 | No SITL-level full chain test | IT-D9-CHAIN-01: extend IT-PX4-02 | QA-025; SA-07 |
-| D10 | PX4 returns in HOLD (post-reboot) | Command SET_MODE OFFBOARD within 1s. Retry 3× at 2s. Proceed to D8a on success. | OPEN | OPEN | NO | Documented Only | Not Tested | SRS Appendix D definition only. No implementation test. | None | Low | Deputy 1 | Critical: PX4 HOLD during GNSS-denied corridor = likely mission loss. | Week 1 Item 11: define IT-D10-GNSS-01 | OI-40 analogue; GAP per QA-050 |
+| D10 | PX4 returns in HOLD (post-reboot) | Command SET_MODE OFFBOARD within 1s. Retry 3× at 2s. Proceed to D8a on success. | OPEN | CLOSED | NO | Implemented | Tested and Verified | HoldRecoveryHandler (integration/bridge/hold_recovery.py). PX4_HOLD_CUSTOM_MODE=50_593_792. 4 tests / 20 assertions. IT-D10-GNSS-01 PASS. 711bf6d. | IT-D10-GNSS-01 | Medium | Deputy 1 | IT-D9-CHAIN-01 (D7→D8→D8a→D9 full SITL chain) still NOT STARTED. D10 SIL coverage confirmed. | Define IT-D9-CHAIN-01 to close EC-03 fully | OI-40 analogue; GAP per QA-050 |
 
 ---
 
@@ -185,7 +185,7 @@
 | §12 | RS-02 | Log Completeness and Rolling Policy | Medium | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Not Tested | E-04 rolling in spec. UT-RS-02 not written (GAP-09). | `sb5-bcmp2-closure` | UT-RS-02 (not written) | Low | Deputy 1 | GAP-09 | SB-5 Phase D | GAP-09 |
 | §12 | RS-03 | Watchdog and Restartability Classification | Medium | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Not Tested | E-03 classification in spec. UT-RS-03 not written (GAP-08). | `sb5-bcmp2-closure` | UT-RS-03 (not written) | Low | Deputy 1 | GAP-08 | SB-5 Phase D | GAP-08 |
 | §12 | RS-04 | Route Fragment Accumulation and Purge | Medium | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | `_intermediate_fragments` + cleanup. SB-07 PASS. | `c35122a` | SB-07 | High | Deputy 1 | None | None | SB-07 PASS |
-| §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | PARTIAL | NO | Implemented | Partially Tested | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. | `fcb5106` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed | Week 1 Item 10 | Phase A closure |
+| §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | CLOSED | NO | Implemented | Tested and Verified | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. E-01 purge confirmed c38357a — 8 assertions, max_retained=5 enforced. | `fcb5106`, `c38357a` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed. CHECKPOINT_PURGED req_id='PX4-05' in code (historical implementation label) — EC-02 SRS §13 compliance confirmed. Purge confirmed c38357a. | Week 1 Item 10 | Phase A closure |
 
 ---
 
