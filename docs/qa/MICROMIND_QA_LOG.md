@@ -4,6 +4,42 @@
 
 ---
 
+## Entry QA-061 — 26 April 2026
+**Session Type:** IT-D6-TIMEOUT-01
+**HEAD at close:** 1dbfc29
+**SIL:** 536/536
+
+### Work Completed
+
+**D6 NOT IMPLEMENTED finding:** Compliance matrix D6 row
+incorrectly claimed "Implemented | Partially Tested".
+OFFBOARD_UNRECOVERED and ABORT_MISS absent from all
+production files. Matrix corrected at fac941c.
+
+**D6 IMPLEMENTED (6a30295):**
+OffboardRecoveryFSM — D1→D2→D3→D6 chain.
+D2: 5s retry at 1Hz. D3: SHM_ENTRY + 5s more.
+D6: OFFBOARD_UNRECOVERED event + abort_fn() callback.
+SR-01 compliant: threading.Event().wait() throughout.
+T-MON remains read-only — FSM dispatched as daemon thread.
+
+**IT-D6-TIMEOUT-01 CLOSED (6a30295):**
+4 tests / 17 assertions:
+test_d6_offboard_restored_in_d2: D2 recovery path.
+test_d6_offboard_restored_in_d3: D3 recovery path.
+test_d6_full_timeout_abort: full timeout + ABORT signal.
+test_d6_timeout_values_correct: timing bounds verified.
+SIL: 532 → 536/536.
+
+### Open Items Carried Forward
+- IT-D6-SITL-01: SITL integration with real heartbeat stop
+  (Phase D)
+- UT-RS-03: SIGKILL restartability (Phase D)
+- Orin /etc/hosts: DHCP hostname stability
+- frame_utils.py hash directive typo noted (d080→d078)
+
+---
+
 ## Entry QA-060 — 25 April 2026 (continued session)
 **Session Type:** IT-D9-CHAIN-01 + IT-ROLLBACK-01 + UT-PX4-COR-01
 **HEAD at close:** 20a6551

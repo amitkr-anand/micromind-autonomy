@@ -1,8 +1,8 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `6a30295` → D6 OffboardRecoveryFSM CLOSED (QA-061)
-**SIL at baseline:** 532/532 (`run_certified_baseline.sh`)
+**Baseline HEAD:** `1dbfc29` → IT-D6-TIMEOUT-01 CLOSED, D6 CLOSED (QA-061)
+**SIL at baseline:** 536/536 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
 **Classification:** Programme Confidential
@@ -147,7 +147,7 @@
 | D3 | D2 timeout (5s) | Activate SHM. Continue reconnect 1 Hz / 5s. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | SHM activation S1 tests. | IT-MM-01 | High | Deputy 1 | None | None | QA-025 |
 | D4 | D3 reconnect success | OFFBOARD restored. Discard stale buffer. Exit SHM. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | OFFBOARD_RESTORED confirmed SITL. | IT-PX4-01 | High | Deputy 1 | None | None | QA-025 |
 | D5 | OFFBOARD active | Issue fresh setpoint ≥20 Hz. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Setpoint restart confirmed S-PX4-09. | IT-PX4-01 | High | Deputy 1 | None | None | QA-025 |
-| D6 | D3 total timeout (10s) | Log OFFBOARD_UNRECOVERED. ABORT_MISS. | CLOSED | CLOSED | NO | Implemented | Tested and Verified | OffboardRecoveryFSM (integration/bridge/offboard_recovery_fsm.py). D2 5s + D3 5s at 1Hz retry. OFFBOARD_UNRECOVERED emitted on timeout. abort_fn() called on D6. IT-D6-TIMEOUT-01: 4 gates PASS. | IT-D6-TIMEOUT-01 (4 tests) | Medium | Deputy 1 | None | None | QA-061; Deputy 1 rules |
+| D6 | D3 total timeout (10s) | Log OFFBOARD_UNRECOVERED. ABORT_MISS. | CLOSED | CLOSED | NO | IMPLEMENTED — OffboardRecoveryFSM (integration/bridge/offboard_recovery_fsm.py). D2 5s + D3 5s + D6 abort. OFFBOARD_UNRECOVERED event. abort_fn() callback on D6. 6a30295. | Tested and Verified | 4 tests / 17 assertions. D2 recovery, D3 recovery, full timeout abort, timing bounds. test_it_d6_timeout.py. 6a30295. | test_it_d6_timeout.py | Medium | Deputy 1 | IT-D6-SITL-01: SITL integration test with real GCS heartbeat stop. Phase D. | None | QA-061; Deputy 1 rules |
 | D7 | PX4 reboot detected (HEARTBEAT seq reset) | Log PX4_REBOOT_DETECTED. Enter SHM. Begin D1. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | RebootDetector seq-reset. PX4_REBOOT_DETECTED. SA-05. | SA-05, IT-PX4-02 | High | Deputy 1 | None | None | QA-025; SA-05 |
 | D8 | PX4 reconnect success (post-reboot) | Load Checkpoint v1.2. Restore nav state. Command OFFBOARD re-entry. Timeout 15s total. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Checkpoint load SA-06. 6-field schema UT-PX4-05. | SA-06, UT-PX4-05 | High | Deputy 1 | None | None | QA-025; SA-06 |
 | D8a | D8 complete — NEW v1.2 | MM evaluates Checkpoint: abort_flag → ABORT_MISS; shm_active or clearance_required → SHM hold; all clear → autonomous_resume_approved → D9. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Three-branch logic SA-07. MISSION_RESUME_AUTHORISED nominal path. P-02 applied. | SA-07 | High | Deputy 1 | None | None | QA-025; SA-07 |
@@ -301,7 +301,7 @@
 | UT-PX4-COR-01 | Corrupted Checkpoint Restore Test | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | §8.5, §13 | ALL AVP | Unit | SIL | PASSED | QA-058 | PASS | test_sb5_phase_a.py COR-01..06 | None | None | QA-058; COR-01..06 |
 | IT-PX4-01 | OFFBOARD Continuity — Short Run | PX4-01, EC-01 | §8.1, §8.3 | ALL AVP | Integration | SITL | PARTIAL | S-PX4-09 | 62s PASS | SITL logs | 30-min exit gate not confirmed | Week 1 Item 8/9 | QA-050 downgrade |
 | IT-PX4-02 | PX4 Reboot Recovery Integration | PX4-04, EC-03 | §8.4, §13 | ALL AVP | Integration | SITL | PARTIAL | SA-05..SA-07 | Synthetic PASS | `787ecd4` | D9 chain (D7→D9) not SITL-tested; D10 not tested | Week 1 Item 11 | QA-025; SA-05..07 |
-| IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SIL | PASSED | QA-061 | 4 gates PASS. D2 restore, D3 restore, full timeout+abort, timing within 20%. | `6a30295` | None | D6 gap |
+| IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SIL | PASSED | QA-061 | 4 tests / 17 assertions. D2 recovery, D3 recovery, full timeout abort, timing bounds. test_it_d6_timeout.py. 6a30295. | `6a30295` | None | D6 gap; QA-061 |
 | IT-D9-CHAIN-01 | MISSION_RESUME_AUTHORISED / Full D7→D8→D8a→D9 Chain | PX4-04, EC-03, D7..D9 | §8.4, §13 | ALL AVP | Integration | SITL | PASSED | QA-059 | 4 gates / live SITL. G1=1980ms, G2=0ms, G3=confirmed, G4=43.678m. 208a5a1. | `208a5a1`, `5863020` | None | D9 gap; SA-07 context |
 | IT-D10-GNSS-01 | D10 GNSS-Denied PX4 HOLD Recovery Test | PX4-04, EC-03, D10 | §8.4, §13 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D10 path completely untested. PX4 returns in HOLD during GNSS-denied corridor flight. | Week 1 Item 11: define test | D10 OPEN; QA-050 |
 | IT-CLR-GATE-01 | pending_operator_clearance_required=True Gate Validation | PX4-04, PX4-05, MM-03, D8a | §8.4, §8.5, §5 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D8a branch 2 (shm_active=True or clearance_required=True → SHM hold, AWAITING_OPERATOR_CLEARANCE) exercised only as synthetic SA-07 branch. No SITL validation. | Define SITL test with clearance_required=True checkpoint | SA-07 context |
@@ -354,7 +354,7 @@
 | Missing IMU feed (ESKF freeze) | NAV-01, PX4-03 | IMU_DROPOUT in spec. ESKF freeze >100ms defined. UT-IMU-DROP-01 defined. | PARTIAL | SRS §8.3 | UT-IMU-DROP-01 not started. | Define and implement | SRS §8.3 |
 | Radar altimeter noise burst / dropout | NAV-02 (legacy) | TRN_RADALT_SUSPENDED in spec | PARTIAL | SRS §8.3 | Less critical post-OM adoption. | Retain as HIL-phase concern | SRS §8.3 |
 | PX4 reboot during GNSS-denied flight (D10 — HOLD mode) | PX4-04, EC-03, D10 | None. IT-D10-GNSS-01 defined. | OPEN | — | Critical: completely untested. | Week 1 Item 11: define IT-D10-GNSS-01 | D10 OPEN; QA-050 |
-| MAVLink interruption — D6 full 10s timeout → ABORT | PX4-01, EC-01, D1..D6 | IT-PX4-01 covers nominal reconnect. IT-D6-TIMEOUT-01 defined. | PARTIAL | `97b2f5a`, IT-PX4-01 | D6 full 10s integration path not run. | Define IT-D6-TIMEOUT-01 | D6 gap |
+| MAVLink interruption — D6 full 10s timeout → ABORT | PX4-01, EC-01, D1..D6 | IT-PX4-01 covers nominal reconnect. IT-D6-TIMEOUT-01 PASSED (SIL). SITL integration (IT-D6-SITL-01) Phase D. | PARTIAL | `97b2f5a`, `6a30295` | IT-D6-SITL-01: SITL validation with real heartbeat stop not yet run. SIL coverage complete. | IT-D6-SITL-01 Phase D | QA-061 |
 | Route fragment accumulation leak | RS-04, PLN-02 | SB-07 confirms cleanup fires on all retask() exit paths | CLOSED | `c35122a` | None | None | SB-07 PASS |
 | DMRL false positive (real target rejected) | TERM-01, TERM-02 | ADV-01..06 adversarial tests on stub | PARTIAL | `41238ae` | DMRL stub. HIL with thermal camera required. | Maintain caveat | ADV-01..06; OI-06 |
 | Decoy target acceptance (DMRL bypassed) | TERM-01, TERM-02 | ADV tests on stub | PARTIAL | `41238ae` | Same stub limitation. | HIL required | ADV-01..06 |
