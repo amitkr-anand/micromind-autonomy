@@ -1,7 +1,7 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `(pending commit)` → D6 OffboardRecoveryFSM CLOSED (QA-061)
+**Baseline HEAD:** `6a30295` → D6 OffboardRecoveryFSM CLOSED (QA-061)
 **SIL at baseline:** 532/532 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
@@ -301,7 +301,7 @@
 | UT-PX4-COR-01 | Corrupted Checkpoint Restore Test | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | §8.5, §13 | ALL AVP | Unit | SIL | PASSED | QA-058 | PASS | test_sb5_phase_a.py COR-01..06 | None | None | QA-058; COR-01..06 |
 | IT-PX4-01 | OFFBOARD Continuity — Short Run | PX4-01, EC-01 | §8.1, §8.3 | ALL AVP | Integration | SITL | PARTIAL | S-PX4-09 | 62s PASS | SITL logs | 30-min exit gate not confirmed | Week 1 Item 8/9 | QA-050 downgrade |
 | IT-PX4-02 | PX4 Reboot Recovery Integration | PX4-04, EC-03 | §8.4, §13 | ALL AVP | Integration | SITL | PARTIAL | SA-05..SA-07 | Synthetic PASS | `787ecd4` | D9 chain (D7→D9) not SITL-tested; D10 not tested | Week 1 Item 11 | QA-025; SA-05..07 |
-| IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SIL | PASSED | QA-061 | 4 gates PASS. D2 restore, D3 restore, full timeout+abort, timing within 20%. | `(pending commit)` | None | D6 gap |
+| IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SIL | PASSED | QA-061 | 4 gates PASS. D2 restore, D3 restore, full timeout+abort, timing within 20%. | `6a30295` | None | D6 gap |
 | IT-D9-CHAIN-01 | MISSION_RESUME_AUTHORISED / Full D7→D8→D8a→D9 Chain | PX4-04, EC-03, D7..D9 | §8.4, §13 | ALL AVP | Integration | SITL | PASSED | QA-059 | 4 gates / live SITL. G1=1980ms, G2=0ms, G3=confirmed, G4=43.678m. 208a5a1. | `208a5a1`, `5863020` | None | D9 gap; SA-07 context |
 | IT-D10-GNSS-01 | D10 GNSS-Denied PX4 HOLD Recovery Test | PX4-04, EC-03, D10 | §8.4, §13 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D10 path completely untested. PX4 returns in HOLD during GNSS-denied corridor flight. | Week 1 Item 11: define test | D10 OPEN; QA-050 |
 | IT-CLR-GATE-01 | pending_operator_clearance_required=True Gate Validation | PX4-04, PX4-05, MM-03, D8a | §8.4, §8.5, §5 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D8a branch 2 (shm_active=True or clearance_required=True → SHM hold, AWAITING_OPERATOR_CLEARANCE) exercised only as synthetic SA-07 branch. No SITL validation. | Define SITL test with clearance_required=True checkpoint | SA-07 context |
