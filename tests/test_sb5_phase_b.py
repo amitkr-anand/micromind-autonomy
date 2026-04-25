@@ -867,6 +867,245 @@ class TestSB07RS04RouteFragmentCleanup(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# W2-8 — IT-PLN-02 GNSS-denied retask integration
+# ---------------------------------------------------------------------------
+
+class TestW28GnssDeniedRetaskIntegration(unittest.TestCase):
+    """
+    W2-8 IT-PLN-02 GNSS-denied retask integration gates.
+
+    Four tests covering the full IT-PLN-02 requirement surface:
+      (1) nominal GNSS_DENIED retask — R-01..R-06 pass
+      (2) GNSS_DENIED rollback — _eta_s restored, RETASK_ROLLBACK logged
+      (3) INS_ONLY rejection — XTE above corridor margin → False
+      (4) INS_ONLY permit   — XTE below corridor margin → True
+
+    Requirements: PLN-02, R-01..R-06, R-05 conditional
+    SRS ref:      §5.2, IT-PLN-02
+    Governance:   Code Governance Manual v3.4 §1.3, §1.4, §9.1
+    """
+
+    def setUp(self):
+        self.engine = _make_engine()
+        self.clock  = _make_clock(0.0)
+        self.planner, self.event_log = _make_planner(
+            engine = self.engine,
+            clock  = self.clock,
+        )
+        self.planner.load_route([_START_WP])
+
+    def tearDown(self):
+        del self.planner, self.event_log, self.engine, self.clock
+
+    # -----------------------------------------------------------------------
+    # (1) test_gnss_denied_retask_nominal
+    # -----------------------------------------------------------------------
+
+    def test_gnss_denied_retask_nominal(self):
+        """
+        IT-PLN-02 nominal: GNSS_DENIED retask completes with R-01..R-06 all pass.
+
+        Assertions:
+          (a) retask() returns True in GNSS_DENIED mode
+          (b) RETASK_COMPLETE logged exactly once with req_id=PLN-02, severity=INFO
+          (c) RETASK_COMPLETE module_name == RoutePlanner
+          (d) Resulting route is non-empty with valid 3-tuple waypoints
+          (e) RETASK_REJECTED_INS_ONLY NOT logged
+          (f) RETASK_NAV_CONFIDENCE_TOO_LOW NOT logged
+        """
+        self.planner.nav_mode = RetaskNavMode.GNSS_DENIED
+
+        result = self.planner.retask(
+            new_goal_north_m = _GOAL_NORTH,
+            new_goal_east_m  = _GOAL_EAST,
+            cruise_alt_m     = _CRUISE_ALT,
+            trigger          = "IT-PLN-02",
+        )
+
+        # (a)
+        self.assertTrue(result, "Retask in GNSS_DENIED mode must return True")
+
+        # (b)/(c)
+        complete_events = _logged_events(self.event_log, "RETASK_COMPLETE")
+        self.assertEqual(len(complete_events), 1,
+            "RETASK_COMPLETE must be logged exactly once")
+        ev = complete_events[0]
+        self.assertEqual(ev["req_id"],      "PLN-02")
+        self.assertEqual(ev["severity"],    "INFO")
+        self.assertEqual(ev["module_name"], "RoutePlanner")
+
+        # (d)
+        route = self.planner.waypoints
+        self.assertGreater(len(route), 0, "Route must be non-empty after GNSS_DENIED retask")
+        for wp in route:
+            self.assertEqual(len(wp), 3, "Each waypoint must be a (north, east, alt) 3-tuple")
+
+        # (e)
+        self.assertFalse(
+            _logged_events(self.event_log, "RETASK_REJECTED_INS_ONLY"),
+            "RETASK_REJECTED_INS_ONLY must NOT be logged in GNSS_DENIED mode",
+        )
+
+        # (f)
+        self.assertFalse(
+            _logged_events(self.event_log, "RETASK_NAV_CONFIDENCE_TOO_LOW"),
+            "RETASK_NAV_CONFIDENCE_TOO_LOW must NOT be logged in GNSS_DENIED mode",
+        )
+
+    # -----------------------------------------------------------------------
+    # (2) test_gnss_denied_retask_rollback_eta_restored
+    # -----------------------------------------------------------------------
+
+    def test_gnss_denied_retask_rollback_eta_restored(self):
+        """
+        IT-PLN-02 rollback: _eta_s restored in GNSS_DENIED mode on dead-end failure.
+
+        Forces dead-end (all replans return success=False) while in GNSS_DENIED mode.
+
+        Assertions:
+          (a) retask() returns False on dead-end
+          (b) _eta_s restored to pre-retask sentinel (1500.0 s)
+          (c) RETASK_ROLLBACK logged exactly once
+          (d) RETASK_ROLLBACK payload eta_s_restored == 1500.0
+          (e) RETASK_ROLLBACK has req_id=PLN-02, severity=WARNING
+        """
+        self.planner.nav_mode = RetaskNavMode.GNSS_DENIED
+        pre_retask_eta_s = 1500.0
+        self.planner._eta_s = pre_retask_eta_s
+
+        def _fail_replan(*args, **kwargs) -> ReplanResult:
+            return ReplanResult(
+                replan_id            = "FAIL-W28",
+                trigger              = "test",
+                mission_time_s       = 0.0,
+                wall_latency_ms      = 0.5,
+                success              = False,
+                waypoints            = [],
+                original_waypoints   = [],
+                max_east_deviation_m = 0.0,
+                kpi_ew02_pass        = True,
+                nodes_explored       = 0,
+            )
+
+        with patch.object(self.planner._astar, "replan", side_effect=_fail_replan):
+            result = self.planner.retask(
+                new_goal_north_m = _GOAL_NORTH,
+                new_goal_east_m  = _GOAL_EAST,
+                trigger          = "IT-PLN-02-ROLLBACK",
+            )
+
+        # (a)
+        self.assertFalse(result,
+            "Retask must return False on dead-end in GNSS_DENIED mode")
+
+        # (b)
+        self.assertAlmostEqual(
+            self.planner._eta_s, pre_retask_eta_s, places=6,
+            msg=f"_eta_s must be restored to {pre_retask_eta_s} s after GNSS_DENIED rollback",
+        )
+
+        # (c)
+        rollback_events = _logged_events(self.event_log, "RETASK_ROLLBACK")
+        self.assertEqual(len(rollback_events), 1,
+            "RETASK_ROLLBACK must be logged exactly once on GNSS_DENIED retask failure")
+
+        # (d)/(e)
+        ev = rollback_events[0]
+        self.assertAlmostEqual(
+            ev["eta_s_restored"], pre_retask_eta_s, places=6,
+            msg=f"eta_s_restored must equal pre-retask _eta_s ({pre_retask_eta_s} s)",
+        )
+        self.assertEqual(ev["req_id"],   "PLN-02")
+        self.assertEqual(ev["severity"], "WARNING")
+
+    # -----------------------------------------------------------------------
+    # (3) test_ins_only_retask_rejected
+    # -----------------------------------------------------------------------
+
+    def test_ins_only_retask_rejected(self):
+        """
+        IT-PLN-02 R-05: INS_ONLY retask rejected when XTE exceeds corridor margin.
+
+        Threshold = half_width (500 m default) - 100 m = 400 m.
+        XTE = 600 m > 400 m → RETASK_NAV_CONFIDENCE_TOO_LOW, return False.
+
+        Assertions:
+          (a) retask() returns False
+          (b) RETASK_NAV_CONFIDENCE_TOO_LOW logged exactly once
+          (c) Payload: cross_track_error_m=600.0, threshold_m=400.0, nav_mode=INS_ONLY
+          (d) RETASK_COMPLETE NOT logged
+        """
+        self.planner.nav_mode = RetaskNavMode.INS_ONLY
+
+        result = self.planner.retask(
+            new_goal_north_m    = _GOAL_NORTH,
+            new_goal_east_m     = _GOAL_EAST,
+            cross_track_error_m = 600.0,
+        )
+
+        # (a)
+        self.assertFalse(result,
+            "Retask in INS_ONLY mode with XTE 600 m > 400 m threshold must return False")
+
+        # (b)
+        events = _logged_events(self.event_log, "RETASK_NAV_CONFIDENCE_TOO_LOW")
+        self.assertEqual(len(events), 1,
+            "RETASK_NAV_CONFIDENCE_TOO_LOW must be logged exactly once on INS_ONLY rejection")
+
+        # (c)
+        ev = events[0]
+        self.assertEqual(ev["cross_track_error_m"], 600.0)
+        self.assertEqual(ev["threshold_m"],         400.0)
+        self.assertEqual(ev["nav_mode"],             "INS_ONLY")
+
+        # (d)
+        self.assertFalse(
+            _logged_events(self.event_log, "RETASK_COMPLETE"),
+            "RETASK_COMPLETE must NOT be logged when INS_ONLY XTE rejection fires",
+        )
+
+    # -----------------------------------------------------------------------
+    # (4) test_ins_only_retask_permitted
+    # -----------------------------------------------------------------------
+
+    def test_ins_only_retask_permitted(self):
+        """
+        IT-PLN-02 R-05: INS_ONLY retask permitted when XTE is below corridor margin.
+
+        Threshold = 500 - 100 = 400 m.  XTE = 300 m < 400 m → retask proceeds.
+
+        Assertions:
+          (a) retask() returns True
+          (b) RETASK_COMPLETE logged with req_id=PLN-02
+          (c) RETASK_NAV_CONFIDENCE_TOO_LOW NOT logged
+        """
+        self.planner.nav_mode = RetaskNavMode.INS_ONLY
+
+        result = self.planner.retask(
+            new_goal_north_m    = _GOAL_NORTH,
+            new_goal_east_m     = _GOAL_EAST,
+            cruise_alt_m        = _CRUISE_ALT,
+            cross_track_error_m = 300.0,
+        )
+
+        # (a)
+        self.assertTrue(result,
+            "Retask in INS_ONLY mode with XTE 300 m < 400 m threshold must return True")
+
+        # (b)
+        complete_events = _logged_events(self.event_log, "RETASK_COMPLETE")
+        self.assertEqual(len(complete_events), 1,
+            "RETASK_COMPLETE must be logged exactly once when INS_ONLY XTE is within threshold")
+        self.assertEqual(complete_events[0]["req_id"], "PLN-02")
+
+        # (c)
+        self.assertFalse(
+            _logged_events(self.event_log, "RETASK_NAV_CONFIDENCE_TOO_LOW"),
+            "RETASK_NAV_CONFIDENCE_TOO_LOW must NOT be logged when XTE is below threshold",
+        )
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
