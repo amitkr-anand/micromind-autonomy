@@ -199,6 +199,172 @@ class TestEC0103SetpointRate(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# W2-7 — EC01-G4 fault injection + retask interaction
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+class TestW27OffboardHardening(unittest.TestCase):
+    """
+    W2-7 OFFBOARD hardening gates.
+
+    EC01-G4 in Run 1 was vacuously PASS (zero OFFBOARD_LOSS events, so
+    stale_setpoints_discarded=True was never exercised against a non-empty
+    buffer).  These two tests close that gap by injecting real buffer state
+    before the loss event and verifying the discard mechanism is a genuine
+    clear, not a hardcoded flag on an empty buffer.
+    """
+
+    # -----------------------------------------------------------------------
+    # test_ec01_g4_stale_discard_on_recovery
+    # -----------------------------------------------------------------------
+
+    def test_ec01_g4_stale_discard_on_recovery(self) -> None:
+        """
+        EC01-G4: stale_setpoints_discarded is a real buffer clear, not a flag.
+
+        Populates buffer with 5 setpoints, injects a 1s OFFBOARD loss, then
+        asserts the buffer is genuinely empty after recovery and that
+        measure_rate_hz() returns 0.0 Hz (no stale entries counted).
+
+        Also verifies the 50% continuity edge case:
+            2 000 ms mission / 1 000 ms loss → compute_continuity == 50.0 %
+        """
+        event_log: List[Dict[str, Any]] = []
+        monitor = PX4ContinuityMonitor(
+            event_log=event_log,
+            clock_fn=lambda: 0,   # frozen — all calls use explicit ts_ms
+        )
+
+        # Populate buffer with 5 setpoints at t = 0..4 ms (stale pre-loss)
+        for t in range(5):
+            monitor.record_setpoint(ts_ms=t)
+
+        # Inject OFFBOARD loss at t=5000ms; restore at t=6000ms (1 s gap)
+        monitor.record_offboard_loss(ts_ms=5_000)
+        monitor.record_offboard_restored(ts_ms=6_000)
+
+        restored_events = _events(event_log, "OFFBOARD_RESTORED")
+        self.assertEqual(len(restored_events), 1)
+        payload = restored_events[0]["payload"]
+
+        # a. stale_setpoints_discarded=True in OFFBOARD_RESTORED event payload
+        self.assertTrue(
+            payload["stale_setpoints_discarded"],
+            "stale_setpoints_discarded must be True in OFFBOARD_RESTORED payload",
+        )
+
+        # b. Internal buffer is actually empty — real clear, not just flag=True
+        self.assertEqual(
+            len(monitor._sp_timestamps), 0,
+            f"Internal setpoint buffer must be empty after record_offboard_restored(), "
+            f"got {len(monitor._sp_timestamps)} entries",
+        )
+
+        # c. measure_rate_hz at t=7000ms returns 0.0 Hz (no stale entries counted)
+        rate_hz = monitor.measure_rate_hz(ts_ms=7_000)
+        self.assertEqual(
+            rate_hz, 0.0,
+            f"measure_rate_hz must return 0.0 Hz after buffer clear, got {rate_hz:.3f}",
+        )
+
+        # d. total_offboard_loss_ms == 1000 (gap = 6000 − 5000 ms)
+        self.assertEqual(
+            monitor.total_offboard_loss_ms, 1_000,
+            f"total_offboard_loss_ms must be 1000 ms, got {monitor.total_offboard_loss_ms}",
+        )
+
+        # e. compute_continuity edge case: 2000ms mission, 1000ms loss → 50.0%
+        continuity = monitor.compute_continuity(total_mission_ms=2_000)
+        self.assertAlmostEqual(
+            continuity, 50.0, places=6,
+            msg=f"compute_continuity(2000ms, 1000ms loss) must be 50.0%, got {continuity:.6f}",
+        )
+
+    # -----------------------------------------------------------------------
+    # test_ec01_retask_offboard_interaction
+    # -----------------------------------------------------------------------
+
+    def test_ec01_retask_offboard_interaction(self) -> None:
+        """
+        EC01-G4 retask: OFFBOARD loss mid-retask does not corrupt monitor state.
+
+        Records 3 setpoints before loss, then 3 post-recovery setpoints.  The
+        pre-loss setpoints sit in the 1 s measurement window (t=500..600 ms
+        with measure at t=1500 ms, cutoff=500 ms) — if NOT cleared they would
+        inflate rate_hz from 3.0 to 6.0 Hz.  After record_offboard_restored()
+        the buffer contains only the 3 post-recovery setpoints.
+
+        Confirms monitor is stateless w.r.t. RoutePlanner/ETA — no exception
+        is raised and continuity is correctly measured as a partial loss.
+        """
+        event_log: List[Dict[str, Any]] = []
+        monitor = PX4ContinuityMonitor(
+            event_log=event_log,
+            clock_fn=lambda: 0,
+        )
+
+        # Pre-loss: 3 setpoints within the later 1 s measurement window
+        # (t=500, 550, 600 ms — cutoff at measure t=1500 is 500, so all qualify)
+        for t in [500, 550, 600]:
+            monitor.record_setpoint(ts_ms=t)
+
+        # OFFBOARD lost mid-retask at t=700ms
+        monitor.record_offboard_loss(ts_ms=700)
+
+        # Navigation paused during rollback — 0 new setpoints for 500 ms
+
+        # OFFBOARD recovered at t=1200ms (gap = 500 ms)
+        monitor.record_offboard_restored(ts_ms=1_200)
+
+        # Post-recovery: 3 fresh setpoints
+        for t in [1_300, 1_350, 1_400]:
+            monitor.record_setpoint(ts_ms=t)
+
+        # a. offboard_loss_count == 1
+        self.assertEqual(
+            monitor.offboard_loss_count, 1,
+            f"offboard_loss_count must be 1, got {monitor.offboard_loss_count}",
+        )
+
+        # b. stale_setpoints_discarded=True on OFFBOARD_RESTORED event
+        restored = _events(event_log, "OFFBOARD_RESTORED")
+        self.assertEqual(len(restored), 1, "Expected exactly 1 OFFBOARD_RESTORED event")
+        self.assertTrue(
+            restored[0]["payload"]["stale_setpoints_discarded"],
+            "stale_setpoints_discarded must be True after mid-retask OFFBOARD loss",
+        )
+
+        # c. Post-recovery rate reflects only 3 new setpoints, not 3 pre-loss ones
+        # Window at t=1500ms: cutoff=500ms → pre-loss [500,550,600] in range
+        # if not cleared, but cleared → only [1300,1350,1400] remain → 3.0 Hz
+        rate_hz = monitor.measure_rate_hz(ts_ms=1_500)
+        self.assertAlmostEqual(
+            rate_hz, 3.0, places=6,
+            msg=(
+                f"Post-recovery rate must reflect only 3 post-recovery setpoints "
+                f"(expected 3.0 Hz, got {rate_hz:.3f} Hz — "
+                f"6.0 Hz would indicate pre-loss setpoints were NOT cleared)"
+            ),
+        )
+
+        # d. compute_continuity > 0 and < 100 (500ms loss correctly measured)
+        continuity = monitor.compute_continuity(total_mission_ms=2_000)
+        self.assertGreater(
+            continuity, 0.0,
+            "compute_continuity must be > 0 when OFFBOARD was partially lost",
+        )
+        self.assertLess(
+            continuity, 100.0,
+            "compute_continuity must be < 100 when OFFBOARD was partially lost",
+        )
+
+        # e. No exception raised — monitor state is consistent post-recovery
+        # (stateless w.r.t. RoutePlanner, ETA, and any retask caller state)
+        self.assertEqual(monitor.offboard_loss_count, 1)
+        self.assertEqual(monitor.total_offboard_loss_ms, 500)
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
