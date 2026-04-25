@@ -4,6 +4,39 @@
 
 ---
 
+## Entry QA-064 — 25 April 2026 (Session Close)
+**Session Type:** Compliance matrix sync + push + Orin sync
+**HEAD at close:** [see commit below]
+**SIL:** 542/542
+
+### Work Completed
+
+**Compliance matrix updated (SRS_COMPLIANCE_MATRIX.md):**
+- Header: HEAD `1dbfc29` → `bfc19cd`, SIL 536 → 542/542
+- D6 row: Evidence updated with SITL confirmation (a3fd35e);
+  Open Gap "IT-D6-SITL-01: Phase D" → "None — SITL confirmed."
+- IT-D6-SITL-01 row ADDED: PASSED, QA-063, 5 gates, a3fd35e
+- RS-03 row: IMPLEMENTED status, Partially Tested, 3fc84bc
+- RESTARTABLE row: OPEN → PARTIAL, NOT IMPLEMENTED →
+  IMPLEMENTED (ProcessWatchdog 3fc84bc)
+- NOT_RESTARTABLE row: Test Status updated — PROCESS_REGISTRY
+  ESKFCore=NOT_RESTARTABLE + ESKF_CORE_FAILURE path confirmed
+- E-03 row: OPEN → PARTIAL, IMPLEMENTED (PROCESS_REGISTRY
+  6 processes). Partially Tested.
+- UT-RS-03 row: NOT STARTED → PARTIAL (decision logic PASS,
+  SIGKILL Phase D), 6 tests / 30 assertions, 3fc84bc
+- Adversarial D6 row: PARTIAL → CLOSED, IT-D6-SITL-01 confirmed
+
+**Push + Orin sync:** see below.
+
+### Open Items Carried Forward
+- ST-RESTART-01: real SIGKILL stimulus (Phase D)
+- UT-RS-02: log rolling policy (Phase D)
+- ST-END-01: 2-hour endurance (Phase D)
+- Orin /etc/hosts: DHCP hostname stability
+
+---
+
 ## Entry QA-063 — 25 April 2026
 **Session Type:** UT-RS-03 ProcessWatchdog Implementation
 **HEAD at close:** 3fc84bc
