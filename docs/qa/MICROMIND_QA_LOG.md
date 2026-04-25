@@ -4,6 +4,34 @@
 
 ---
 
+## Entry QA-059 — 25 April 2026
+**Session Type:** Week 2 Day 4 (cont.) — IT-D9-CHAIN-01 SITL execution
+**Governance ref:** Code Governance Manual v3.4; SRS §8.4 PX4-04
+**HEAD at open:** `977d16d` | **HEAD at close:** `5863020`
+**Baseline at open:** 532/532 | **Baseline at close:** 532/532
+
+### Work Completed
+- **IT-D9-CHAIN-01 committed:** `208a5a1` — feat(px4): SRS event fields + D9 chain test file (core/checkpoint/checkpoint.py, core/mission_manager/mission_manager.py, integration/bridge/reboot_detector.py, tests/test_it_d9_chain.py)
+- **SITL startup:** Gazebo Baylands headless + PX4 x500 inst 0 (port 14540). HB OK sysid=1, EKF2 aligned z=-0.092 m.
+- **IT-D9-CHAIN-01 PASS** (8.61 s wall clock): G1 PASS 1980 ms, G2 PASS 0 ms, G3 PASS, G4 PASS pos_disc=43.678 m.
+- **Evidence committed:** `5863020` — docs/qa/IT_D9_CHAIN_EVIDENCE_RUN1.md
+- **Push:** `e7a3000..5863020` → origin/main
+
+### Gate Summary
+| Gate | Criterion | Measured | Result |
+|---|---|---|---|
+| G1 — D7 | PX4_REBOOT_DETECTED ≤ 3 s | 1980 ms | PASS |
+| G2 — D8 | CHECKPOINT_RESTORED ≤ 15 s of D7 | 0 ms | PASS |
+| G3 — D8a | AUTONOMOUS_RESUME_APPROVED (clearance=False) | confirmed | PASS |
+| G4 — D9 | MISSION_RESUMED with position_discrepancy_m | 43.678 m | PASS |
+
+### Anomalies
+- None. Test ran end-to-end in 8.61 s (budgeted ≤ 3 min). G2 latency of 0 ms reflects synchronous on_reboot_detected() call immediately after D7 — both events land in same monotonic window; within gate threshold.
+- SITL processes killed cleanly via /tmp/sitl_d9_pids.env.
+- Deputy 1 rules on IT-D9-CHAIN-01 gate acceptance.
+
+---
+
 ## Entry QA-058 — 25 April 2026
 **Session Type:** Week 2 Day 4 (cont.) — UT-PX4-COR-01 implementation
 **Governance ref:** Code Governance Manual v3.4; SRS §8.5 PX4-05 Appendix C
