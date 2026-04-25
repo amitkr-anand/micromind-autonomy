@@ -4,6 +4,65 @@
 
 ---
 
+## Entry QA-057 — 25 April 2026
+**Session Type:** Week 2 Day 4 (cont.) — IT-ROLLBACK-01 implementation
+**Governance ref:** Code Governance Manual v3.4; SRS §4.2 PLN-02 Appendix B
+**HEAD at open:** `e7a3000` | **HEAD at close:** `17330fa`
+**Baseline at open:** 523/523 | **Baseline at close:** 526/526
+
+### Mandatory Start
+- node01 certified baseline: `=== CERTIFIED BASELINE COMPLETE === / Expected: 523/523` ✅
+- Frozen files: all 5 SHA-256 match prior session ✅
+- Orin certified baseline: `=== CERTIFIED BASELINE COMPLETE === / Expected: 523/523` ✅
+
+### Part A Read Findings
+Part A read of `core/route_planner/route_planner.py` found the directive's CONTEXT claim that "all three paths are implemented" was incorrect:
+- Timeout overrun: IMPLEMENTED (lines 376–433) — and already tested by SB-04.
+- TERRAIN_GEN_FAIL: NOT IMPLEMENTED — bare `_terrain_regen_fn()` at line 359, no error handling.
+- COMMIT_FAIL: NOT IMPLEMENTED — bare `_px4_upload_fn()` at line 478, no error handling.
+
+### Work Completed
+
+**Compliance matrix correction (`537fab1` — pre-code):**
+- ROUTING row Impl Status: "Partially Implemented" → "NOT IMPLEMENTED — TERRAIN_GEN_FAIL path absent…"
+- COMMITTING row Impl Status: "Implemented" → "NOT IMPLEMENTED — COMMIT_FAIL path absent…"
+
+**Baseline count update (`3dd3f40` — separate commit):**
+- run_certified_baseline.sh: 523 → 526, header comment updated, Integration+Gates annotation 129 → 132
+
+**IT-ROLLBACK-01 implementation (`17330fa`):**
+
+Snapshot block extensions (PART A):
+- `snap_target = None` (deviation: `_current_target` not on RoutePlanner — reported)
+- `snap_ew_age_ms = int((clock.now() - _ew_map_last_updated_s) * 1000)`
+- `snap_terrain_phase`: hasattr guard used (`_terrain_corridor` is np.ndarray, not dict — `.get()` would raise; returns "unknown" for array, "none" for None)
+
+RETASK_ROLLBACK payload at both existing call sites extended from 6 to 10 fields: added `reason` ("TIMEOUT"/"DEAD_END"), `previous_target`, `restored_ew_map_age_ms`, `restored_terrain_phase`.
+
+TERRAIN_GEN_FAIL trigger (PART B): `_terrain_regen_fn()` wrapped in try/except → `terrain_regen_ok` flag → RETASK_TERRAIN_GEN_FAILED + RETASK_ROLLBACK(reason=TERRAIN_GEN_FAIL) + cleanup + return False.
+
+COMMIT_FAIL trigger (PART C): `_px4_upload_fn()` wrapped in try/except → `commit_ok` flag → RETASK_COMMIT_FAILED + RETASK_ROLLBACK(reason=COMMIT_FAIL) + cleanup + return False.
+
+Tests — TestITRollback01 in test_sb5_phase_b.py (PART D):
+- `test_terrain_gen_fail_triggers_rollback`: 7 assertions (a–g)
+- `test_commit_fail_triggers_rollback`: 7 assertions (a–g)
+- `test_rollback_payload_complete`: 5 assertions (a–e)
+
+SB-04 clock mock fixed: snap_ew_age_ms adds 1 clock.now() call → side_effect extended from 6 to 7 items.
+
+### Gate Results
+- test_sb5_phase_b.py: **17/17 PASS** (14 pre-existing + 3 new IT-ROLLBACK-01)
+- Certified baseline node01: **526/526 PASS**
+
+### Deviations from Spec (Reported)
+1. `_current_target`: Not on RoutePlanner. `snap_target = None`. Field present in payload.
+2. `snap_terrain_phase` formula: spec used `.get("phase", "unknown")` but `_terrain_corridor` is `np.ndarray` — `hasattr` guard added to prevent AttributeError on non-None array.
+
+### Open Items Status
+- IT-ROLLBACK-01: CLOSED pending Deputy 1 gate acceptance.
+
+---
+
 ## Entry QA-055 — 25 April 2026
 **Session Type:** Week 2 Day 4 — EC-01 OFFBOARD endurance gate (W2-DOC-03 + W2-4)
 **Governance ref:** Code Governance Manual v3.4; SRS §6.1 PX4-01; EC-01
