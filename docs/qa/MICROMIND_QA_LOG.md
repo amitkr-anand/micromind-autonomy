@@ -4,6 +4,61 @@
 
 ---
 
+## Entry QA-065 — 26 April 2026 (Session Close)
+**Session Type:** OI-40 CLOSE + Compliance Matrix Full Reconciliation v4
+**HEAD at close:** 3230ba6
+**SIL:** 542/542 (no code change this session)
+
+### Work Completed
+
+**Task A — Code audit (read-only):**
+- `core/route_planner/route_planner.py` inspected: no `RETASK_REJECTED`
+  event exists anywhere. INS_ONLY rejection emits
+  `RETASK_NAV_CONFIDENCE_TOO_LOW` (fields: nav_mode,
+  cross_track_error_m, threshold_m). TERMINAL mode returns False
+  silently — no event emitted. No `reason` field on any rejection event.
+- `test_ins_only_retask_rejected()` asserts on
+  `RETASK_NAV_CONFIDENCE_TOO_LOW`, cross_track_error_m=600.0,
+  threshold_m=400.0, nav_mode=INS_ONLY. No `reason` field assertion.
+- Finding: App-B REJECTED state PARTIAL (not closeable). RETASK_REJECTED
+  event name not in code. Task A finding recorded in matrix.
+
+**Task B — SRS_V1_4_DELTA.md created:**
+- Deputy 1 §16 Corridor Violation row committed.
+  Detects=Navigation Manager, Decides/Executes=NanoCorteXFSM (5 states),
+  Logs=_log_corridor_violation_event(). OI-40 CLOSED. OI-55 CLOSED.
+
+**Task C — SRS_COMPLIANCE_MATRIX.md v4 reconciliation:**
+- PLN-02: PARTIAL → CLOSED (R-01..R-06 + IT-ROLLBACK-01 + W2-8)
+- EC-01: PARTIAL → CLOSED (30-min gate 8e50cbc)
+- §16 Corridor Violation: OPEN → CLOSED (SRS_V1_4_DELTA.md)
+- App-B REJECTED: OPEN → PARTIAL (Task A audit finding)
+- IT-PLN-02: gap cleared (W2-8 4940826)
+- IT-D10-GNSS-01: NOT STARTED → PASSED (711bf6d)
+- Dashboard corrected: App D 10/10 CLOSED, App B 5/2,
+  App C 1C/2P, App E 2C/3P, RS 2C/2P/1B
+- §1.2 High-Risk Items: OI-40 and D10 rows removed (3→3 items)
+- §1.4 Weekly Movement: W2-4 and W2 reconciliation rows added
+- §7 adversarial: terrain-gen-fail and rollback-timeout rows → CLOSED
+- OI-40/OI-55 governance: PARTIAL/OPEN → CLOSED
+- AVP traceability PLN-02: PARTIAL → CLOSED
+- Requirements totals: 47C / 21P / 4O / 2B / 1N/A
+- Test case totals: 39P / 6Pa / 28NS / 4B / 5N/A
+
+**Task D — Push + Orin sync:**
+- Committed `3230ba6` — pushed to origin/main successfully.
+- Orin (192.168.1.53) SSH: No route to host — node offline.
+  Orin sync deferred; pull required on next Orin session.
+
+### Open Items Carried Forward
+- App-B REJECTED: RETASK_REJECTED event rename + TERMINAL event +
+  UT-PLN-REJECTED-01 test (define before SRS v1.4 final publication)
+- IT-NAV-COR-01: corridor violation integration test still NOT STARTED
+- ST-RESTART-01: real SIGKILL stimulus (Phase D)
+- Orin sync: git pull required (node offline this session)
+
+---
+
 ## Entry QA-064 — 25 April 2026 (Session Close)
 **Session Type:** Compliance matrix sync + push + Orin sync
 **HEAD at close:** d6bd14e
