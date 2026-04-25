@@ -4,6 +4,73 @@
 
 ---
 
+## Entry QA-062 — 25 April 2026
+**Session Type:** IT-D6-SITL-01 + UT-RS-03 Diagnostic Read
+**HEAD at close:** a3fd35e
+**SIL:** 536/536
+
+### Work Completed
+
+**Session start checks:**
+- Node01 certified baseline: 536/536 PASS
+- Orin certified baseline: PASS (11/11 criteria)
+- Frozen files: ALL 5 SHA-256 hashes MATCH
+
+**IT-D6-SITL-01 CLOSED (a3fd35e):**
+tests/test_it_d6_sitl.py (@pytest.mark.sitl). Reused
+/tmp/start_sitl_d9.sh SITL infrastructure. ARM + OFFBOARD on
+live PX4. GCS heartbeat thread halted via stop_ev.set() →
+setpoints stopped → fsm.on_offboard_loss() triggered.
+send_set_mode_fn: real MAVLink command_long_send; returns False
+(link-severed semantics — no ACK receivable once link lost).
+D2 5s + D3 5s chain ran to D6 exhaustion.
+5 gates: G1 OFFBOARD_LOSS ✓ G2 SHM_ENTRY ✓
+G3 OFFBOARD_UNRECOVERED (total_elapsed_ms=10001ms,
+attempts_made=10) ✓ G4 abort_fired ✓
+G5 elapsed=10.00s (bounds 10–13s) ✓
+Evidence: docs/qa/IT_D6_SITL_EVIDENCE_RUN1.md.
+SIL baseline unchanged 536/536.
+
+**Investigation note — first run failure:**
+Initial send_set_mode_fn (recv_match timeout=2s) caused D2
+recovery (elapsed_ms=0): PX4 ACKs SET_MODE OFFBOARD result=0
+even with stale setpoints. Root cause: PX4 mode-change ACK and
+setpoint-rate enforcement are separate code paths. Corrected to
+link-severed semantics (send only, return False immediately).
+Second run: all 5 gates PASS.
+
+**UT-RS-03 Diagnostic Read:**
+Codebase search across all .py/.yaml/.json/.md files.
+Findings (OI-57 raised):
+1. Watchdog module: DOES NOT EXIST. "Watchdog" referenced in
+   integration/config/mission_config.py (LivePipeline concept)
+   and docs only. No module emits PROCESS_FAILURE or
+   PROCESS_RESTARTED events.
+2. restartability_class attribute: ABSENT from all code files.
+   Classification exists only in SRS_COMPLIANCE_MATRIX.md
+   documentation rows.
+3. error_state_ekf.py header (frozen): No restartability_class
+   declaration. Pure algorithmic module.
+4. SRS_COMPLIANCE_MATRIX.md status:
+   - NOT_RESTARTABLE (ESKF) row: CLOSED — classification
+     documented, ABORT_MISS path tested in FSM tests, frozen
+     file protection.
+   - RESTARTABLE row: PARTIAL — classification documented
+     but UT-RS-03 (SIGKILL stimulus) not written. GAP-08 open.
+   - E-03 (Restartability Classification) row: PARTIAL.
+Summary: RS-03 watchdog NOT implemented. restartability_class
+NOT in code. Current state: documented but untested.
+SRS requirement: PARTIAL. GAP-08 active. SB-5 Phase D.
+Deputy 1 to rule on implementation design.
+
+### Open Items Carried Forward
+- OI-57 NEW: UT-RS-03 design ruling needed (watchdog
+  implementation approach for Phase D)
+- UT-RS-03: SIGKILL restartability test (Phase D — after ruling)
+- Orin /etc/hosts: DHCP hostname stability
+
+---
+
 ## Entry QA-061 — 26 April 2026
 **Session Type:** IT-D6-TIMEOUT-01
 **HEAD at close:** 1dbfc29
