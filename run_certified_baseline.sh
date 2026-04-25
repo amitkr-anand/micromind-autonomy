@@ -1,6 +1,6 @@
 #!/bin/bash
 # MicroMind Certified SIL Baseline
-# 526 tests — run before every gate commit and every handoff
+# 532 tests — run before every gate commit and every handoff
 # G-14 (AT-6 memory growth slope) excluded — requires >= 1hr dedicated run
 # CM-01 (gate6_cross_modal frame quality) excluded — pre-existing failure, OI-46 class
 
@@ -16,7 +16,7 @@ $CONDA python run_s8_tests.py
 echo "=== BCMP2 (90) ==="
 $CONDA python run_bcmp2_tests.py
 
-echo "=== Integration + Gates (132) ==="
+echo "=== Integration + Gates (138) ==="
 $CONDA python -m pytest \
   tests/test_bcmp2_at6.py -k "not test_G14_memory_growth_slope" \
   tests/test_s6_zpi_cems.py \
@@ -52,4 +52,4 @@ echo "=== Gate 7 SAL corridor — G7-01..05 (21) ==="
 $CONDA python -m pytest tests/test_gate7_sal_corridor.py -v
 
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 526/526"
+echo "Expected: 532/532"

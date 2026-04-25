@@ -39,7 +39,12 @@ import json
 import uuid
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
+
+
+class CheckpointCorruptError(Exception):
+    """Raised when a checkpoint file fails schema validation."""
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +131,24 @@ class Checkpoint:
         """
         known = {f.name for f in dataclasses.fields(cls)}
         filtered = {k: v for k, v in data.items() if k in known}
+
+        MANDATORY_FIELDS = {
+            "schema_version", "checkpoint_id", "timestamp_ms",
+            "waypoint_index", "mission_abort_flag",
+            "pending_operator_clearance_required", "shm_active",
+        }
+        missing = MANDATORY_FIELDS - set(data.keys())
+        if missing:
+            raise CheckpointCorruptError(
+                f"Missing mandatory fields: {sorted(missing)}"
+            )
+
+        if data.get("schema_version") != "1.2":
+            raise CheckpointCorruptError(
+                f"Unsupported schema version: {data.get('schema_version')!r}"
+                f" (expected '1.2')"
+            )
+
         return cls(**filtered)
 
     @classmethod
@@ -174,6 +197,7 @@ class CheckpointStore:
         checkpoint_dir: "str | Path",
         max_retained:   int = MAX_RETAINED_DEFAULT,
         event_log:      Optional[List[Dict[str, Any]]] = None,
+        clock_fn:       Optional[Callable[[], float]] = None,
     ):
         """
         Args:
@@ -183,10 +207,14 @@ class CheckpointStore:
                             Older files are purged after each write.
             event_log:      External list to append checkpoint events to.
                             If None, an internal list is created.
+            clock_fn:       Optional callable returning current time in seconds.
+                            Used for CHECKPOINT_CORRUPT event timestamps.
+                            If None, timestamp_ms is 0 in corruption events.
         """
         self._dir          = Path(checkpoint_dir)
         self._max_retained = max_retained
         self._event_log    = event_log if event_log is not None else []
+        self._clock_fn     = clock_fn
         self._dir.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------
@@ -246,7 +274,10 @@ class CheckpointStore:
         files = self._checkpoint_files()
         if not files:
             return None
-        return self._load(files[-1])
+        try:
+            return self._load(files[-1])
+        except CheckpointCorruptError:
+            return None
 
     def restore_from_path(self, path: "str | Path") -> Checkpoint:
         """
@@ -265,10 +296,46 @@ class CheckpointStore:
         """Return lexicographically sorted list of checkpoint .json files (oldest first)."""
         return sorted(self._dir.glob("checkpoint_*.json"))
 
+    def _emit_corrupt(self, path: Path, reason: str) -> None:
+        """Append a CHECKPOINT_CORRUPT event to the event log."""
+        self._event_log.append({
+            "event":        "CHECKPOINT_CORRUPT",
+            "req_id":       "PX4-05",
+            "severity":     "WARNING",
+            "module_name":  "CheckpointStore",
+            "path":         str(path),
+            "reason":       reason,
+            "timestamp_ms": int(self._clock_fn() * 1000) if self._clock_fn is not None else 0,
+        })
+
     def _load(self, path: Path) -> Checkpoint:
-        """Read and deserialise a checkpoint file; log CHECKPOINT_RESTORED."""
-        data = json.loads(path.read_text(encoding="utf-8"))
-        cp = Checkpoint.from_dict(data)
+        """Read and deserialise a checkpoint file; log CHECKPOINT_RESTORED.
+
+        Raises CheckpointCorruptError (after logging CHECKPOINT_CORRUPT) on
+        I/O failure, invalid JSON, or schema validation failure.
+        """
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (FileNotFoundError, PermissionError) as exc:
+            self._emit_corrupt(path, reason=f"io_error: {type(exc).__name__}")
+            raise CheckpointCorruptError(
+                f"Cannot read checkpoint {path}: {exc}"
+            ) from exc
+
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            self._emit_corrupt(path, reason="invalid_json")
+            raise CheckpointCorruptError(
+                f"Invalid JSON in checkpoint {path}: {exc}"
+            ) from exc
+
+        try:
+            cp = Checkpoint.from_dict(data)
+        except CheckpointCorruptError:
+            self._emit_corrupt(path, reason="schema_invalid")
+            raise
+
         self._event_log.append({
             "event":         "CHECKPOINT_RESTORED",
             "req_id":        "PX4-05",

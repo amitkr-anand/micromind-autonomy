@@ -22,9 +22,10 @@ import math
 import shutil
 import tempfile
 import unittest
+from pathlib import Path
 from typing import List
 
-from core.checkpoint.checkpoint import Checkpoint, CheckpointStore
+from core.checkpoint.checkpoint import Checkpoint, CheckpointCorruptError, CheckpointStore
 from core.mission_manager.mission_manager import MissionManager, MissionState
 
 
@@ -606,6 +607,146 @@ class TestE01CheckpointPurge(unittest.TestCase):
         self.assertEqual(len(purge_events_total), 2,
             f"Expected 2 CHECKPOINT_PURGED events after 7 writes, "
             f"got {len(purge_events_total)}")
+
+
+# ---------------------------------------------------------------------------
+# UT-PX4-COR-01 — Checkpoint corruption handling
+# ---------------------------------------------------------------------------
+
+class TestUTPX4COR01(unittest.TestCase):
+    """
+    UT-PX4-COR-01: CheckpointStore emits CHECKPOINT_CORRUPT and raises
+    CheckpointCorruptError on corrupted checkpoint files.
+
+    COR-01  Missing mandatory field → CheckpointCorruptError
+    COR-02  Wrong schema_version → CheckpointCorruptError
+    COR-03  Invalid JSON on disk → CHECKPOINT_CORRUPT(reason=invalid_json) + raises
+    COR-04  Valid JSON, missing field → CHECKPOINT_CORRUPT(reason=schema_invalid) + raises
+    COR-05  restore_latest() returns None on corrupt file (does not propagate)
+    COR-06  CHECKPOINT_CORRUPT event contains all seven required fields
+
+    Requirements: SRS §8.5 PX4-05 Appendix C
+    """
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp(prefix="cor01_cp_")
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def _valid_dict(self) -> dict:
+        """Minimal valid v1.2 checkpoint dict."""
+        return Checkpoint(mission_id="COR-TEST", timestamp_ms=1000).to_dict()
+
+    # COR-01: Missing mandatory field → CheckpointCorruptError
+    def test_cor01_missing_mandatory_field_raises(self):
+        data = self._valid_dict()
+        del data["waypoint_index"]
+
+        with self.assertRaises(CheckpointCorruptError) as ctx:
+            Checkpoint.from_dict(data)
+
+        self.assertIn("waypoint_index", str(ctx.exception),
+            "CheckpointCorruptError message must name the missing field")
+
+    # COR-02: Wrong schema_version → CheckpointCorruptError
+    def test_cor02_wrong_schema_version_raises(self):
+        data = self._valid_dict()
+        data["schema_version"] = "1.0"
+
+        with self.assertRaises(CheckpointCorruptError) as ctx:
+            Checkpoint.from_dict(data)
+
+        self.assertIn("1.0", str(ctx.exception),
+            "CheckpointCorruptError message must include the bad schema_version")
+
+    # COR-03: Invalid JSON on disk → CHECKPOINT_CORRUPT(reason=invalid_json) + raises
+    def test_cor03_invalid_json_emits_corrupt_event(self):
+        event_log: List = []
+        store = CheckpointStore(
+            checkpoint_dir=self._tmpdir,
+            event_log=event_log,
+            clock_fn=lambda: 10.0,
+        )
+        bad_file = Path(self._tmpdir) / "checkpoint_00000000000000001000_aabbccdd.json"
+        bad_file.write_text("{not valid json", encoding="utf-8")
+
+        with self.assertRaises(CheckpointCorruptError):
+            store.restore_from_path(bad_file)
+
+        corrupt_events = [e for e in event_log if e["event"] == "CHECKPOINT_CORRUPT"]
+        self.assertEqual(len(corrupt_events), 1,
+            "Expected exactly 1 CHECKPOINT_CORRUPT event for invalid JSON")
+        self.assertEqual(corrupt_events[0]["reason"], "invalid_json",
+            f"Expected reason='invalid_json', got '{corrupt_events[0].get('reason')}'")
+
+    # COR-04: Valid JSON, missing mandatory field → CHECKPOINT_CORRUPT(reason=schema_invalid) + raises
+    def test_cor04_schema_invalid_emits_corrupt_event(self):
+        event_log: List = []
+        store = CheckpointStore(
+            checkpoint_dir=self._tmpdir,
+            event_log=event_log,
+            clock_fn=lambda: 10.0,
+        )
+        data = self._valid_dict()
+        del data["mission_abort_flag"]
+
+        bad_file = Path(self._tmpdir) / "checkpoint_00000000000000001000_aabbccdd.json"
+        bad_file.write_text(json.dumps(data), encoding="utf-8")
+
+        with self.assertRaises(CheckpointCorruptError):
+            store.restore_from_path(bad_file)
+
+        corrupt_events = [e for e in event_log if e["event"] == "CHECKPOINT_CORRUPT"]
+        self.assertEqual(len(corrupt_events), 1,
+            "Expected exactly 1 CHECKPOINT_CORRUPT event for schema_invalid")
+        self.assertEqual(corrupt_events[0]["reason"], "schema_invalid",
+            f"Expected reason='schema_invalid', got '{corrupt_events[0].get('reason')}'")
+
+    # COR-05: restore_latest() returns None on corrupt file (does not propagate)
+    def test_cor05_restore_latest_returns_none_on_corrupt(self):
+        event_log: List = []
+        store = CheckpointStore(
+            checkpoint_dir=self._tmpdir,
+            event_log=event_log,
+            clock_fn=lambda: 10.0,
+        )
+        bad_file = Path(self._tmpdir) / "checkpoint_00000000000000002000_aabbccdd.json"
+        bad_file.write_text("{{bad", encoding="utf-8")
+
+        result = store.restore_latest()
+
+        self.assertIsNone(result,
+            "restore_latest() must return None (not raise) when latest checkpoint is corrupt")
+
+    # COR-06: CHECKPOINT_CORRUPT event contains all seven required fields
+    def test_cor06_corrupt_event_has_required_fields(self):
+        event_log: List = []
+        store = CheckpointStore(
+            checkpoint_dir=self._tmpdir,
+            event_log=event_log,
+            clock_fn=lambda: 10.0,
+        )
+        bad_file = Path(self._tmpdir) / "checkpoint_00000000000000003000_aabbccdd.json"
+        bad_file.write_text("not json at all", encoding="utf-8")
+
+        with self.assertRaises(CheckpointCorruptError):
+            store.restore_from_path(bad_file)
+
+        corrupt_events = [e for e in event_log if e["event"] == "CHECKPOINT_CORRUPT"]
+        self.assertGreater(len(corrupt_events), 0,
+            "No CHECKPOINT_CORRUPT event found in event_log")
+
+        evt = corrupt_events[0]
+        for fname in ["event", "req_id", "severity", "module_name", "path", "reason", "timestamp_ms"]:
+            self.assertIn(fname, evt,
+                f"CHECKPOINT_CORRUPT event missing required field '{fname}'")
+
+        self.assertEqual(evt["req_id"], "PX4-05")
+        self.assertEqual(evt["severity"], "WARNING")
+        self.assertEqual(evt["module_name"], "CheckpointStore")
+        self.assertEqual(evt["timestamp_ms"], 10000,
+            f"timestamp_ms: expected 10000 (clock_fn=10.0 s), got {evt.get('timestamp_ms')}")
 
 
 if __name__ == "__main__":

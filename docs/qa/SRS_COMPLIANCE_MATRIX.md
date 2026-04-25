@@ -1,8 +1,8 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `17330fa` (IT-ROLLBACK-01 — rollback triggers complete)
-**SIL at baseline:** 526/526 (`run_certified_baseline.sh`)
+**Baseline HEAD:** `17330fa` → UT-PX4-COR-01 (checkpoint corruption handling complete)
+**SIL at baseline:** 532/532 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
 **Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
 **Classification:** Programme Confidential
@@ -241,7 +241,7 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | RESTARTABLE | Watchdog-monitored processes (EW Manager, Route Planner, Mission Manager) | Watchdog: PROC_RESTART. Restart ≤2s + restore ≤10s. ABORT_MISS after 30s. | PARTIAL | PARTIAL | NO | Implemented | Not Tested | E-03 restartability_class in spec. PROC_RESTART class documented. UT-RS-03 not written (GAP-08). | UT-RS-03 (not written) | Low | Deputy 1 | GAP-08: no SIGKILL stimulus test | SB-5 Phase D: write UT-RS-03 | GAP-08 |
 | NOT_RESTARTABLE | ESKF core (`core/ekf/error_state_ekf.py`) — frozen file | Watchdog: ABORT_MISS immediately on heartbeat miss. No restart. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | ESKF classified NOT_RESTARTABLE. ABORT_MISS path confirmed in FSM tests. Frozen file protection prevents accidental modification. | FSM ABORT_MISS tests | High | Deputy 1 | None | None | Phase D classification; frozen file record |
-| CHECKPOINT_RESTORE | PX4 Bridge (on reboot), Mission Manager (on process restart) | Load Checkpoint ≤10s. Mission Manager D8a gate before autonomous resume. | BLOCKED | BLOCKED | NO | Implemented but Untested | Partially Tested | D8 checkpoint load confirmed SA-06. Corrupted checkpoint path (PROC_RESTART if corrupt) NOT tested. | SA-06; UT-PX4-COR-01 (not written) | Low | Deputy 1 | Corrupted checkpoint path untested. PROC_RESTART on corrupt not exercised. | Define UT-PX4-COR-01 | SA-06; Appendix A PROC_RESTART |
+| CHECKPOINT_RESTORE | PX4 Bridge (on reboot), Mission Manager (on process restart) | Load Checkpoint ≤10s. Mission Manager D8a gate before autonomous resume. | BLOCKED | CLOSED | NO | Tested and Verified | Tested and Verified | D8 checkpoint load confirmed SA-06. Corrupt path: CheckpointCorruptError + CHECKPOINT_CORRUPT event — UT-PX4-COR-01 COR-01..06 PASS. restore_latest() returns None on corrupt. | SA-06; UT-PX4-COR-01 | High | Deputy 1 | None | None | QA-058; COR-01..06 |
 
 ---
 
@@ -298,7 +298,7 @@
 | UT-PX4-01 | OFFBOARD Setpoint Rate | PX4-01 | §8.1 | ALL AVP | Unit | SIL | PASSED | QA-049 | PASS | run_bcmp2_tests.py | None | None | QA-049 |
 | UT-PX4-02 | MAVLink Heartbeat (stub) | PX4-02 | §8.2 | ALL AVP | Unit | SIL | PARTIAL | QA-049 | Stub only | Stub | Real heartbeat timing requires HIL | HIL Sprint 1 | GAP-07 |
 | UT-PX4-05 | Checkpoint Schema v1.2 | PX4-05, EC-02 | §8.5, §13 | ALL AVP | Unit | SIL | PASSED | QA-049 | PASS | Phase A SA-01..04 | Purge policy unconfirmed | Week 1 Item 10 | SA-01..04 |
-| UT-PX4-COR-01 | Corrupted Checkpoint Restore Test | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | §8.5, §13 | ALL AVP | Unit | SIL | NOT STARTED | — | — | — | PROC_RESTART if corrupt (Appendix A/C) not exercised. UT-PX4-05 tests nominal load only. | Define and implement | App-C; SA-06 context |
+| UT-PX4-COR-01 | Corrupted Checkpoint Restore Test | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | §8.5, §13 | ALL AVP | Unit | SIL | PASSED | QA-058 | PASS | test_sb5_phase_a.py COR-01..06 | None | None | QA-058; COR-01..06 |
 | IT-PX4-01 | OFFBOARD Continuity — Short Run | PX4-01, EC-01 | §8.1, §8.3 | ALL AVP | Integration | SITL | PARTIAL | S-PX4-09 | 62s PASS | SITL logs | 30-min exit gate not confirmed | Week 1 Item 8/9 | QA-050 downgrade |
 | IT-PX4-02 | PX4 Reboot Recovery Integration | PX4-04, EC-03 | §8.4, §13 | ALL AVP | Integration | SITL | PARTIAL | SA-05..SA-07 | Synthetic PASS | `787ecd4` | D9 chain (D7→D9) not SITL-tested; D10 not tested | Week 1 Item 11 | QA-025; SA-05..07 |
 | IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | Full 10s timeout path (D6 → OFFBOARD_UNRECOVERED → ABORT_MISS) not exercised in integration. | Define and implement | D6 gap |
@@ -349,7 +349,7 @@
 | Stale EW map during retask (R-02) | PLN-02, EW-01 | UT-PLN-02 covers R-02 code path per spec | PARTIAL | Phase B gates | R-02 in spec; stale map injection not integration-tested (IT-STALE-EW-01 defined). | Week 1 Item 5/6: confirm R-02 in code | Phase B; W1 Item 5/6 |
 | Terrain corridor regeneration failure (R-01 → ROLLBACK) | PLN-02, App-B ROUTING | RETASK_TERRAIN_GEN_FAILED in spec | PARTIAL | SRS Appendix B | IT-TERRAIN-FAIL-01 defined but not started. | Define and implement | App-B; R-01 |
 | Failed rollback after replan timeout (>2000ms) | PLN-02, App-B ROLLBACK | ROLLBACK state in Appendix B. RS-04 cleanup confirmed. | PARTIAL | `c35122a` | IT-ROLLBACK-01 defined but not started. | Define covering TERRAIN_GEN_FAIL, COMMIT_FAIL, timeout overrun | App-B ROLLBACK |
-| Corrupted checkpoint file at restore | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | UT-PX4-05 tests nominal schema load only | PARTIAL | `fcb5106` | UT-PX4-COR-01 defined but not started. PROC_RESTART if corrupt (Appendix A) not exercised. | Define UT-PX4-COR-01 | App-C; SA-06 |
+| Corrupted checkpoint file at restore | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | CheckpointCorruptError + CHECKPOINT_CORRUPT event. restore_latest() returns None. 6 tests COR-01..06. | CLOSED | QA-058 | None. | None | App-C; COR-01..06 |
 | Missing EO camera feed (IMU+TRN only) | NAV-03, PX4-03 | VIOMode outage recovery S-NEP-06 (synthetic). IT-CAM-DROP-01 defined. | PARTIAL | `core/fusion/vio_mode.py:166` | No SITL test with actual dropout. OI-43 fragile. | Resolve OI-43. Define IT-CAM-DROP-01. | OI-43; S-NEP-06 |
 | Missing IMU feed (ESKF freeze) | NAV-01, PX4-03 | IMU_DROPOUT in spec. ESKF freeze >100ms defined. UT-IMU-DROP-01 defined. | PARTIAL | SRS §8.3 | UT-IMU-DROP-01 not started. | Define and implement | SRS §8.3 |
 | Radar altimeter noise burst / dropout | NAV-02 (legacy) | TRN_RADALT_SUSPENDED in spec | PARTIAL | SRS §8.3 | Less critical post-OM adoption. | Retain as HIL-phase concern | SRS §8.3 |
