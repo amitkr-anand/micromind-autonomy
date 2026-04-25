@@ -4,6 +4,66 @@
 
 ---
 
+## Entry QA-055 — 25 April 2026
+**Session Type:** Week 2 Day 4 — EC-01 OFFBOARD endurance gate (W2-DOC-03 + W2-4)
+**Governance ref:** Code Governance Manual v3.4; SRS §6.1 PX4-01; EC-01
+**HEAD at close:** `8e50cbc` (EC01_EVIDENCE_RUN1.md committed)
+
+### Work Completed
+
+**W2-DOC-03 (Agent 2): SAL-3 baseline v1.0 committed**
+- `docs/qa/SAL3_BASELINE_v1.0.md` created from Deputy 1 content (Parts A–F). FROZEN.
+- `docs/qa/SAL3_SCOPE_v1.md` created with SUPERSEDED header.
+- Commit: `57aa994` — docs(qa): SAL-3 baseline v1.0 frozen — AD-24
+
+**W2-4: EC-01 OFFBOARD 30-minute endurance gate**
+
+Part A — Test file written:
+- `tests/test_ec01_offboard_endurance.py` — @pytest.mark.sitl, excluded from certified SIL baseline
+- `pytest.ini` — sitl marker registered
+- Uses existing PX4ContinuityMonitor infrastructure
+- SR-01 compliant: time.monotonic() + threading.Event.wait(), no time.sleep() for mission timing
+- pymavlink: try/except at module level (conda env safe, system py3.12 runtime)
+- Syntax: VALID (py_compile + system py3.12 collection confirmed)
+- Commit: `6ab9f4c` — test(sitl): EC-01 OFFBOARD 30-minute endurance gate — W2-4
+
+Part B — Live SITL run:
+- Environment: micromind-node01, Gazebo 8.11.0 (Baylands), PX4 SITL instance 0 (port 14540)
+- EKF2 aligned in 1.0s after GCS heartbeat + setpoint stream
+- Run duration: 1800.26 s (30:02) — full wall-clock run, not abbreviated
+- pytest exit code: 0 (PASS)
+- Commit: `8e50cbc` — docs(qa): EC-01 evidence artefact Run 1 — W2-4
+
+### EC01_EVIDENCE_RUN1.md — Gate Results
+
+| Gate | Criterion | Measured | Result |
+|---|---|---|---|
+| EC01-G1 | offboard_continuity_percent ≥ 99.5 % | 100.0000 % | PASS |
+| EC01-G2 | offboard_loss_count ≤ 1 | 0 | PASS |
+| EC01-G3 | setpoint_rate_hz ≥ 20 Hz at every 1 Hz tick | min=21.00, mean=21.65, max=22.00 Hz | PASS |
+| EC01-G4 | stale_setpoints_discarded_on_recovery = True | 0 recovery events | N/A |
+
+Zero OFFBOARD_LOSS events recorded. Continuity = 100.0000 %.
+
+### Anomalies Observed
+- G4 is N/A (no OFFBOARD_LOSS events): criterion cannot be exercised in a clean nominal run. The PX4ContinuityMonitor's record_offboard_restored() unconditionally sets stale_setpoints_discarded=True; the mechanism is validated by unit tests EC01-02/EC01-03 in test_sb5_ec01.py. No anomalous behaviour observed.
+- utcnow() deprecation warning (Python 3.12): cosmetic; does not affect test validity.
+
+### Baseline Status
+- SIL baseline: 512/512 UNCHANGED (sitl test excluded from baseline)
+- EC-01 status: PARTIAL → EVIDENCE SUBMITTED — Deputy 1 ruling pending
+- SAL-3 baseline: FROZEN at 57aa994
+
+### QA Standing Rules Check
+1. Test environment: live PX4 SITL (Gazebo 8.11.0 Baylands, x500 vehicle). Represents actual OFFBOARD setpoint infrastructure, not a mock. ✅
+2. No terminal guidance touched. ✅
+3. SRS §6.1 PX4-01 is the authority for pass/fail criteria. All four gates traced. ✅
+4. km-scale validation not applicable to this gate. ✅
+5. DMRL not involved. ✅
+6. Frozen files: all 5 SHA-256 hashes verified at session start (MATCH). ✅
+
+---
+
 ## Entry QA-054 — 23 April 2026
 **Session Type:** Week 1 Day 2 — PLN-02 R-corrections, R-02 busy-wait incident, R-02 callback-based fix
 **Governance ref:** Code Governance Manual v3.4; Anti-Bias Protocol AB-01..AB-06
