@@ -510,5 +510,103 @@ class TestSA07D8aClearanceTrueBlocks(unittest.TestCase):
         self.assertIn("timestamp_ms", evt)
 
 
+# ---------------------------------------------------------------------------
+# E-01 / EC-02 — Checkpoint purge confirmation gate
+# ---------------------------------------------------------------------------
+
+class TestE01CheckpointPurge(unittest.TestCase):
+    """
+    E-01 / EC-02: Targeted checkpoint rolling-purge confirmation.
+
+    SA-03 verifies retained <= 5 and that at least one CHECKPOINT_PURGED
+    event is emitted.  This gate adds the assertions required by EC-02:
+      - Exactly 5 checkpoints retained (not just ≤5).
+      - The OLDEST checkpoint is the one purged (verified via checkpoint_id).
+      - CHECKPOINT_PURGED event payload inspected: checkpoint_id, req_id.
+      - checkpoints_retained_count == 5 via store property.
+      - 7th write also triggers a second purge (count stays ≤5).
+
+    Requirements: EC-02, SRS §10.15 PX4-05
+    Note: CHECKPOINT_PURGED req_id is "PX4-05" in CheckpointStore — EC-02
+    is the SRS requirement; PX4-05 is the implementation log tag. Both
+    reference SRS §10.15.
+    """
+
+    def setUp(self):
+        self._tmpdir = tempfile.mkdtemp(prefix="e01_cp_")
+
+    def tearDown(self):
+        shutil.rmtree(self._tmpdir, ignore_errors=True)
+
+    def test_e01_checkpoint_purge(self):
+        event_log: List = []
+        store = CheckpointStore(
+            checkpoint_dir=self._tmpdir,
+            max_retained=5,
+            event_log=event_log,
+        )
+
+        # Write 6 checkpoints; capture oldest checkpoint_id prefix for purge assertion
+        first_id_prefix: str = ""
+        for i in range(6):
+            cp = Checkpoint(
+                mission_id=f"E01-EC02-{i}",
+                timestamp_ms=(i + 1) * 1000,   # 1000, 2000, …, 6000 ms (distinct, increasing)
+                waypoint_index=i,
+            )
+            if i == 0:
+                first_id_prefix = cp.checkpoint_id[:8]
+            store.write(cp)
+
+        # --- Assertion 1: exactly 5 checkpoints retained on disk ----------------
+        self.assertEqual(store.checkpoints_retained_count, 5,
+            f"Expected exactly 5 retained checkpoints after 6 writes, "
+            f"got {store.checkpoints_retained_count}")
+
+        # --- Assertion 2: exactly 1 CHECKPOINT_PURGED event emitted -------------
+        purge_events = [e for e in event_log if e["event"] == "CHECKPOINT_PURGED"]
+        self.assertEqual(len(purge_events), 1,
+            f"Expected exactly 1 CHECKPOINT_PURGED event after 6 writes, "
+            f"got {len(purge_events)}")
+
+        purge_evt = purge_events[0]
+
+        # --- Assertion 3: oldest checkpoint was the one purged ------------------
+        # CheckpointStore._purge() stores the 8-char id prefix extracted from filename
+        self.assertEqual(purge_evt["checkpoint_id"], first_id_prefix,
+            f"CHECKPOINT_PURGED checkpoint_id mismatch: "
+            f"expected '{first_id_prefix}' (oldest), got '{purge_evt.get('checkpoint_id')}'")
+
+        # --- Assertion 4a: purged_checkpoint_id field present in event ----------
+        self.assertIn("checkpoint_id", purge_evt,
+            "CHECKPOINT_PURGED event missing 'checkpoint_id' field")
+
+        # --- Assertion 4b: checkpoints_retained_count == 5 (store property) ----
+        self.assertEqual(store.checkpoints_retained_count, 5,
+            "checkpoints_retained_count property must equal 5 after purge")
+
+        # --- Assertion 4c: req_id = "PX4-05" (EC-02 traced through SRS §10.15 PX4-05)
+        self.assertEqual(purge_evt["req_id"], "PX4-05",
+            f"CHECKPOINT_PURGED req_id: expected 'PX4-05', "
+            f"got '{purge_evt.get('req_id')}'")
+
+        # --- Assertion 5: 7th write also triggers purge; count stays ≤5 --------
+        cp7 = Checkpoint(
+            mission_id="E01-EC02-6",
+            timestamp_ms=7000,
+            waypoint_index=6,
+        )
+        store.write(cp7)
+
+        self.assertLessEqual(store.checkpoints_retained_count, 5,
+            f"After 7th write, retained count must remain ≤5, "
+            f"got {store.checkpoints_retained_count}")
+
+        purge_events_total = [e for e in event_log if e["event"] == "CHECKPOINT_PURGED"]
+        self.assertEqual(len(purge_events_total), 2,
+            f"Expected 2 CHECKPOINT_PURGED events after 7 writes, "
+            f"got {len(purge_events_total)}")
+
+
 if __name__ == "__main__":
     unittest.main()
