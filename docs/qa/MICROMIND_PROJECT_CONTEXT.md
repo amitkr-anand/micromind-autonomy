@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 25 April 2026 (QA-062 IT-D6-SITL-01: D6 SITL chain — 5 gates PASS, 536/536)  
+**Last Updated:** 25 April 2026 (QA-063 UT-RS-03: ProcessWatchdog — 6 tests PASS, 542/542)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -74,6 +74,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 |---|---|---|---|
 | S0–S7 | ✅ CLOSED | 215/215 | Various |
 | S8 IMU Characterisation | ✅ CLOSED | 68/68 | `f91180d` |
+| UT-RS-03 — ProcessWatchdog restartability decision logic | ✅ CLOSED `3fc84bc` — core/watchdog/process_watchdog.py: RESTARTABLE_WITHOUT_SHM / RESTARTABLE_WITH_SHM / NOT_RESTARTABLE constants + PROCESS_REGISTRY (6 entries). on_process_failure() daemon thread dispatch (SR-01). NOT_RESTARTABLE: ESKF_CORE_FAILURE + abort_fn. RESTARTABLE_WITH_SHM: SHM_ENTRY + restart loop + checkpoint_restore_fn + NAV_RESTORED + SHM_EXIT or PROCESS_RESTART_FAILED + abort_fn. RESTARTABLE_WITHOUT_SHM: restart only. 6 tests / 30 assertions. Compliance matrix corrections at 26be71f. Baseline 536 → 542/542. ST-RESTART-01 (real SIGKILL) remains Phase D. Deputy 1 rules on UT-RS-03 gate acceptance. | Code + Test | CLOSED (pending Deputy 1 acceptance) |
 | BCMP-2 SB-1 | ✅ CLOSED | 17/17 AT-1 | `sb1-dual-track-foundation` |
 | BCMP-2 SB-2 | ✅ CLOSED | 25/25 | `sb2-fault-injection-foundation` |
 | BCMP-2 SB-3 | ✅ CLOSED | 29/29 AT-2 + 19/19 AT-3/4/5 | `sb3-full-mission-reports` |
@@ -237,7 +238,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | OI-01 | V7 spec: update IMU ARW floor from ≤ 0.1 to ≤ 0.2 °/√hr (STIM300 finding, S8) | Spec | HIGH — before TASL |
 | ~~OI-02~~ **CLOSED** — All 3 `datetime.utcnow()` calls in `bcmp2_report.py` replaced with `datetime.now(timezone.utc)`. `from datetime import timezone` added. | Code | CLOSED |
 | OI-03 | ALS-250 overnight run results → `als250_drift_chart.py` (S8-D deferred) | Code | HIGH — TASL chart |
-| OI-57 | UT-RS-03 diagnostic (QA-062): No watchdog module exists emitting PROCESS_FAILURE/PROCESS_RESTARTED events. restartability_class not assigned as code attribute in any module. ESKF classified NOT_RESTARTABLE in SRS_COMPLIANCE_MATRIX.md (CLOSED row) but attribute absent from error_state_ekf.py. RESTARTABLE watchdog restart cycle unimplemented. GAP-08 confirmed. SB-5 Phase D action (UT-RS-03 SIGKILL test) still required. Deputy 1 to rule on implementation design before Phase D. | Architecture/Test | MEDIUM — Phase D |
+| ~~OI-57~~ **CLOSED** `3fc84bc` — ProcessWatchdog implemented. PROCESS_REGISTRY assigns restartability class to 6 production processes. Decision logic tested by UT-RS-03 (6 tests). ST-RESTART-01 (real SIGKILL) remains Phase D. | Architecture/Test | CLOSED |
 | ~~OI-04~~ **CLOSED** a014997 — OpenVINS_ESKF_Interface_Spec.md committed in nep-vio-sandbox/docs/ | Architecture | HIGH — before S-NEP-04 |
 | OI-05 | ~~TRN stub (`trn_stub.py`) still implies RADALT-NCC; must be updated to reflect orthophoto matching decision.~~ **CLOSED: orthophoto_matching_stub.py committed at 96bf98a. Measurement-provider-only pattern (AD-03). OM_R_NORTH = OM_R_EAST = 81.0 m². trn_stub.py preserved as frozen historical artefact.** | Architecture | HIGH — before fusion integration |
 | OI-06 | DMRL stub is rule-based; all BCMP-1 terminal guidance results are stub-based, not CNN-based | QA Caveat | MEDIUM — document in all external reports |

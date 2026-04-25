@@ -4,6 +4,51 @@
 
 ---
 
+## Entry QA-063 — 25 April 2026
+**Session Type:** UT-RS-03 ProcessWatchdog Implementation
+**HEAD at close:** 3fc84bc
+**SIL:** 542/542
+
+### Work Completed
+
+**Compliance matrix corrections (26be71f) — pre-implementation:**
+NOT_RESTARTABLE row: CLOSED → PARTIAL (downgraded QA-062).
+RESTARTABLE row: PARTIAL/Implemented → OPEN/NOT IMPLEMENTED.
+E-03 row: PARTIAL/Partially Implemented → OPEN/NOT IMPLEMENTED.
+
+**UT-RS-03 CLOSED (3fc84bc):**
+core/watchdog/process_watchdog.py — PROCESS_REGISTRY (6 entries):
+  EWManager, LogBus: RESTARTABLE_WITHOUT_SHM
+  NavigationManager, MissionManager, PX4Bridge: RESTARTABLE_WITH_SHM
+  ESKFCore: NOT_RESTARTABLE
+
+on_process_failure() dispatches to daemon thread (SR-01 compliant).
+
+Decision paths:
+- NOT_RESTARTABLE: log PROCESS_FAILURE + ESKF_CORE_FAILURE → abort_fn()
+- RESTARTABLE_WITH_SHM: SHM_ENTRY → restart loop (max_restart_attempts) →
+  checkpoint_restore_fn() → NAV_RESTORED + SHM_EXIT on success;
+  PROCESS_RESTART_FAILED + abort_fn() on exhaustion
+- RESTARTABLE_WITHOUT_SHM: restart once → return (no checkpoint)
+- Unknown process: PROCESS_UNKNOWN → return (no abort/restart)
+
+6 tests / 30 assertions — all PASS:
+  test_not_restartable_triggers_abort:   5 assertions
+  test_restartable_with_shm_success:     6 assertions
+  test_restartable_without_shm_success:  5 assertions
+  test_restartable_all_attempts_fail:    5 assertions
+  test_unknown_process_ignored:          3 assertions
+  test_registry_classification_correct:  6 assertions
+
+Baseline: 536 → 542/542. OI-57 CLOSED.
+ST-RESTART-01 (real SIGKILL) remains Phase D.
+
+### Open Items Carried Forward
+- ST-RESTART-01: real SIGKILL stimulus test (Phase D)
+- Orin /etc/hosts: DHCP hostname stability
+
+---
+
 ## Entry QA-062 — 25 April 2026
 **Session Type:** IT-D6-SITL-01 + UT-RS-03 Diagnostic Read
 **HEAD at close:** a3fd35e
