@@ -340,6 +340,19 @@ class RoutePlanner:
         snap_ew_map_last_updated = self._ew_map_last_updated_s
         snap_eta_s               = self._eta_s                  # action (5) — OI-56
 
+        # RETASK_ROLLBACK extended payload fields (IT-ROLLBACK-01)
+        # _current_target not on RoutePlanner — deviation: using None
+        snap_target         = None
+        snap_ew_age_ms      = int(
+            (self._clock.now() - self._ew_map_last_updated_s) * 1000
+        )
+        # _terrain_corridor is np.ndarray; .get() requires hasattr guard
+        _tc = self._terrain_corridor
+        snap_terrain_phase  = (
+            (_tc.get("phase", "unknown") if hasattr(_tc, "get") else "unknown")
+            if _tc is not None else "none"
+        )
+
         def _rollback(snap_eta_s_val: float) -> None:
             """
             R-03 rollback: restore EW map, terrain corridor, waypoints, and ETA
@@ -356,7 +369,36 @@ class RoutePlanner:
         # Terrain corridor defines the search space; EW costs are overlaid on
         # that space. If EW refresh ran first, it might penalise cells that the
         # updated terrain corridor will invalidate, producing suboptimal routes.
-        self._terrain_regen_fn()
+        try:
+            self._terrain_regen_fn()
+            terrain_regen_ok = True
+        except Exception:
+            terrain_regen_ok = False
+
+        if not terrain_regen_ok:
+            self._event_log.append({
+                "event":        "RETASK_TERRAIN_GEN_FAILED",
+                "req_id":       "PLN-02",
+                "severity":     "WARNING",
+                "module_name":  "RoutePlanner",
+                "timestamp_ms": int(self._clock.now() * 1000),
+            })
+            _rollback(snap_eta_s)
+            self._event_log.append({
+                "event":                  "RETASK_ROLLBACK",
+                "req_id":                 "PLN-02",
+                "severity":               "WARNING",
+                "module_name":            "RoutePlanner",
+                "timestamp_ms":           int(self._clock.now() * 1000),
+                "eta_s_restored":         snap_eta_s,
+                "reason":                 "TERRAIN_GEN_FAIL",
+                "previous_target":        snap_target,
+                "restored_ew_map_age_ms": snap_ew_age_ms,
+                "restored_terrain_phase": snap_terrain_phase,
+            })
+            self._cleanup_route_fragments(int(self._clock.now() * 1000))
+            return False
+
         # ORDERING CHECKPOINT: terrain regen complete — EW refresh follows
         self._event_log.append({
             "event":        "RETASK_TERRAIN_FIRST",
@@ -422,12 +464,16 @@ class RoutePlanner:
             })
             _rollback(snap_eta_s)
             self._event_log.append({
-                "event":          "RETASK_ROLLBACK",
-                "req_id":         "PLN-02",
-                "severity":       "WARNING",
-                "module_name":    "RoutePlanner",
-                "timestamp_ms":   final_ts_ms,
-                "eta_s_restored": snap_eta_s,
+                "event":                  "RETASK_ROLLBACK",
+                "req_id":                 "PLN-02",
+                "severity":               "WARNING",
+                "module_name":            "RoutePlanner",
+                "timestamp_ms":           final_ts_ms,
+                "eta_s_restored":         snap_eta_s,
+                "reason":                 "TIMEOUT",
+                "previous_target":        snap_target,
+                "restored_ew_map_age_ms": snap_ew_age_ms,
+                "restored_terrain_phase": snap_terrain_phase,
             })
             self._cleanup_route_fragments(final_ts_ms)  # RS-04
             return False
@@ -447,12 +493,16 @@ class RoutePlanner:
             # Restore state and set route to last valid waypoint
             _rollback(snap_eta_s)
             self._event_log.append({
-                "event":          "RETASK_ROLLBACK",
-                "req_id":         "PLN-02",
-                "severity":       "WARNING",
-                "module_name":    "RoutePlanner",
-                "timestamp_ms":   final_ts_ms,
-                "eta_s_restored": snap_eta_s,
+                "event":                  "RETASK_ROLLBACK",
+                "req_id":                 "PLN-02",
+                "severity":               "WARNING",
+                "module_name":            "RoutePlanner",
+                "timestamp_ms":           final_ts_ms,
+                "eta_s_restored":         snap_eta_s,
+                "reason":                 "DEAD_END",
+                "previous_target":        snap_target,
+                "restored_ew_map_age_ms": snap_ew_age_ms,
+                "restored_terrain_phase": snap_terrain_phase,
             })
             if self._last_valid_waypoint is not None:
                 self._waypoints = [self._last_valid_waypoint]
@@ -475,7 +525,35 @@ class RoutePlanner:
             "module_name":  "RoutePlanner",
             "timestamp_ms": final_ts_ms,
         })
-        self._px4_upload_fn(found_route)   # delegate to bridge — no direct PX4 cmds (§1.3)
+        try:
+            self._px4_upload_fn(found_route)   # delegate to bridge — no direct PX4 cmds (§1.3)
+            commit_ok = True
+        except Exception:
+            commit_ok = False
+
+        if not commit_ok:
+            self._event_log.append({
+                "event":        "RETASK_COMMIT_FAILED",
+                "req_id":       "PLN-02",
+                "severity":     "WARNING",
+                "module_name":  "RoutePlanner",
+                "timestamp_ms": int(self._clock.now() * 1000),
+            })
+            _rollback(snap_eta_s)
+            self._event_log.append({
+                "event":                  "RETASK_ROLLBACK",
+                "req_id":                 "PLN-02",
+                "severity":               "WARNING",
+                "module_name":            "RoutePlanner",
+                "timestamp_ms":           int(self._clock.now() * 1000),
+                "eta_s_restored":         snap_eta_s,
+                "reason":                 "COMMIT_FAIL",
+                "previous_target":        snap_target,
+                "restored_ew_map_age_ms": snap_ew_age_ms,
+                "restored_terrain_phase": snap_terrain_phase,
+            })
+            self._cleanup_route_fragments(int(self._clock.now() * 1000))
+            return False
 
         # ── R-03 (PLN-02): update live ETA from accepted route length (OI-56) ─
         # Compute 2-D (north-east) segment sum; cruise speed converts to seconds.

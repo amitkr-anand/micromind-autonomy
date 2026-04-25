@@ -345,16 +345,17 @@ class TestSB04RetaskTimeoutTriggersRollback(unittest.TestCase):
     def setUp(self):
         self.engine = _make_engine()
 
-        # Mock clock: early calls return 0.0; call 5 returns 20.0 (timeout fires).
+        # Mock clock: early calls return 0.0; call 6 returns 20.0 (timeout fires).
         # Call sequence inside retask():
         #   call 1: now_s = clock.now()               (initial ts, staleness check)
-        #   call 2: clock.now() for RETASK_TERRAIN_FIRST log timestamp
-        #   call 3: clock.now() after ew_refresh (mark EW updated)
-        #   call 4: retask_start_s = clock.now()
-        #   call 5: elapsed = clock.now() - retask_start_s → 20.0 - 0.0 > 15 s → TIMEOUT
-        #   call 6: final_ts_ms = clock.now()  (for RETASK_TIMEOUT_ROLLBACK log)
+        #   call 2: clock.now() for snap_ew_age_ms    (IT-ROLLBACK-01 snapshot field)
+        #   call 3: clock.now() for RETASK_TERRAIN_FIRST log timestamp
+        #   call 4: clock.now() after ew_refresh (mark EW updated)
+        #   call 5: retask_start_s = clock.now()
+        #   call 6: elapsed = clock.now() - retask_start_s → 20.0 - 0.0 > 15 s → TIMEOUT
+        #   call 7: final_ts_ms = clock.now()  (for RETASK_TIMEOUT_ROLLBACK log)
         self.clock = MagicMock()
-        self.clock.now.side_effect = [0.0, 0.0, 0.0, 0.0, 20.0, 20.0]
+        self.clock.now.side_effect = [0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0]
 
         self.initial_waypoints = [_START_WP]
         self.initial_terrain   = np.ones((5, 5), dtype=np.float32) * 0.3
@@ -1103,6 +1104,230 @@ class TestW28GnssDeniedRetaskIntegration(unittest.TestCase):
             _logged_events(self.event_log, "RETASK_NAV_CONFIDENCE_TOO_LOW"),
             "RETASK_NAV_CONFIDENCE_TOO_LOW must NOT be logged when XTE is below threshold",
         )
+
+
+# ---------------------------------------------------------------------------
+# IT-ROLLBACK-01 — TERRAIN_GEN_FAIL, COMMIT_FAIL, RETASK_ROLLBACK payload
+# ---------------------------------------------------------------------------
+
+class TestITRollback01(unittest.TestCase):
+    """
+    IT-ROLLBACK-01: Three rollback trigger paths and full RETASK_ROLLBACK payload.
+
+    (1) TERRAIN_GEN_FAIL → rollback: _terrain_regen_fn raises → RETASK_TERRAIN_GEN_FAILED
+        + RETASK_ROLLBACK with reason=TERRAIN_GEN_FAIL + ETA restored.
+    (2) COMMIT_FAIL → rollback: _px4_upload_fn raises after route found →
+        RETASK_COMMIT_FAILED + RETASK_ROLLBACK with reason=COMMIT_FAIL + ETA restored.
+    (3) Payload completeness: all SRS-required RETASK_ROLLBACK fields present on
+        timeout path.
+
+    Requirements: PLN-02, App-B ROUTING, App-B COMMITTING, App-B ROLLBACK
+    SRS ref:      §4.2 Appendix B
+    Governance:   Code Governance Manual v3.4 §1.3, §1.4, §9.1
+    """
+
+    def setUp(self):
+        self.engine = _make_engine()
+        self.clock  = _make_clock(0.0)
+
+    def tearDown(self):
+        del self.engine, self.clock
+
+    # -----------------------------------------------------------------------
+    # (1) test_terrain_gen_fail_triggers_rollback
+    # -----------------------------------------------------------------------
+
+    def test_terrain_gen_fail_triggers_rollback(self):
+        """
+        _terrain_regen_fn raises RuntimeError → RETASK_TERRAIN_GEN_FAILED logged,
+        RETASK_ROLLBACK logged with reason=TERRAIN_GEN_FAIL, ETA restored.
+
+        Assertions:
+          (a) retask() returns False
+          (b) RETASK_TERRAIN_GEN_FAILED in log
+          (c) RETASK_ROLLBACK in log
+          (d) rollback_event["reason"] == "TERRAIN_GEN_FAIL"
+          (e) rollback_event["eta_s_restored"] == 1500.0
+          (f) planner._eta_s == 1500.0 (ETA restored)
+          (g) rollback_event["restored_terrain_phase"] is not None
+        """
+        def _fail_terrain():
+            raise RuntimeError("terrain fail")
+
+        event_log: List[Dict[str, Any]] = []
+        planner = RoutePlanner(
+            ew_engine        = self.engine,
+            mission_clock    = self.clock,
+            event_log        = event_log,
+            terrain_regen_fn = _fail_terrain,
+        )
+        planner.load_route([_START_WP])
+        planner.nav_mode = RetaskNavMode.CRUISE
+        planner._eta_s   = 1500.0
+
+        result = planner.retask(
+            new_goal_north_m = _GOAL_NORTH,
+            new_goal_east_m  = _GOAL_EAST,
+        )
+
+        # (a)
+        self.assertFalse(result, "retask() must return False on terrain gen failure")
+
+        # (b)
+        terrain_events = _logged_events(event_log, "RETASK_TERRAIN_GEN_FAILED")
+        self.assertEqual(len(terrain_events), 1,
+            "RETASK_TERRAIN_GEN_FAILED must be logged exactly once")
+
+        # (c)
+        rollback_events = _logged_events(event_log, "RETASK_ROLLBACK")
+        self.assertEqual(len(rollback_events), 1,
+            "RETASK_ROLLBACK must be logged exactly once on terrain gen failure")
+
+        # (d)
+        ev = rollback_events[0]
+        self.assertEqual(ev["reason"], "TERRAIN_GEN_FAIL",
+            "RETASK_ROLLBACK reason must be TERRAIN_GEN_FAIL")
+
+        # (e)
+        self.assertAlmostEqual(ev["eta_s_restored"], 1500.0, places=6,
+            msg="RETASK_ROLLBACK eta_s_restored must equal pre-retask ETA")
+
+        # (f)
+        self.assertAlmostEqual(planner._eta_s, 1500.0, places=6,
+            msg="planner._eta_s must be restored to 1500.0 after rollback")
+
+        # (g)
+        self.assertIn("restored_terrain_phase", ev,
+            "RETASK_ROLLBACK must contain restored_terrain_phase field")
+        self.assertIsNotNone(ev["restored_terrain_phase"],
+            "restored_terrain_phase must not be None")
+
+    # -----------------------------------------------------------------------
+    # (2) test_commit_fail_triggers_rollback
+    # -----------------------------------------------------------------------
+
+    def test_commit_fail_triggers_rollback(self):
+        """
+        _px4_upload_fn raises after route found → RETASK_COMMIT_FAILED logged,
+        RETASK_ROLLBACK with reason=COMMIT_FAIL, ETA restored.
+
+        Assertions:
+          (a) retask() returns False
+          (b) RETASK_COMMIT_FAILED in log
+          (c) RETASK_ROLLBACK in log
+          (d) rollback_event["reason"] == "COMMIT_FAIL"
+          (e) rollback_event["eta_s_restored"] == 2000.0
+          (f) planner._eta_s == 2000.0 (ETA restored)
+          (g) RETASK_TERRAIN_GEN_FAILED NOT in log
+        """
+        def _fail_upload(wps):
+            raise RuntimeError("upload fail")
+
+        event_log: List[Dict[str, Any]] = []
+        planner = RoutePlanner(
+            ew_engine     = self.engine,
+            mission_clock = self.clock,
+            event_log     = event_log,
+            px4_upload_fn = _fail_upload,
+        )
+        planner.load_route([_START_WP])
+        planner.nav_mode = RetaskNavMode.CRUISE
+        planner._eta_s   = 2000.0
+
+        result = planner.retask(
+            new_goal_north_m = _GOAL_NORTH,
+            new_goal_east_m  = _GOAL_EAST,
+            cruise_alt_m     = _CRUISE_ALT,
+        )
+
+        # (a)
+        self.assertFalse(result, "retask() must return False on commit failure")
+
+        # (b)
+        commit_events = _logged_events(event_log, "RETASK_COMMIT_FAILED")
+        self.assertEqual(len(commit_events), 1,
+            "RETASK_COMMIT_FAILED must be logged exactly once")
+
+        # (c)
+        rollback_events = _logged_events(event_log, "RETASK_ROLLBACK")
+        self.assertEqual(len(rollback_events), 1,
+            "RETASK_ROLLBACK must be logged exactly once on commit failure")
+
+        # (d)
+        ev = rollback_events[0]
+        self.assertEqual(ev["reason"], "COMMIT_FAIL",
+            "RETASK_ROLLBACK reason must be COMMIT_FAIL")
+
+        # (e)
+        self.assertAlmostEqual(ev["eta_s_restored"], 2000.0, places=6,
+            msg="RETASK_ROLLBACK eta_s_restored must equal pre-retask ETA")
+
+        # (f)
+        self.assertAlmostEqual(planner._eta_s, 2000.0, places=6,
+            msg="planner._eta_s must be restored to 2000.0 after rollback")
+
+        # (g)
+        self.assertFalse(
+            _logged_events(event_log, "RETASK_TERRAIN_GEN_FAILED"),
+            "RETASK_TERRAIN_GEN_FAILED must NOT be logged — terrain regen succeeded",
+        )
+
+    # -----------------------------------------------------------------------
+    # (3) test_rollback_payload_complete
+    # -----------------------------------------------------------------------
+
+    def test_rollback_payload_complete(self):
+        """
+        Timeout path rollback contains all SRS-required RETASK_ROLLBACK fields.
+
+        Triggers timeout via mock clock advancing past RETASK_TIMEOUT_S.
+
+        Assertions (all five SRS-required payload fields):
+          (a) "reason" in rollback_event
+          (b) "eta_s_restored" in rollback_event
+          (c) "restored_terrain_phase" in rollback_event
+          (d) "restored_ew_map_age_ms" in rollback_event
+          (e) "previous_target" in rollback_event (may be None — field must exist)
+        """
+        # Clock: calls 1–5 return 0.0, call 6 returns 20.0 → timeout fires
+        # (call 2 is new snap_ew_age_ms computation — IT-ROLLBACK-01)
+        clock = MagicMock()
+        clock.now.side_effect = [0.0, 0.0, 0.0, 0.0, 0.0, 20.0, 20.0]
+
+        event_log: List[Dict[str, Any]] = []
+        planner = RoutePlanner(
+            ew_engine     = self.engine,
+            mission_clock = clock,
+            event_log     = event_log,
+        )
+        planner.load_route([_START_WP])
+        planner.nav_mode = RetaskNavMode.CRUISE
+
+        planner.retask(
+            new_goal_north_m = _GOAL_NORTH,
+            new_goal_east_m  = _GOAL_EAST,
+        )
+
+        rollback_events = _logged_events(event_log, "RETASK_ROLLBACK")
+        self.assertEqual(len(rollback_events), 1,
+            "RETASK_ROLLBACK must be logged exactly once on timeout")
+        ev = rollback_events[0]
+
+        # (a)
+        self.assertIn("reason", ev,
+            "RETASK_ROLLBACK must contain 'reason' field")
+        # (b)
+        self.assertIn("eta_s_restored", ev,
+            "RETASK_ROLLBACK must contain 'eta_s_restored' field")
+        # (c)
+        self.assertIn("restored_terrain_phase", ev,
+            "RETASK_ROLLBACK must contain 'restored_terrain_phase' field")
+        # (d)
+        self.assertIn("restored_ew_map_age_ms", ev,
+            "RETASK_ROLLBACK must contain 'restored_ew_map_age_ms' field")
+        # (e)
+        self.assertIn("previous_target", ev,
+            "RETASK_ROLLBACK must contain 'previous_target' field (may be None)")
 
 
 # ---------------------------------------------------------------------------
