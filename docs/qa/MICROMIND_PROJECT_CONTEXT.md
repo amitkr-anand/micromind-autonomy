@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 25 April 2026 (QA-055 W2-4: EC-01 evidence artefact Run 1 — all four gates PASS)  
+**Last Updated:** 25 April 2026 (QA-058 UT-PX4-COR-01: checkpoint corruption handling — COR-01..06 PASS)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -56,18 +56,18 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 526/526 certified baseline, HEAD 17330fa (IT-ROLLBACK-01 — TERRAIN_GEN_FAIL + COMMIT_FAIL triggers + RETASK_ROLLBACK payload, 25 Apr 2026) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 532/532 certified baseline, HEAD c3e7838 (UT-PX4-COR-01 — CheckpointCorruptError + CHECKPOINT_CORRUPT event + schema validation, 25 Apr 2026) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment (dev):** Python 3.11 conda micromind-autonomy / Ubuntu 24.04.4 / micromind-node01 (192.168.1.44)
 **Environment (Orin):** mmuser-orin@192.168.1.53 | Python 3.11 conda micromind-autonomy + Python 3.10 conda hil-h3 (LightGlue GPU) | SSH key-based both directions  
 **Test runners:** `run_s5_tests.py` (119), `run_s8_tests.py` (68), `run_bcmp2_tests.py` (90)  
 **Certified baseline runner:** `run_certified_baseline.sh` (includes NM-LG 6 + Gate 7 21) — use before every gate commit and handoff  
-**Total regression baseline:** 526 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
+**Total regression baseline:** 532 tests. Run: bash run_certified_baseline.sh on both dev and Orin.
 
 ---
 
-## 6. Current Programme State (23 April 2026 — updated QA-052)
+## 6. Current Programme State (25 April 2026 — updated QA-058)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -121,6 +121,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 | W2-3 — SAL-3 baseline v1.0 frozen | ✅ CLOSED `57aa994` — SAL3_BASELINE_v1.0.md committed. Deputy 1 authority. FROZEN — no further design changes. SAL3_SCOPE_v1.md superseded. | Docs | CLOSED |
 | W2-4 — EC-01 OFFBOARD 30-minute endurance gate | ✅ CLOSED `8e50cbc` — tests/test_ec01_offboard_endurance.py (@pytest.mark.sitl, excluded from SIL baseline). Live PX4 SITL run 1800 s on micromind-node01. EC01_EVIDENCE_RUN1.md committed. EC01-G1: 100.0000% (≥99.5%) PASS. EC01-G2: loss_count=0 (≤1) PASS. EC01-G3: min=21.00 Hz, mean=21.65 Hz (≥20 Hz every tick) PASS. EC01-G4: N/A — zero OFFBOARD_LOSS events. SIL baseline unchanged 512/512. Deputy 1 rules on gate acceptance. | Code + Evidence | CLOSED (pending Deputy 1 acceptance) |
 | IT-ROLLBACK-01 — TERRAIN_GEN_FAIL + COMMIT_FAIL triggers + RETASK_ROLLBACK payload | ✅ CLOSED `17330fa` — Compliance matrix corrected first (`537fab1`): ROUTING Impl Status → NOT IMPLEMENTED (bare _terrain_regen_fn() at :359, no error handling); COMMITTING Impl Status → NOT IMPLEMENTED (bare _px4_upload_fn() at :478, no error handling). Implementation: (A) snapshot block extended with snap_target=None (_current_target absent — deviation reported), snap_ew_age_ms (clock.now()-based), snap_terrain_phase (hasattr guard for np.ndarray); (B) TERRAIN_GEN_FAIL: _terrain_regen_fn() wrapped in try/except → RETASK_TERRAIN_GEN_FAILED + RETASK_ROLLBACK(reason=TERRAIN_GEN_FAIL) + return False; (C) COMMIT_FAIL: _px4_upload_fn() wrapped in try/except → RETASK_COMMIT_FAILED + RETASK_ROLLBACK(reason=COMMIT_FAIL) + return False; (D) both existing RETASK_ROLLBACK call sites updated to 10-field payload (added reason/previous_target/restored_ew_map_age_ms/restored_terrain_phase). Tests: TestITRollback01 added to test_sb5_phase_b.py — 3 tests (terrain_gen_fail: 7 assertions, commit_fail: 7 assertions, payload_complete: 5 assertions). SB-04 clock mock updated: +1 clock.now() call at snapshot block (side_effect 6→7 items). Baseline: 523 → 526/526. Deputy 1 rules on gate acceptance. | Code | CLOSED (pending Deputy 1 acceptance) |
+| UT-PX4-COR-01 — Checkpoint corruption handling + CHECKPOINT_CORRUPT event + schema validation | ✅ CLOSED `c3e7838` — `CheckpointCorruptError` exception added. `Checkpoint.from_dict()` validates 7 mandatory fields and `schema_version='1.2'` — raises `CheckpointCorruptError` with field name / version in message. `CheckpointStore._emit_corrupt(path, reason)` emits `CHECKPOINT_CORRUPT` (WARNING, req_id=PX4-05, path, reason, timestamp_ms via optional `clock_fn`). `_load()` wraps read / JSON / schema in separate try/except: io_error path, invalid_json path, schema_invalid path — each calls `_emit_corrupt` before raising. `restore_latest()` catches `CheckpointCorruptError` and returns None. `clock_fn: Optional[Callable[[], float]] = None` added to `CheckpointStore.__init__` (backward compatible). Tests: `TestUTPX4COR01` added to `test_sb5_phase_a.py` — COR-01: missing field raises (field named in msg); COR-02: wrong schema_version raises (version in msg); COR-03: invalid JSON → CHECKPOINT_CORRUPT(reason=invalid_json) + raises; COR-04: schema_invalid → CHECKPOINT_CORRUPT(reason=schema_invalid) + raises; COR-05: restore_latest() returns None on corrupt (no raise); COR-06: CHECKPOINT_CORRUPT event has all 7 required fields (event, req_id, severity, module_name, path, reason, timestamp_ms). SRS_COMPLIANCE_MATRIX.md: CHECKPOINT_RESTORE BLOCKED→CLOSED, UT-PX4-COR-01 NOT STARTED→PASSED, gap row PARTIAL→CLOSED. Baseline: 526 → 532/532. | Code | CLOSED (pending Deputy 1 acceptance) |
 | W2-2 — PLN-02 R-03 ETA snapshot/restore + RETASK_ROLLBACK event | ✅ CLOSED `e7d3d42` — OI-56 fix. `_eta_s: float = 0.0` and `_cruise_speed_ms: float` added to RoutePlanner.__init__() (param `cruise_speed_ms`, default `CRUISE_SPEED_MS_DEFAULT = 27.78` m/s = AVP-02 100 km/h). R-03 snapshot block adds 5th variable `snap_eta_s`. `_rollback()` accepts `snap_eta_s_val` parameter; restores all 5 state components. Nominal success path: ETA computed from 2-D route length / cruise speed. RETASK_ROLLBACK event emitted after every `_rollback()` call (both timeout + dead-end paths), with `eta_s_restored` payload; RETASK_TIMEOUT_ROLLBACK retained. `test_r03_eta_rollback` added: dead-end path, 4 assertions — ETA restored, event present, eta_s_restored field present, value correct. Baseline: 511 → 512/512. Deviation: `self._config['cruise_speed_ms']` does not exist; implemented as constructor parameter per existing injection pattern. Formula corrected: route_length_m / cruise_speed_ms (not km/ms as spec wrote). | Code | CLOSED |
 | Gate 6 — Jammu-Leh Tactical Corridor (NAV-17 through NAV-20) | ✅ COMPLETE | JAMMU_LEH corridor added to core/navigation/corridors.py: 10 WPs, 330 km, NH-1 Jammu→Leh via Zoji La, gnss_denial km 30→330, 4 terrain zones. 3 GLO-30 COP30 tiles (TILE1/2/3) stitched via symlinks + DEMLoader.from_directory(). NAV-17..20 PASS (22/22 gate tests). Monte Carlo N=300, master_seed=42: TRN P99 at km=330 = 96.9m (INS 540.7m, 82.1% reduction). Key finding: 60km suppression gap km=60–120 (Kashmir valley floor) — VIO bridging required. Terminal suppression km=300–330 (Ladakh plateau) — documented product limitation. Gate 6 acceptance: C1 PASS (96.9m < 150m), C2 PASS (82.1% ≥ 70%), C3 PASS (71.5m < 100m), C4 PASS. GATE6_CORRIDOR_FINDINGS.md committed. SIL 565/565 (479 baseline + pre-existing failures pre-date this session). | QA-039, `728071f` |
 | OI-45 Same-Modal TRN Validation | ✅ COMPLETE | validate_same_modal_trn.py committed (`afb837a`). BlenderFrameRefLoader (DEMLoader-compatible) + PassthroughHillshadeGen deliver unshifted Blender frame as Sentinel-2 same-modal reference. Sentinel-2 source texture: simulation/terrain/shimla/shimla_texture.png, 512×512, 19.53 m/px — scale finding: 19.53 m/px too coarse for direct texture matching at 150 m AGL (173 m footprint ≈ 8.9 px). Same-modal proof via self-offset method: query = frame shifted by (row=20, col=25) = (+5.41 m N, −6.77 m E); reference = original frame. Results: 12/12 ACCEPTED, peaks 0.9874–0.9932 (mean 0.9903), offset recovery error 0.00 m. Cross-modal baseline: 0.09–0.11 (0/12 accepted). OI-44 confirmed ARCHITECTURAL (cross-modal NCC ceiling is expected for RGB vs DEM hillshade). OI-45 CLOSED: AD-01 validated, same-modality >> cross-modal. SIL 457/457. | QA-036 |
@@ -167,7 +168,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | S6 | test_s6_zpi_cems | 36 |
 | Pre-HIL RC | test_prehil_rc11, test_prehil_rc7, test_prehil_rc8 | 7 |
 | S5 adversarial | test_s5_l10s_se_adversarial | 6 |
-| SB-5 Phase A | test_sb5_phase_a | 7 |
+| SB-5 Phase A | test_sb5_phase_a | 14 |
 | SB-5 Phase B | test_sb5_phase_b | 9 |
 | SB-5 EC01 | test_sb5_ec01 | 3 |
 | Deputy 2 adversarial | test_sb5_adversarial_d2 | 5 |
@@ -180,7 +181,7 @@ Stage-2 GO verdict issued 21 March 2026. Drift 0.94–1.01 m/km (3.6% variance) 
 | Gate 6 Jammu-Leh corridor | test_gate6_jammu_leh | 22 |
 | NavigationManager LightGlue | test_navigation_manager_lightglue | 6 |
 | Gate 7 SAL corridor | test_gate7_sal_corridor | 21 |
-| **TOTAL** | | **506** |
+| **TOTAL** | | **513** |
 
 **Excluded from baseline (scope/CI reasons):**
 

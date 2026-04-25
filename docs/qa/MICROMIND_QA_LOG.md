@@ -4,6 +4,46 @@
 
 ---
 
+## Entry QA-058 — 25 April 2026
+**Session Type:** Week 2 Day 4 (cont.) — UT-PX4-COR-01 implementation
+**Governance ref:** Code Governance Manual v3.4; SRS §8.5 PX4-05 Appendix C
+**HEAD at open:** `17330fa` | **HEAD at close:** `c3e7838`
+**Baseline at open:** 526/526 | **Baseline at close:** 532/532
+
+### Work Completed
+
+**UT-PX4-COR-01 implementation (`c3e7838`):**
+
+`core/checkpoint/checkpoint.py`:
+- `CheckpointCorruptError(Exception)` exception class added.
+- `Checkpoint.from_dict()`: validates MANDATORY_FIELDS set (7 fields) and `schema_version == '1.2'`; raises `CheckpointCorruptError` with field name / version in message.
+- `CheckpointStore.__init__()`: `clock_fn: Optional[Callable[[], float]] = None` parameter added (backward compatible); stored as `self._clock_fn`.
+- `CheckpointStore._emit_corrupt(path, reason)`: appends `CHECKPOINT_CORRUPT` event dict (WARNING, req_id=PX4-05, module_name=CheckpointStore, path, reason, timestamp_ms via clock_fn or 0).
+- `CheckpointStore._load()`: three separate try/except blocks — (1) FileNotFoundError/PermissionError → emit_corrupt(reason="io_error: …") + raise; (2) JSONDecodeError → emit_corrupt(reason="invalid_json") + raise; (3) CheckpointCorruptError → emit_corrupt(reason="schema_invalid") + re-raise. On success: CHECKPOINT_RESTORED event unchanged.
+- `CheckpointStore.restore_latest()`: wraps `_load()` in try/except CheckpointCorruptError, returns None on corruption.
+
+Tests — `TestUTPX4COR01` in `tests/test_sb5_phase_a.py` (6 tests):
+- `test_cor01_missing_mandatory_field_raises`: del waypoint_index → CheckpointCorruptError; "waypoint_index" in str(exception)
+- `test_cor02_wrong_schema_version_raises`: schema_version="1.0" → CheckpointCorruptError; "1.0" in str(exception)
+- `test_cor03_invalid_json_emits_corrupt_event`: bad JSON file → raises + CHECKPOINT_CORRUPT(reason="invalid_json")
+- `test_cor04_schema_invalid_emits_corrupt_event`: missing mission_abort_flag → raises + CHECKPOINT_CORRUPT(reason="schema_invalid")
+- `test_cor05_restore_latest_returns_none_on_corrupt`: bad JSON file → restore_latest() == None (no raise)
+- `test_cor06_corrupt_event_has_required_fields`: 7 required fields confirmed; req_id/severity/module_name correct; timestamp_ms=10000 (clock_fn=10.0)
+
+SRS_COMPLIANCE_MATRIX.md:
+- CHECKPOINT_RESTORE row: BLOCKED → CLOSED, Tested and Verified
+- UT-PX4-COR-01 test registry row: NOT STARTED → PASSED
+- Gap analysis "Corrupted checkpoint file at restore": PARTIAL → CLOSED
+
+### Gate Results
+- test_sb5_phase_a.py: **14/14 PASS** (8 pre-existing + 6 new COR tests)
+- Certified baseline node01: **532/532 PASS**
+
+### Open Items Status
+- UT-PX4-COR-01: CLOSED pending Deputy 1 gate acceptance.
+
+---
+
 ## Entry QA-057 — 25 April 2026
 **Session Type:** Week 2 Day 4 (cont.) — IT-ROLLBACK-01 implementation
 **Governance ref:** Code Governance Manual v3.4; SRS §4.2 PLN-02 Appendix B
