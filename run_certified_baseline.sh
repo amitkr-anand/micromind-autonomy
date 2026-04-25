@@ -1,6 +1,6 @@
 #!/bin/bash
 # MicroMind Certified SIL Baseline
-# 536 tests — run before every gate commit and every handoff
+# 542 tests — run before every gate commit and every handoff
 # G-14 (AT-6 memory growth slope) excluded — requires >= 1hr dedicated run
 # CM-01 (gate6_cross_modal frame quality) excluded — pre-existing failure, OI-46 class
 
@@ -54,5 +54,8 @@ $CONDA python -m pytest tests/test_gate7_sal_corridor.py -v
 echo "=== IT-D6-TIMEOUT-01 — D6 OffboardRecoveryFSM (4) ==="
 $CONDA python -m pytest tests/test_it_d6_timeout.py -v
 
+echo "=== UT-RS-03 — ProcessWatchdog restartability decision logic (6) ==="
+$CONDA python -m pytest tests/test_ut_rs03.py -v
+
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 536/536"
+echo "Expected: 542/542"
