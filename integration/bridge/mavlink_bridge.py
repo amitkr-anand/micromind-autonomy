@@ -31,13 +31,29 @@ import struct
 import threading
 import time
 from enum import Enum, auto
-from typing import Optional
+from typing import Callable, Optional
 
-import pymavlink.mavutil as mavutil
+try:
+    import pymavlink.mavutil as mavutil
+except ImportError:  # SIL environment — pymavlink absent; constants and stubs remain usable
+    mavutil = None  # type: ignore[assignment]
 
 from integration.bridge.time_reference import TimeReference
 from integration.bridge.bridge_logger import BridgeLogger
 from integration.bridge.reboot_detector import RebootDetector
+
+
+# ---------------------------------------------------------------------------
+# Module-level constants (importable by tests and external callers)
+# ---------------------------------------------------------------------------
+
+# D10: PX4 HOLD mode (AUTO_LOITER) — (sub_mode=3 << 24) | (main_mode=4 << 16)
+PX4_HOLD_CUSTOM_MODE: int = 50_593_792
+
+
+def _mono_ms() -> int:
+    """Monotonic wall-clock milliseconds (SR-01 compliant, not simulation clock)."""
+    return int(time.monotonic() * 1000)
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +179,11 @@ class MAVLinkBridge:
             clock_fn=self._time_ref.time_boot_ms,
         )
 
+        # D10: HOLD mode recovery — registered externally via register_hold_recovery()
+        self._hold_recovery_fn: Optional[Callable[[int], bool]] = None
+        self._last_reboot_ts_ms: Optional[int] = None   # set on PX4_REBOOT_DETECTED
+        self._hold_recovery_triggered: bool = False      # reset per reboot cycle
+
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
@@ -261,6 +282,15 @@ class MAVLinkBridge:
             daemon=True,
         )
         self._t_mon.start()
+
+    def register_hold_recovery(self, fn: Callable[[int], bool]) -> None:
+        """Register D10 HOLD recovery callback.
+
+        fn(ts_ms) is invoked in a dedicated daemon thread when T-MON detects
+        PX4 in HOLD mode following a reboot.  T-MON dispatches it; T-MON
+        remains read-only per CGM §1.3.
+        """
+        self._hold_recovery_fn = fn
 
     def update_setpoint(self, x_m: float, y_m: float, z_m: float) -> None:
         """Update the current NED setpoint from T-NAV. Non-blocking."""
@@ -435,6 +465,9 @@ class MAVLinkBridge:
                                 self._logger.log("PX4_REBOOT_DETECTED", evt)
                             except Exception:
                                 pass   # Never crash T-MON on logger failure
+                            # D10: record reboot timestamp; reset recovery trigger for this cycle
+                            self._last_reboot_ts_ms = _mono_ms()
+                            self._hold_recovery_triggered = False
                     new_mode = msg.custom_mode
                     if new_mode != self._last_custom_mode:
                         expected = (new_mode == self._OFFBOARD_CUSTOM_MODE)
@@ -444,6 +477,20 @@ class MAVLinkBridge:
                             expected=expected,
                         )
                         self._last_custom_mode = new_mode
+
+                    # D10: HOLD mode detection after reboot — dispatch recovery thread
+                    if (msg.custom_mode == PX4_HOLD_CUSTOM_MODE
+                            and self._last_reboot_ts_ms is not None
+                            and not self._hold_recovery_triggered):
+                        self._hold_recovery_triggered = True
+                        ts_ms = _mono_ms()
+                        if self._hold_recovery_fn is not None:
+                            threading.Thread(
+                                target=self._hold_recovery_fn,
+                                args=(ts_ms,),
+                                daemon=True,
+                                name="d10_hold_recovery",
+                            ).start()
 
                 elif msg.get_type() == 'LOCAL_POSITION_NED':
                     # FM-7: track position updates for EKF2 alignment check

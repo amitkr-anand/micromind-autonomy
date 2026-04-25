@@ -28,6 +28,7 @@ $CONDA python -m pytest \
   tests/test_sb5_phase_b.py \
   tests/test_sb5_ec01.py \
   tests/test_sb5_adversarial_d2.py \
+  tests/test_it_d10_gnss.py \
   tests/test_s9_nav01_pass.py \
   tests/test_gate2_navigation.py \
   tests/test_gate3_fusion.py -v
@@ -51,4 +52,4 @@ echo "=== Gate 7 SAL corridor — G7-01..05 (21) ==="
 $CONDA python -m pytest tests/test_gate7_sal_corridor.py -v
 
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 513/513"
+echo "Expected: 517/517"
