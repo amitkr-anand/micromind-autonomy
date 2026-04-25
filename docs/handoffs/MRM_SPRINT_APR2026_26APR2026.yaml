@@ -1,0 +1,361 @@
+# docs/handoffs/MRM_SPRINT_APR2026_26APR2026.yaml
+manifest_version: "1.0"
+handoff_type: DEPUTY1_TO_DEPUTY2
+timestamp: "2026-04-26T00:00:00Z"
+sprint_reference: "April 2026 Sprint — Weeks 1 & 2"
+
+deputy1_session_id: "W1-W2-APR2026"
+baseline_at_handoff:
+  head_commit: "451b92b"
+  sil_count: 542
+  sil_result: PASS
+
+# ─── FILES CHANGED THIS SPRINT ───────────────────────────────
+
+files_changed:
+
+  - path: "core/route_planner/route_planner.py"
+    action: MODIFIED
+    requirements: ["PLN-02 R-03", "IT-ROLLBACK-01"]
+    changes:
+      - "_eta_s: float attribute added to RoutePlanner.__init__()"
+      - "_cruise_speed_ms: float constructor parameter (default 27.78 m/s = AVP-02 100 km/h)"
+      - "snap_eta_s, snap_target, snap_ew_age_ms, snap_terrain_phase added to snapshot block"
+      - "_rollback() gains snap_eta_s_val parameter — restores _eta_s as 5th action"
+      - "RETASK_ROLLBACK event payload extended to 10 fields including reason/previous_target/restored_ew_map_age_ms/restored_terrain_phase"
+      - "TERRAIN_GEN_FAIL path: try/except around _terrain_regen_fn(), RETASK_TERRAIN_GEN_FAILED event, _rollback() call"
+      - "COMMIT_FAIL path: try/except around _px4_upload_fn(), RETASK_COMMIT_FAILED event, _rollback() call"
+    frozen_files_modified: []
+    rationale: |
+      R-03 ETA restore was absent — OI-56. ETA is a derived value but SRS Appendix B
+      ROLLBACK action (5) explicitly requires Restore ETA. Implemented as live attribute
+      computed from route_length_m / cruise_speed_ms. TERRAIN_GEN_FAIL and COMMIT_FAIL
+      rollback triggers were entirely absent from production code despite compliance matrix
+      claiming "Implemented" — corrected. RETASK_ROLLBACK payload was missing four
+      SRS-required fields — extended to 10 fields.
+
+  - path: "integration/bridge/hold_recovery.py"
+    action: CREATED
+    requirements: ["PX4-04 D10"]
+    changes:
+      - "HoldRecoveryHandler class — D10 HOLD mode recovery"
+      - "attempt_offboard_recovery(ts_ms): 3 retries at 2s, 6s total window"
+      - "Events: D10_HOLD_DETECTED, D10_OFFBOARD_RESTORED, D10_RETRY, D10_RECOVERY_FAILED"
+      - "PX4_HOLD_CUSTOM_MODE = 50_593_792 constant in mavlink_bridge.py"
+      - "T-MON HOLD detection block dispatches daemon thread (read-only constraint preserved)"
+    frozen_files_modified: []
+    rationale: |
+      D10 was completely absent — "Documented Only" status. PX4 returns in HOLD
+      (AUTO_LOITER, custom_mode=50_593_792) after reboot. Without this handler,
+      a post-reboot HOLD condition would leave the vehicle in HOLD indefinitely.
+      T-MON read-only constraint (CGM §1.3) preserved by dispatching recovery to
+      a daemon thread via registered callback — same pattern as OffboardRecoveryFSM.
+
+  - path: "integration/bridge/offboard_recovery_fsm.py"
+    action: CREATED
+    requirements: ["PX4-01 D1-D6", "EC-01"]
+    changes:
+      - "OffboardRecoveryFSM class — D1→D2→D3→D6 timeout chain"
+      - "D2: 5s retry at 1Hz. D3: SHM_ENTRY + 5s retry. D6: OFFBOARD_UNRECOVERED + abort_fn()"
+      - "Events: OFFBOARD_LOSS, SHM_ENTRY, SHM_EXIT, OFFBOARD_RESTORED, OFFBOARD_UNRECOVERED"
+      - "SR-01 compliant: threading.Event().wait() throughout — no time.sleep(), no self._clock.now()"
+      - "on_offboard_loss() dispatches daemon thread — T-MON remains read-only"
+    frozen_files_modified: []
+    rationale: |
+      D6 (OFFBOARD_UNRECOVERED + ABORT_MISS after 10s) was entirely absent — compliance
+      matrix falsely claimed "Implemented | Partially Tested". OFFBOARD_UNRECOVERED and
+      ABORT_MISS did not exist in any production file. This is the D1→D2→D3→D6
+      timeout escalation chain. abort_fn() callback keeps ABORT_MISS ownership
+      with the caller — FSM owns only the timeout and signalling. SR-01 compliance
+      is critical: the retry loop must not use simulation clock in synchronous context.
+
+  - path: "core/checkpoint/checkpoint.py"
+    action: MODIFIED
+    requirements: ["PX4-05", "EC-02", "Appendix C CHECKPOINT_RESTORE"]
+    changes:
+      - "CheckpointCorruptError exception class added"
+      - "Checkpoint.from_dict() validates 7 mandatory fields + schema_version == '1.2'"
+      - "_emit_corrupt(path, reason) helper emits CHECKPOINT_CORRUPT WARNING event"
+      - "_load() wrapped in try/except for FileNotFoundError, PermissionError, JSONDecodeError, CheckpointCorruptError"
+      - "restore_latest() returns None on CheckpointCorruptError (does not propagate)"
+      - "CHECKPOINT_RESTORED event extended with checkpoint_age_ms and waypoint_index fields"
+    frozen_files_modified: []
+    rationale: |
+      _load() was 3 lines with no error handling. Silent defaults on missing fields
+      was the most dangerous case — mission_abort_flag missing → defaults False →
+      mission resumes autonomously when it should abort. Schema version check prevents
+      v1.0 checkpoint silently restoring as v1.2 with safety fields at dangerous defaults.
+      PROC_RESTART on corruption (SRS Appendix C) is approximated in SIL by returning
+      None from restore_latest() and emitting CHECKPOINT_CORRUPT — real PROC_RESTART
+      requires watchdog (Phase D).
+
+  - path: "core/watchdog/process_watchdog.py"
+    action: CREATED
+    requirements: ["RS-03", "E-03"]
+    changes:
+      - "PROCESS_REGISTRY: 6 processes with restartability_class assignments"
+      - "ProcessWatchdog class — decision logic for RESTARTABLE_WITH_SHM / RESTARTABLE_WITHOUT_SHM / NOT_RESTARTABLE"
+      - "on_process_failure() dispatches daemon thread"
+      - "NOT_RESTARTABLE path: ESKF_CORE_FAILURE (CRITICAL) + abort_fn() immediately"
+      - "RESTARTABLE_WITH_SHM: SHM_ENTRY + restart loop + checkpoint_restore_fn + NAV_RESTORED"
+      - "RESTARTABLE_WITHOUT_SHM: restart loop only"
+      - "All attempts fail: PROCESS_RESTART_FAILED + abort_fn()"
+    frozen_files_modified: []
+    rationale: |
+      RS-03 watchdog was entirely absent — compliance matrix falsely claimed
+      "Implemented". restartability_class existed only in documentation. This
+      implements the decision logic that a real watchdog would execute on process
+      failure. Real SIGKILL stimulus (ST-RESTART-01) requires a production watchdog
+      daemon — Phase D. The NOT_RESTARTABLE path (ESKFCore) must trigger ABORT_MISS
+      immediately with no restart attempt — this is a safety-critical invariant.
+
+  - path: "integration/bridge/reboot_detector.py"
+    action: MODIFIED
+    requirements: ["PX4-04 D7"]
+    changes:
+      - "PX4_REBOOT_DETECTED event extended with seq_reset_value and recovery_start_ms fields"
+    frozen_files_modified: []
+    rationale: |
+      SRS §8.4 PX4-04 requires seq_reset_value in the D7 detection event.
+      recovery_start_ms is required for the D7→D8 timing gate (≤15s window).
+      Both fields were absent from the existing event payload.
+
+  - path: "core/mission_manager/mission_manager.py"
+    action: MODIFIED
+    requirements: ["PX4-04 D8a"]
+    changes:
+      - "AUTONOMOUS_RESUME_APPROVED event added alongside MISSION_RESUME_AUTHORISED"
+      - "pending_operator_clearance_required=False payload field added"
+    frozen_files_modified: []
+    rationale: |
+      SRS §8.4 D8a gate requires AUTONOMOUS_RESUME_APPROVED as the canonical
+      event name. MISSION_RESUME_AUTHORISED was the existing event — both are
+      now emitted. IT-D9-CHAIN-01 gates on AUTONOMOUS_RESUME_APPROVED.
+
+  - path: "docs/qa/SAL3_BASELINE_v1.0.md"
+    action: CREATED
+    requirements: ["AD-24 SAL-3"]
+    changes:
+      - "SAL-3 architecture baseline frozen — activation logic, gates, trust model, safety invariants"
+      - "Five safety invariants. Six simulation test hooks. Four implementation clarifications."
+    frozen_files_modified: []
+    rationale: |
+      SAL-3 is AVP-03 scope (Jammu-Leh corridor). Architecture frozen before
+      implementation to prevent scope creep. The co-directional map staleness
+      error is an accepted known limitation. Implementation cannot begin until
+      seven prerequisites are met (documented in baseline).
+
+# ─── REQUIREMENTS ADDRESSED ──────────────────────────────────
+
+requirements_addressed:
+  - req_id: "PLN-02 R-03"
+    description: "ETA snapshot/restore in _rollback()"
+    srs_section: "§4.2 Appendix B"
+    status: CLOSED
+  - req_id: "PLN-02 Appendix B ROUTING/COMMITTING"
+    description: "TERRAIN_GEN_FAIL and COMMIT_FAIL rollback triggers"
+    srs_section: "§4.2 Appendix B"
+    status: CLOSED
+  - req_id: "PX4-04 D10"
+    description: "HOLD mode recovery after reboot"
+    srs_section: "§8.4"
+    status: CLOSED
+  - req_id: "PX4-01 D1–D6"
+    description: "OFFBOARD timeout escalation chain"
+    srs_section: "§8.1"
+    status: CLOSED
+  - req_id: "PX4-05 / Appendix C"
+    description: "Checkpoint corruption handling"
+    srs_section: "§8.5"
+    status: CLOSED
+  - req_id: "RS-03 / E-03"
+    description: "Process watchdog decision logic + restartability classification"
+    srs_section: "§8.3 / §12"
+    status: PARTIAL
+
+# ─── GATE SUMMARY ────────────────────────────────────────────
+
+gates:
+  - id: "test_r03_eta_rollback"
+    req: "PLN-02 R-03"
+    result: PASS
+    commit: "e7d3d42"
+  - id: "test_terrain_gen_fail_triggers_rollback"
+    req: "PLN-02 ROUTING"
+    result: PASS
+    commit: "17330fa"
+  - id: "test_commit_fail_triggers_rollback"
+    req: "PLN-02 COMMITTING"
+    result: PASS
+    commit: "17330fa"
+  - id: "test_rollback_payload_complete"
+    req: "PLN-02 Appendix B"
+    result: PASS
+    commit: "17330fa"
+  - id: "IT-D10-GNSS-01 (4 tests)"
+    req: "PX4-04 D10"
+    result: PASS
+    commit: "711bf6d"
+  - id: "IT-D6-TIMEOUT-01 (4 tests)"
+    req: "PX4-01 D1–D6"
+    result: PASS
+    commit: "6a30295"
+  - id: "IT-D6-SITL-01 (5 gates)"
+    req: "PX4-01 D6 SITL"
+    result: PASS
+    commit: "a3fd35e"
+  - id: "UT-PX4-COR-01 (6 tests)"
+    req: "PX4-05 Appendix C"
+    result: PASS
+    commit: "c3e7838"
+  - id: "IT-D9-CHAIN-01 (4 gates)"
+    req: "PX4-04 D7–D9"
+    result: PASS
+    commit: "208a5a1"
+  - id: "UT-RS-03 (6 tests)"
+    req: "RS-03 E-03"
+    result: PARTIAL
+    commit: "3fc84bc"
+    caveat: "Decision logic only. ST-RESTART-01 real SIGKILL stimulus Phase D."
+  - id: "EC-01 30-min OFFBOARD (4 gates)"
+    req: "PX4-01 EC-01"
+    result: PASS
+    commit: "6ab9f4c"
+  - id: "W2-7 OFFBOARD hardening (2 tests)"
+    req: "EC-01 G4"
+    result: PASS
+    commit: "0040690"
+  - id: "W2-8 GNSS-denied retask (4 tests)"
+    req: "PLN-02 IT-PLN-02"
+    result: PASS
+    commit: "4940826"
+
+# ─── TEST GUIDANCE FOR DEPUTY 2 ──────────────────────────────
+
+test_guidance:
+
+  priority_modules:
+    - module: "OffboardRecoveryFSM"
+      file: "integration/bridge/offboard_recovery_fsm.py"
+      reason: "Safety-critical — D6 path leads to ABORT_MISS. Test boundary conditions aggressively."
+      adversarial_scenarios:
+        - "send_set_mode_fn raises exception mid-retry (not just returns False)"
+        - "send_set_mode_fn returns True on attempt 10 (last possible before timeout)"
+        - "on_offboard_loss() called twice in rapid succession (duplicate loss events)"
+        - "abort_fn raises an exception — does FSM handle gracefully?"
+        - "Timing: d2_timeout_s=0, d3_timeout_s=0 — immediate D6"
+
+    - module: "ProcessWatchdog"
+      file: "core/watchdog/process_watchdog.py"
+      reason: "NOT_RESTARTABLE path must never attempt restart — safety invariant."
+      adversarial_scenarios:
+        - "restart_fn raises exception — does NOT_RESTARTABLE path still return immediately?"
+        - "checkpoint_restore_fn returns True but takes 15s (beyond restore_timeout_s=10s)"
+        - "on_process_failure called for same process twice simultaneously"
+        - "PROCESS_REGISTRY modified externally between calls"
+        - "max_restart_attempts=0 — does it go directly to PROCESS_RESTART_FAILED?"
+
+    - module: "CheckpointCorruptError / _load()"
+      file: "core/checkpoint/checkpoint.py"
+      reason: "Silent defaults on missing fields is a safety risk — push boundary cases."
+      adversarial_scenarios:
+        - "Valid JSON but all values are wrong types (e.g. mission_abort_flag=42)"
+        - "schema_version present but None"
+        - "Checkpoint file truncated mid-write (partial JSON — e.g. valid up to 80%)"
+        - "Checkpoint file is a directory path (not a file)"
+        - "restore_latest() called when store directory contains mix of valid and corrupt files"
+        - "All 7 mandatory fields present but schema_version='2.0'"
+
+    - module: "HoldRecoveryHandler"
+      file: "integration/bridge/hold_recovery.py"
+      reason: "3-retry timing chain — test edge cases at retry boundaries."
+      adversarial_scenarios:
+        - "send_set_mode_fn returns True on exactly attempt 3 (last retry)"
+        - "total_window_s elapsed before first retry completes"
+        - "attempt_offboard_recovery called while a previous call is still running"
+
+    - module: "_rollback() payload + TERRAIN_GEN_FAIL/COMMIT_FAIL"
+      file: "core/route_planner/route_planner.py"
+      reason: "10-field payload — verify all fields present under each trigger path."
+      adversarial_scenarios:
+        - "_terrain_regen_fn raises a non-Exception (e.g. BaseException subclass)"
+        - "_px4_upload_fn raises after partial upload (route partially committed)"
+        - "RETASK_ROLLBACK emitted on TERRAIN_GEN_FAIL — verify reason='TERRAIN_GEN_FAIL' not 'DEAD_END'"
+        - "Verify _eta_s is NOT updated on TERRAIN_GEN_FAIL (rollback must restore it)"
+
+  fault_injection_applicable:
+    - "FI-01: GNSS spoof during retask — verify TERRAIN_GEN_FAIL path fires correctly"
+    - "FI-05: Thread restart during OffboardRecoveryFSM D2 phase"
+    - "FI-07: ESKF core metric corruption — verify NOT_RESTARTABLE path triggers ABORT_MISS"
+
+  jitter_seed_protocol: |
+    Deputy 1 will provide jitter_seed at start of Exchange B session.
+    Agent 3 passes seed to all FaultInjectionProxy adversarial calls.
+    Seed not disclosed to Agent 4 until QFR is submitted.
+
+  wall_clock_gates:
+    - "IT-D6-SITL-01 G5: 10s ≤ elapsed ≤ 13s — must be measured on node01, not mocked"
+    - "IT-D9-CHAIN-01 G1: ≤3s detection — must be measured on node01"
+    - "HoldRecoveryHandler: retry_interval_s=2.0 — timing tests must use real threading.Event().wait()"
+
+# ─── KNOWN CAVEATS ───────────────────────────────────────────
+
+caveats:
+  - "UT-RS-03: Decision logic only. Real SIGKILL stimulus (ST-RESTART-01) is Phase D."
+  - "CheckpointCorruptError: PROC_RESTART approximated as return None. Real watchdog restart is Phase D."
+  - "OffboardRecoveryFSM abort_fn: FSM calls abort_fn(). Caller emits ABORT_MISS. ABORT_MISS not in FSM tests."
+  - "HoldRecoveryHandler: snap_target=None (no _current_target attribute on RoutePlanner — accepted deviation, field present)."
+  - "IT-D6-SITL-01: Link-severed semantics used (send_set_mode_fn returns False). PX4 ACKs SET_MODE regardless of setpoint staleness."
+  - "SAL-3 baseline: Co-directional map staleness error is an accepted known limitation — bounded EKF influence is the only real-time protection."
+
+# ─── FROZEN FILES ────────────────────────────────────────────
+
+frozen_files_modified: []
+frozen_file_registry:
+  - path: "core/ekf/error_state_ekf.py"
+    sha256: "aaeeb0d7617ff7352089b36aee8071ee9f56811ba175c6d939f802bbbc9223a5"
+  - path: "core/fusion/vio_mode.py"
+    sha256: "6c8e9ae0df2472920425e99f59a22e73263f7e57c38bef9c047110fc5accedea"
+  - path: "core/fusion/frame_utils.py"
+    sha256: "6425bd9b8d05e3bacca18d51eba1b552792f8a97039a9fab23237923d078f662"
+  - path: "core/bim/bim.py"
+    sha256: "9f98927252d5019bc14b3a1efb344b07532f9afa7aa8b185b685bf56ff0e4116"
+  - path: "scenarios/bcmp1/bcmp1_runner.py"
+    sha256: "421b8e413e7d8c39ec5cf168586dd6490d0e8593e03c471a2f00f9b683f74696"
+
+# ─── DEPUTY 1 SELF-ASSESSMENT ────────────────────────────────
+
+deputy1_checklist:
+  - item: "Req ID cited in all module headers"
+    status: PASS
+  - item: "No magic numbers — cruise speed from constructor param, HOLD mode constant named"
+    status: PASS
+  - item: "Logging schema compliant — all events carry req_id, severity, module_name, timestamp_ms"
+    status: PASS
+  - item: "SR-01 compliant — threading.Event().wait() in all retry loops, no simulation clock in synchronous context"
+    status: PASS
+  - item: "Forbidden behaviours checked — T-MON read-only preserved in all bridge modifications"
+    status: PASS
+  - item: "No frozen files modified — verified by sha256sum at each session start"
+    status: PASS
+  - item: "False compliance claims corrected before implementation — D6, TERRAIN_GEN_FAIL, COMMIT_FAIL, RS-03, E-03"
+    status: PASS
+  - item: "Matrix corrections committed BEFORE implementation commits in all cases"
+    status: PASS
+
+# ─── DECLARATION ─────────────────────────────────────────────
+
+deputy1_declaration: |
+  Deputy 1 certifies this sprint's modules are ready for Deputy 2 QA.
+  All self-regulation checks (CGM v3.4 §2.6) have been applied.
+  SIL baseline: 542/542 at HEAD 451b92b.
+  Five false compliance claims were identified and corrected before
+  implementation — this is the most significant governance finding
+  of the sprint. Deputy 2 should treat all "Implemented" claims in
+  the compliance matrix with scepticism and verify against actual
+  code before accepting any gate.
+
+  Priority modules for adversarial testing:
+  (1) OffboardRecoveryFSM — safety-critical D6 path
+  (2) ProcessWatchdog — NOT_RESTARTABLE invariant
+  (3) CheckpointCorruptError — silent defaults safety gap
