@@ -51,4 +51,4 @@ echo "=== Gate 7 SAL corridor — G7-01..05 (21) ==="
 $CONDA python -m pytest tests/test_gate7_sal_corridor.py -v
 
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 512/512"
+echo "Expected: 513/513"
