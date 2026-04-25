@@ -2967,3 +2967,53 @@ def _rollback(snap_eta_s_val: float) -> None:
 | core/fusion/frame_utils.py | 6425bd9b... | 6425bd9b... | ✅ |
 | core/bim/bim.py | 9f989272... | 9f989272... | ✅ |
 | scenarios/bcmp1/bcmp1_runner.py | 421b8e41... | 421b8e41... | ✅ |
+
+---
+
+## Entry QA-056 — 25 April 2026
+**Session Type:** Week 2 Day 2 (continued) — W2-7/W2-8 + OI-57 close
+**Governance ref:** Code Governance Manual v3.4; Anti-Bias Protocol
+**HEAD at close:** 4940826
+
+### Work Completed
+
+**OI-57 CLOSED:** Orin reachable at 192.168.1.53. 24 commits behind
+at session check. Synced to b736cf8. Orin baseline 517/517 confirmed.
+Network fix: stale known_hosts (BatchMode=yes + absent key). 
+ssh-keygen -R + accept-new resolved. Reverse path restored. 
+Fingerprint SHA256:EmMSf0SCmPFxQxO5JbAREYt1aDvCjQMpa0c5PUtKrQ4 
+confirmed match.
+
+**W2-7 CLOSED (0040690):** OFFBOARD continuity hardening.
+EC01-G4 stale discard confirmed non-vacuous:
+- test_ec01_g4_stale_discard_on_recovery: 5 assertions — buffer
+  genuinely cleared (len==0), rate 0.0 Hz post-recovery, gap
+  arithmetic correct.
+- test_ec01_retask_offboard_interaction: 7 assertions — retask
+  interaction clean, pre-loss setpoints not counted post-recovery.
+stale_setpoints_discarded hardcoded True; actual clear() confirmed.
+Baseline: 517→519/519.
+
+**W2-8 CLOSED (4940826):** GNSS-denied retask integration.
+4 tests / 25 assertions in TestW28GnssDeniedRetaskIntegration:
+- test_gnss_denied_retask_nominal: GNSS_DENIED full R-01..R-06
+  sequence, RETASK_COMPLETE confirmed.
+- test_gnss_denied_retask_rollback_eta_restored: R-03 ETA restore
+  in GNSS_DENIED context, eta_s_restored payload confirmed.
+- test_ins_only_retask_rejected: R-05 XTE rejection, payload
+  fields cross_track_error_m/threshold_m/nav_mode confirmed.
+- test_ins_only_retask_permitted: R-05 permit path — first
+  coverage anywhere in test suite.
+Gaps closed: GNSS_DENIED rollback+ETA, INS_ONLY permit.
+Notation: R-01/R-04 event log assertions deferred to IT-ROLLBACK-01.
+Baseline: 519→523/523.
+
+### SIL Baseline at Close
+523/523 — zero failures, zero skips.
+
+### Open Items Carried Forward
+- IT-ROLLBACK-01: TERRAIN_GEN_FAIL, COMMIT_FAIL, timeout overrun
+- IT-D9-CHAIN-01: D7→D8→D8a→D9 full SITL chain
+- UT-PX4-COR-01: corrupted checkpoint restore
+- run_certified_baseline.sh line 4 stale comment (# 406 tests)
+- node01 DHCP: add /etc/hosts entry on Orin post-sprint
