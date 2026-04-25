@@ -6,7 +6,7 @@
 
 ## Entry QA-064 — 25 April 2026 (Session Close)
 **Session Type:** Compliance matrix sync + push + Orin sync
-**HEAD at close:** [see commit below]
+**HEAD at close:** d6bd14e
 **SIL:** 542/542
 
 ### Work Completed
