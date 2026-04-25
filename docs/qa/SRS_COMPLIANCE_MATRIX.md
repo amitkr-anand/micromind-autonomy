@@ -1,10 +1,10 @@
 # SRS Compliance Matrix — v3
 **Document:** `docs/qa/SRS_COMPLIANCE_MATRIX.md`
 **Governing SRS:** MicroMind_SRS_v1_3.docx (SRS-MicroMind-v1.3, April 2026)
-**Baseline HEAD:** `bfc19cd` → IT-D6-SITL-01 CLOSED, UT-RS-03 PARTIAL (QA-063)
+**Baseline HEAD:** `61dd6be` — 542/542
 **SIL at baseline:** 542/542 (`run_certified_baseline.sh`)
 **Author:** Deputy 1 (Architect Lead)
-**Version:** 3 — audit columns, new test rows, Appendix B/C/E, reconciled totals — 22 April 2026
+**Version:** 4 — full sprint reconciliation, OI-40 CLOSED — 26 April 2026
 **Classification:** Programme Confidential
 
 > **Mandatory left-side rule:** Every row in every table must remain permanently populated.
@@ -15,7 +15,7 @@
 
 ## 1. Executive Summary Dashboard
 
-### 1.1 Programme Closure Snapshot — Week 1 (22 April 2026, after QA-050)
+### 1.1 Programme Closure Snapshot — Week 2 reconciliation (26 April 2026)
 
 > **Reconciled totals v3:** Requirements = 60 functional + 10 Appendix D + 14 §16 events + 7 Appendix B states + 3 Appendix C classes + 5 Appendix E behaviours = **99 tracked items**.
 > Test cases = 62 existing + 20 new rows added this version = **82 total**.
@@ -24,20 +24,20 @@
 |---|---:|---:|---:|---:|---:|---:|
 | Navigation Requirements (NAV-01..06) | 6 | 3 | 3 | 0 | 0 | 0 |
 | EW Requirements (EW-01..03) | 3 | 3 | 0 | 0 | 0 | 0 |
-| Planning / Retask (PLN-01..03) | 3 | 2 | 1 | 0 | 0 | 0 |
+| Planning / Retask (PLN-01..03) | 3 | 3 | 0 | 0 | 0 | 0 |
 | Mission Manager (MM-01..04) | 4 | 4 | 0 | 0 | 0 | 0 |
-| PX4 / Recovery (PX4-01..05, EC-01..03) | 8 | 3 | 4 | 1 | 0 | 0 |
-| Appendix D Steps (D1..D10) | 10 | 6 | 3 | 1 | 0 | 0 |
-| Recovery Ownership §16 (14 events) | 14 | 13 | 0 | 1 | 0 | 0 |
-| Endurance / Resource (RS-01..04, EC-02) | 5 | 1 | 2 | 0 | 1 | 0 |
+| PX4 / Recovery (PX4-01..05, EC-01..03) | 8 | 6 | 2 | 0 | 0 | 0 |
+| Appendix D Steps (D1..D10) | 10 | 10 | 0 | 0 | 0 | 0 |
+| Recovery Ownership §16 (14 events) | 14 | 14 | 0 | 0 | 0 | 0 |
+| Endurance / Resource (RS-01..04, EC-02) | 5 | 2 | 2 | 0 | 1 | 0 |
 | Terminal Guidance (TERM-01..03) | 3 | 1 | 2 | 0 | 0 | 0 |
 | Visualisation / Demo (VIZ-01..03) | 3 | 1 | 0 | 1 | 0 | 1 |
 | OM SIL Gate (EC-13) | 1 | 0 | 0 | 1 | 0 | 0 |
-| Appendix B — Retask State Machine (7 states) | 7 | 2 | 4 | 1 | 0 | 0 |
-| Appendix C — Restartability Classes (3 classes) | 3 | 1 | 1 | 0 | 1 | 0 |
-| Appendix E — Retention / Purge Behaviours (5 items) | 5 | 2 | 2 | 0 | 1 | 0 |
-| **Requirements Total** | **99** | **44** | **22** | **6** | **2** | **1** |
-| **Test Cases Total** | **82** | **38** | **6** | **29** | **4** | **5** |
+| Appendix B — Retask State Machine (7 states) | 7 | 5 | 2 | 0 | 0 | 0 |
+| Appendix C — Restartability Classes (3 classes) | 3 | 1 | 2 | 0 | 0 | 0 |
+| Appendix E — Retention / Purge Behaviours (5 items) | 5 | 2 | 3 | 0 | 0 | 0 |
+| **Requirements Total** | **99** | **47** | **21** | **4** | **2** | **1** |
+| **Test Cases Total** | **82** | **39** | **6** | **28** | **4** | **5** |
 
 > **AVP note:** "Closed" counts are for AVP-02 unless explicitly stated. Many closures are PARTIAL for AVP-03/04. See §5.
 
@@ -49,9 +49,7 @@
 |---|---|---|---|
 | 1 | **No valid OM SIL gate (EC-13)** | NAV-02, EC-13 | Production nav correction mechanism has zero SIL certification. All L2 evidence is HIL only. |
 | 2 | **NAV-02 tests OBSOLETE** | NAV-02 | UT-NAV-02-A/B validate superseded RADALT-NCC. Active SIL test count inflated. |
-| 3 | **Corridor Violation §16 row missing (OI-40)** | EC-07-14, §16 | Ownership chain defined by Deputy 1; SRS v1.4 row pending commit. OI-55 (cross_track_error_m) blocking full compliance. |
-| 4 | **D10 path (GNSS-denied reboot) untested** | PX4-04, EC-03, D10 | Highest operational risk reboot scenario. Zero test coverage. |
-| 5 | **DMRL is a stub** | TERM-01, TERM-02 | All terminal guidance SIL results synthetic. Must caveat every external presentation. |
+| 3 | **DMRL is a stub** | TERM-01, TERM-02 | All terminal guidance SIL results synthetic. Must caveat every external presentation. |
 
 ---
 
@@ -72,6 +70,8 @@
 | W1-P01 — bc8230a | Terrain README | — | — | RS-01 |
 | W1-P03 — 9d99a75 | OI-53, OI-54 | OI-55 (cross_track_error_m) | — | RS-01 |
 | W1 close — 23 Apr | R-02 COMPLIANT (168b1d5), R-05 COMPLIANT (ab083ce), OI-55 CLOSED (3e79805), OI-54 CLOSED (9d99a75) | OI-56 (R-03 ETA rollback gap) | — | RS-01 |
+| W2-4 — 8e50cbc | EC-01 CLOSED — 30-min SITL gate PASS (EC01-G1/G2/G3/G4 all PASS, EC01_EVIDENCE_RUN1.md) | — | — | RS-01 |
+| W2 reconciliation — 26 Apr | PLN-02 CLOSED (R-01..R-06 + IT-ROLLBACK-01 + W2-8), §16 OI-40 CLOSED (SRS_V1_4_DELTA.md), IT-D10-GNSS-01 PASSED (711bf6d), App-B REJECTED OPEN→PARTIAL | — | — | RS-01 |
 
 ---
 
@@ -107,7 +107,7 @@
 | SRS § | Req ID | Title | Priority | AVP Scope | Historical Status | Current Status | Downgraded? | Impl Status | Test Status | Evidence | Commit / Tag | Linked Tests | Confidence | Owner | Open Gap / Risk | Next Action | QA / Gate Ref |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | §4.1 | PLN-01 | Hybrid A* Route Planner Response Time | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | ≤2s nominal / 5s max. Route ≤120%. S4. | `a7633ab` | UT-PLN-01, IT-PLN-01 | High | Deputy 1 | None | None | QA-049 |
-| §4.2 | PLN-02 | Dynamic Retask — Mid-Mission | Medium | AVP-02 ⚠ AVP-03 ❌ | PARTIAL | PARTIAL | NO | Implemented | Tested and Verified | R-01 ✅ (pre-existing), R-02 ✅ (168b1d5 — callback-based EW refresh, dual-outcome log), R-03 ❌ (OI-56 — ETA attribute not found on RoutePlanner), R-04 ✅ (pre-existing), R-05 ✅ (ab083ce — conditional XTE check, RETASK_NAV_CONFIDENCE_TOO_LOW), R-06 ✅ (pre-existing). 5/6 R-corrections compliant. Blocked on R-03. | `ab083ce` (R-05), `168b1d5` (R-02) | UT-PLN-02, IT-PLN-01, IT-PLN-02, test_adv_01 (updated), test_adv_01b (new) | Medium | Deputy 1 | R-03 CLOSED (e7d3d42) — _eta_s added to RoutePlanner, snapshot/restore in _rollback(), RETASK_ROLLBACK event at both call sites, test_r03_eta_rollback() 512/512. Three untested rollback trigger paths remain (IT-ROLLBACK-01): TERRAIN_GEN_FAIL, COMMIT_FAIL, timeout overrun. | Define IT-ROLLBACK-01 covering TERRAIN_GEN_FAIL, COMMIT_FAIL, and timeout overrun paths. | W1-P05/P06/P09; OI-56 |
+| §4.2 | PLN-02 | Dynamic Retask — Mid-Mission | Medium | AVP-02 ⚠ AVP-03 ❌ | PARTIAL | CLOSED | NO | Implemented | Tested and Verified | R-01 ✅ (pre-existing). R-02 ✅ (168b1d5 — callback EW refresh). R-03 ✅ (e7d3d42 — _eta_s attribute, snapshot/restore, RETASK_ROLLBACK 10 fields). R-04 ✅ (pre-existing). R-05 ✅ (ab083ce — conditional XTE, RETASK_NAV_CONFIDENCE_TOO_LOW). R-06 ✅ (pre-existing). IT-ROLLBACK-01 CLOSED 17330fa (TERRAIN_GEN_FAIL + COMMIT_FAIL + payload complete). W2-8 GNSS-denied integration CLOSED 4940826. | `ab083ce`, `168b1d5`, `e7d3d42`, `17330fa`, `4940826` | UT-PLN-02, IT-PLN-01, IT-PLN-02, test_adv_01, test_adv_01b, TestITRollback01, TestW28GnssDeniedRetaskIntegration | High | Deputy 1 | None. | None. | W1-P05/P06/P09; W2-8; IT-ROLLBACK-01 |
 | §4.3 | PLN-03 | Route Dead-End Recovery | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | Constraint relaxation levels 1–3. UT-PLN-03. | Phase B | UT-PLN-03, IT-EW-02 | High | Deputy 1 | None | None | Phase B closure |
 
 ---
@@ -132,7 +132,7 @@
 | §8.3 | PX4-03 | Sensor Drivers (DriverFactory) | High | ALL AVP | PARTIAL | PARTIAL | NO | Partially Implemented | Partially Tested | DriverFactory 5 types. RC-4 PASS. Real EO untested. | `7bebc8c` | IT-PX4-01, SIA tests | Low | Deputy 1 | GAP-07: real EO driver unvalidated | Maintain caveat. HIL Sprint 1. | GAP-07 |
 | §8.4 | PX4-04 | PX4 Reboot Recovery and State Restore | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | RebootDetector. D8a gate. SA-05..SA-07. | `787ecd4`, `fcb5106` | SA-05..SA-07, IT-PX4-02 | High | Deputy 1 | D10 path (GNSS-denied reboot) not explicitly tested | Define IT-D10-GNSS-01 | QA-025; SA-05..07 |
 | §8.5 | PX4-05 | Checkpoint Schema v1.2 | High | ALL AVP | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | 6 fields confirmed. P-01..P-04 applied. UT-PX4-05. | `fcb5106` | UT-PX4-05, SA-01..SA-04 | High | Deputy 1 | None | None | QA-025; SA-01..04 |
-| §8.3 | EC-01 | Waypoint Upload Sequencing + OFFBOARD Continuity | High | ALL AVP | CLOSED | PARTIAL | **YES** | Partially Implemented | Partially Tested | SITL 62s PASS (S-PX4-09). 30-min exit gate NOT confirmed. | `97b2f5a` | IT-PX4-01 (short), SA-05..SA-07 | Medium | Deputy 1 | 30-min exit gate unconfirmed. Incorrectly assumed closed. | Week 1 Item 8/9: execute 30-min gate | QA-050 downgrade |
+| §8.3 | EC-01 | Waypoint Upload Sequencing + OFFBOARD Continuity | High | ALL AVP | CLOSED | CLOSED | YES | Implemented | Tested and Verified | SITL 62s PASS (S-PX4-09). 30-min SITL gate 8e50cbc — EC01-G1 100.0000% PASS, EC01-G2 loss=0 PASS, EC01-G3 min=21Hz PASS, EC01-G4 fault injection confirmed non-vacuous 0040690. EC01_EVIDENCE_RUN1.md committed. | `97b2f5a`, `8e50cbc`, `0040690` | IT-PX4-01, EC01_EVIDENCE_RUN1.md, SA-05..SA-07 | High | Deputy 1 | None. | None. | QA-050; W2-4 |
 | §13 | EC-02 | Checkpoint Retention and Purge Policy | Medium | ALL AVP | PARTIAL | CLOSED | NO | Implemented | Tested and Verified | Schema v1.2 implemented. E-01 purge in spec. Phase D not executed. E-01 purge confirmed c38357a — 8 assertions, max_retained=5 enforced. | `fcb5106`, `c38357a` | UT-PX4-05, ST-RESTART-01 (pending) | Medium | Deputy 1 | Phase D 2-hr run not completed. CHECKPOINT_PURGED req_id='PX4-05' in code (historical implementation label) — EC-02 SRS §13 compliance confirmed. Purge confirmed c38357a. | Week 1 Item 10 | Phase A closure |
 | §13 | EC-03 | PX4 Reboot Recovery — Full Appendix D | High | ALL AVP | CLOSED | CLOSED | NO | Implemented | Tested and Verified | D1..D9 implemented. D8a confirmed. D10 CLOSED 711bf6d. D7→D9 chain CLOSED 208a5a1. Full Appendix D coverage confirmed. | `787ecd4`, `711bf6d`, `208a5a1` | SA-05..SA-07, IT-PX4-02, IT-D9-CHAIN-01 | Medium | Deputy 1 | None | None | QA-025; QA-059 |
 
@@ -173,7 +173,7 @@
 | Checkpoint Restore | ✅ | Watchdog | Mission Manager (D8a gate) | PX4 Bridge (waypoint reload) | NavManager, EW Manager | CLOSED | CLOSED | NO | SA-06..SA-07 | None | None | QA-025 |
 | Mission Abort | ✅ | Mission Manager | Mission Manager | Mission Manager (ABORT_MISS) | All modules | CLOSED | CLOSED | NO | State machine ABORT states | None | None | QA-018/019 |
 | Terminal Phase Failure (DMRL/L10s) | ✅ | DMRL / L10s-SE | Mission Manager | Mission Manager (ABORT_TERM or SHM) | NavManager, PX4 Bridge | CLOSED | CLOSED | NO | `core/l10s_se/l10s_se.py`, ADV-01..06 | None | None | QA-025 |
-| **Corridor Violation (Predicted)** | **❌ MISSING** | Navigation Manager (cross_track_error_m vs corridor boundary) | Mission Manager (NanoCorteXFSM) — ABORT from 5 states | Mission Manager (`_transition(NCState.ABORT)`) | Mission Manager (SYSTEM_ALERT MissionLogEntry via `_log_corridor_violation_event()`) | OPEN | OPEN | NO | `core/state_machine/state_machine.py` lines 297/320/361/399/440; `9d99a75` structured event | **OI-40:** §16 row absent. OI-55: `cross_track_error_m` not in SystemInputs — payload incomplete. SRS v1.4 row pending. | Week 1 Item 3: commit §16 row to SRS v1.4 | QA-050; OI-40; OI-54/55 |
+| **Corridor Violation (Predicted)** | **✅** | Navigation Manager (cross_track_error_m vs corridor boundary) | Mission Manager (NanoCorteXFSM) — ABORT from 5 states | Mission Manager (`_transition(NCState.ABORT)`) | Mission Manager (SYSTEM_ALERT MissionLogEntry via `_log_corridor_violation_event()`) | OPEN | CLOSED | NO | `core/state_machine/state_machine.py` lines 297/320/361/399/440; `9d99a75` structured event; `3e79805` cross_track_error_m in SystemInputs; SRS_V1_4_DELTA.md committed 26 Apr 2026 | None. OI-40 CLOSED. OI-55 CLOSED. | None. | QA-050; OI-40; OI-54/55; W2 reconciliation |
 
 ---
 
@@ -229,7 +229,7 @@
 | COMMITTING | ROUTE_SUCCESS | (1) Validate new route vs envelope. (2) Only on new_envelope_valid=True AND route_validated=True: upload PX4 waypoints. Note: PX4 waypoints NOT uploaded before step 2. (R-04) | COMMIT_SUCCESS → ACTIVE. COMMIT_FAIL → ROLLBACK. | CLOSED | CLOSED | NO | IMPLEMENTED — COMMIT_FAIL try/except at route_planner.py:478. RETASK_COMMIT_FAILED event logged. _rollback() called. 17330fa. | Tested and Verified | Phase B IT-PLN-02 exercises nominal COMMITTING path. COMMIT_FAIL → ROLLBACK path not isolated in dedicated test. test_commit_fail_triggers_rollback 7 assertions PASS. 17330fa. | IT-PLN-02 | Medium | Deputy 1 | COMMIT_FAIL → ROLLBACK path not isolated. R-04 waypoint upload sequencing confirmed in spec; code confirmation pending. | Confirm R-04 in code (Week 1 Item 5/6) | Phase B |
 | ACTIVE | COMMIT_SUCCESS | Mission executing new route. Release partial route candidates within 500ms (E-02). | Mission complete or new RETASK_RECEIVED → NONE. FAULT → ROLLBACK. | CLOSED | CLOSED | NO | Tested and Verified | Tested and Verified | RS-04 / E-02 route fragment cleanup confirmed at `c35122a`. SB-07 PASS. | SB-07 | High | Deputy 1 | None | None | SB-07 PASS |
 | ROLLBACK | ROUTE_FAIL / TERRAIN_GEN_FAIL / COMMIT_FAIL / ACTIVE FAULT | (1) Restore previous route. (2) Restore previous envelope. (3) Restore EW map from Checkpoint. (4) Restore terrain corridor. (5) Restore ETA. Log RETASK_ROLLBACK. Complete within 2000ms. | Rollback complete → NONE. | CLOSED | CLOSED | NO | Implemented | Tested and Verified | `_rollback()` confirmed in Phase B code review. Rollback from ROUTE_FAIL confirmed. TERRAIN_GEN_FAIL path, COMMIT_FAIL path, and rollback timeout overrun (>2000ms) not tested. | IT-PLN-02 (partial) | Medium | Deputy 1 | RETASK_ROLLBACK payload: all 10 fields present including SRS-required reason/previous_target/restored_ew_map_age_ms/restored_terrain_phase. snap_target=None (no _current_target attribute on RoutePlanner — accepted deviation, field present). test_rollback_payload_complete 5 assertions PASS. 17330fa. Timeout overrun 2000ms: no enforcement — _rollback() is synchronous, completes in microseconds. Accepted. | IT-ROLLBACK-01 CLOSED | Phase B; OI-40 context |
-| REJECTED | VALIDATION_FAIL | Log RETASK_REJECTED with reason. | Immediate → NONE. | OPEN | OPEN | NO | Documented Only | Not Tested | RETASK_REJECTED defined in PLN-02. No dedicated test for rejected retask with explicit reason logging. | None | Low | Deputy 1 | No test confirms RETASK_REJECTED event payload (reason string) is emitted correctly. | Define UT-PLN-REJECTED-01 | Phase B narrative only |
+| REJECTED | VALIDATION_FAIL | Log RETASK_REJECTED with reason. | Immediate → NONE. | OPEN | PARTIAL | NO | Partially Implemented | Partially Tested | Rejection IS implemented: INS_ONLY path emits RETASK_NAV_CONFIDENCE_TOO_LOW (cross_track_error_m, threshold_m, nav_mode payload). TERMINAL path returns False silently. test_ins_only_retask_rejected (W2-8, 4940826) covers INS_ONLY rejection trigger. Task A code audit 26 Apr 2026 confirmed: RETASK_REJECTED event name does not exist in code; no reason field in any rejection event. | TestW28GnssDeniedRetaskIntegration (tests 3+4) | Low | Deputy 1 | RETASK_REJECTED event name not emitted — SRS §4.2 specifies "Log RETASK_REJECTED with reason"; code emits RETASK_NAV_CONFIDENCE_TOO_LOW instead. Event rename + TERMINAL rejection event (with reason) needed for full compliance. Define UT-PLN-REJECTED-01 to assert RETASK_REJECTED event name and reason field. | Define UT-PLN-REJECTED-01; align event name to SRS spec | Phase B; Task A audit 26 Apr 2026 |
 
 ---
 
@@ -289,7 +289,7 @@
 | UT-PLN-01 | Route Planner Response Time | PLN-01 | §4.1 | ALL AVP | Unit | SIL | PASSED | QA-049 | PASS | run_s5_tests.py S4 | None | None | QA-049 |
 | UT-PLN-02 | Dynamic Retask R-01..R-06 | PLN-02 | §4.2 | AVP-02 | Unit | SIL | PASSED | QA-049 | PASS | Phase B gates | R-05 INS_ONLY corridor path absent; individual R-corrections unconfirmed in code | Week 1 Item 5/6 | Phase B closure |
 | IT-PLN-01 | Retask Integration — EW + Route | PLN-02, EW-02 | §4.2, §3.2 | AVP-02 | Integration | SIL | PASSED | QA-049 | PASS | Phase B gates | None | None | Phase B closure |
-| IT-PLN-02 | Retask Integration — GNSS-Denied | PLN-02, NAV-01, NAV-06 | §4.2, §2.1 | AVP-02 | Integration | SIL | PASSED | QA-049 | PASS | Phase B gates | R-05 INS_ONLY path not explicitly exercised | Week 1 Item 12 | Phase B closure |
+| IT-PLN-02 | Retask Integration — GNSS-Denied | PLN-02, NAV-01, NAV-06 | §4.2, §2.1 | AVP-02 | Integration | SIL | PASSED | QA-056 (W2-8) | PASS | 4 tests / 25 assertions. GNSS_DENIED nominal + rollback ETA restored + INS_ONLY rejected (XTE>400m) + INS_ONLY permitted (XTE<400m). 4940826. | None — test_ins_only_retask_rejected and test_ins_only_retask_permitted CLOSED at 4940826. | None. | Phase B; W2-8 closure |
 | IT-INS-RETASK-01 | INS-Only Retask Rule: cross_track_error_m ≤ (half_width − 100) | PLN-02, NAV-01, App-B VALIDATING | §4.2, §2.1 | AVP-02 | Integration | SIL | NOT STARTED | — | — | — | R-05 constraint (Appendix B VALIDATING state) not corridor-tested. RETASK_NAV_CONFIDENCE_TOO_LOW path untested. | Confirm R-05 in code first (Week 1 Item 5/6); then implement test | App-B VALIDATING; R-05 |
 | IT-TERRAIN-FAIL-01 | Terrain Corridor Regeneration Failure → ROLLBACK | PLN-02, App-B ROUTING | §4.2 | AVP-02 | Integration | SIL | NOT STARTED | — | — | — | RETASK_TERRAIN_GEN_FAILED → ROLLBACK path not tested. Appendix B ROUTING → ROLLBACK on TERRAIN_GEN_FAIL. | Define and implement after R-01 confirmation | App-B ROUTING; R-01 |
 | IT-ROLLBACK-01 | Replan Timeout Rollback Failure Test | PLN-02, App-B ROLLBACK | §4.2 | AVP-02 | Integration | SIL | PASSED | QA-057 | PASS | 3 tests / 19 assertions. TERRAIN_GEN_FAIL, COMMIT_FAIL, payload complete. 17330fa. | None | None | App-B ROLLBACK |
@@ -304,7 +304,7 @@
 | IT-D6-TIMEOUT-01 | MAVLink Timeout Full D6 Path (10s → ABORT) | PX4-01, EC-01, D6 | §8.1, §8.3 | ALL AVP | Integration | SIL | PASSED | QA-061 | 4 tests / 17 assertions. D2 recovery, D3 recovery, full timeout abort, timing bounds. test_it_d6_timeout.py. 6a30295. | `6a30295` | None | D6 gap; QA-061 |
 | IT-D6-SITL-01 | D6 Path — Live SITL Integration (GCS heartbeat stop) | PX4-01, EC-01, D1..D6 | §8.1, §8.3 | ALL AVP | Integration | SITL | PASSED | QA-063 | 5 gates PASS. Live SITL 10.00s elapsed. OFFBOARD_UNRECOVERED total_elapsed_ms=10001ms, attempts_made=10. Link-severed semantics. a3fd35e. | `a3fd35e` | None | D6 SITL confirmed; QA-063 |
 | IT-D9-CHAIN-01 | MISSION_RESUME_AUTHORISED / Full D7→D8→D8a→D9 Chain | PX4-04, EC-03, D7..D9 | §8.4, §13 | ALL AVP | Integration | SITL | PASSED | QA-059 | 4 gates / live SITL. G1=1980ms, G2=0ms, G3=confirmed, G4=43.678m. 208a5a1. | `208a5a1`, `5863020` | None | D9 gap; SA-07 context |
-| IT-D10-GNSS-01 | D10 GNSS-Denied PX4 HOLD Recovery Test | PX4-04, EC-03, D10 | §8.4, §13 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D10 path completely untested. PX4 returns in HOLD during GNSS-denied corridor flight. | Week 1 Item 11: define test | D10 OPEN; QA-050 |
+| IT-D10-GNSS-01 | D10 GNSS-Denied PX4 HOLD Recovery Test | PX4-04, EC-03, D10 | §8.4, §13 | ALL AVP | Integration | SITL | PASSED | W2 reconciliation | PASS | 4 tests / 20 assertions. HoldRecoveryHandler (integration/bridge/hold_recovery.py). PX4_HOLD_CUSTOM_MODE=50_593_792. 711bf6d. | None. | None. | D10 CLOSED; 711bf6d |
 | IT-CLR-GATE-01 | pending_operator_clearance_required=True Gate Validation | PX4-04, PX4-05, MM-03, D8a | §8.4, §8.5, §5 | ALL AVP | Integration | SITL | NOT STARTED | — | — | — | D8a branch 2 (shm_active=True or clearance_required=True → SHM hold, AWAITING_OPERATOR_CLEARANCE) exercised only as synthetic SA-07 branch. No SITL validation. | Define SITL test with clearance_required=True checkpoint | SA-07 context |
 | SA-01 | Checkpoint — SHM Field | PX4-05, MM-03 | §8.5, §5 | ALL AVP | Gate | SIL | PASSED | Phase A | PASS | `fcb5106` | None | None | SA-01 |
 | SA-02 | Checkpoint — Clearance Field | PX4-05, MM-03 | §8.5, §5 | ALL AVP | Gate | SIL | PASSED | Phase A | PASS | `fcb5106` | None | None | SA-02 |
@@ -345,11 +345,11 @@
 | Failure Mode | Related Req IDs | Existing Test Coverage | Status | Evidence | Open Gap | Next Action | QA / Gate Ref |
 |---|---|---|---|---|---|---|---|
 | GNSS spoof with plausible trajectory (3-sigma Doppler-consistent) | NAV-05, EW-03, FR-110a | UT-BIM-01 covers naive position-jump only | PARTIAL | run_s5_tests.py S2 | GAP-12: adaptive spoof not tested. KPI-BIM-02 missing. | Write UT-BIM-03 with Doppler-plausible waveform before HIL | GAP-12 |
-| Corridor violation during GNSS-denied flight | NAV-01, EC-07-14, §16 | FSM CORRIDOR_VIOLATION → ABORT confirmed in unit tests | PARTIAL | State machine lines 297/320/361/399/440; `9d99a75` | OI-40: §16 row pending SRS v1.4. OI-55: cross_track_error_m absent. IT-NAV-COR-01 defined. | Week 1 Item 3: commit §16 row. Define IT-NAV-COR-01. | OI-40; OI-54; QA-050 |
+| Corridor violation during GNSS-denied flight | NAV-01, EC-07-14, §16 | FSM CORRIDOR_VIOLATION → ABORT confirmed in unit tests | PARTIAL | State machine lines 297/320/361/399/440; `9d99a75`; `3e79805`; SRS_V1_4_DELTA.md | OI-40 CLOSED (SRS_V1_4_DELTA.md, 26 Apr 2026). OI-55 CLOSED (3e79805). IT-NAV-COR-01 still NOT STARTED — no integration test for corridor violation during INS-only phase. | Define IT-NAV-COR-01. | OI-40 CLOSED; OI-55 CLOSED; IT-NAV-COR-01 pending |
 | Orthophoto confidence collapse (>5 consecutive SUPPRESS windows) | NAV-02, PLN-02, EC-13 | G7-01 confirms SUPPRESS-zone match()=0 | PARTIAL | `322274c` Gate 7 | No full-mission collapse test (IT-OM-SUPPRESS-01 defined). | Define IT-OM-SUPPRESS-01 in Sprint C | GAP-10; Gate 7 |
 | Stale EW map during retask (R-02) | PLN-02, EW-01 | UT-PLN-02 covers R-02 code path per spec | PARTIAL | Phase B gates | R-02 in spec; stale map injection not integration-tested (IT-STALE-EW-01 defined). | Week 1 Item 5/6: confirm R-02 in code | Phase B; W1 Item 5/6 |
-| Terrain corridor regeneration failure (R-01 → ROLLBACK) | PLN-02, App-B ROUTING | RETASK_TERRAIN_GEN_FAILED in spec | PARTIAL | SRS Appendix B | IT-TERRAIN-FAIL-01 defined but not started. | Define and implement | App-B; R-01 |
-| Failed rollback after replan timeout (>2000ms) | PLN-02, App-B ROLLBACK | ROLLBACK state in Appendix B. RS-04 cleanup confirmed. | PARTIAL | `c35122a` | IT-ROLLBACK-01 defined but not started. | Define covering TERRAIN_GEN_FAIL, COMMIT_FAIL, timeout overrun | App-B ROLLBACK |
+| Terrain corridor regeneration failure (R-01 → ROLLBACK) | PLN-02, App-B ROUTING | RETASK_TERRAIN_GEN_FAILED in spec. test_terrain_gen_fail_triggers_rollback (IT-ROLLBACK-01, 7 assertions PASS). | CLOSED | `17330fa` | None — covered by IT-ROLLBACK-01. | None. | IT-ROLLBACK-01 CLOSED; 17330fa |
+| Failed rollback after replan timeout (>2000ms) | PLN-02, App-B ROLLBACK | ROLLBACK state in Appendix B. RS-04 cleanup confirmed. IT-ROLLBACK-01 PASSED — TERRAIN_GEN_FAIL, COMMIT_FAIL, payload complete (3 tests / 19 assertions). | CLOSED | `17330fa` | None — IT-ROLLBACK-01 covers all three trigger paths. | None. | IT-ROLLBACK-01 CLOSED; 17330fa |
 | Corrupted checkpoint file at restore | PX4-05, EC-02, App-C CHECKPOINT_RESTORE | CheckpointCorruptError + CHECKPOINT_CORRUPT event. restore_latest() returns None. 6 tests COR-01..06. | CLOSED | QA-058 | None. | None | App-C; COR-01..06 |
 | Missing EO camera feed (IMU+TRN only) | NAV-03, PX4-03 | VIOMode outage recovery S-NEP-06 (synthetic). IT-CAM-DROP-01 defined. | PARTIAL | `core/fusion/vio_mode.py:166` | No SITL test with actual dropout. OI-43 fragile. | Resolve OI-43. Define IT-CAM-DROP-01. | OI-43; S-NEP-06 |
 | Missing IMU feed (ESKF freeze) | NAV-01, PX4-03 | IMU_DROPOUT in spec. ESKF freeze >100ms defined. UT-IMU-DROP-01 defined. | PARTIAL | SRS §8.3 | UT-IMU-DROP-01 not started. | Define and implement | SRS §8.3 |
@@ -375,7 +375,7 @@
 | NAV-04 | ✅ CLOSED | ✅ CLOSED | ✅ CLOSED |
 | NAV-05 | ✅ CLOSED | ✅ CLOSED | ✅ CLOSED |
 | NAV-06 | ⚠ PARTIAL — architecture defined; VIO west-theatre indoor only | ❌ OPEN — high-altitude TRN/VIO boundary undefined | ❌ OPEN |
-| PLN-02 | ⚠ PARTIAL — R-05 confirmation pending | ❌ Not scoped | ❌ Not scoped |
+| PLN-02 | ✅ CLOSED — R-01..R-06 all compliant, IT-ROLLBACK-01 CLOSED, W2-8 GNSS-denied integration CLOSED | ❌ Not scoped | ❌ Not scoped |
 | PX4-01..05 | ✅ CLOSED | ✅ CLOSED | ✅ CLOSED |
 | TERM-01..02 | ⚠ PARTIAL (stub) | ⚠ PARTIAL (stub) | ⚠ PARTIAL (stub) |
 | TERM-03 | ✅ CLOSED | ✅ CLOSED | ✅ CLOSED |
@@ -396,9 +396,9 @@
 | Baseline test-count history | Governance note | CLOSED | 406 → corrected at QA-030. Current: 510/510 at `de1d762` / `9d99a75`. | No action required. | QA-030 |
 | External-claim restriction — NAV-02 | Claim restriction | ACTIVE | NAV-02 cannot be cited as validated until EC-13 PASS. LightGlue HIL H-4/H-5/H-6 is operational evidence, not a SIL gate. | Block NAV-02 "validated" claims until Sprint C EC-13 PASS. | QA-050; H-6 |
 | External-claim restriction — AVP-04 range | Claim restriction | ACTIVE | NAV-01 C-2 envelopes valid to km120 only. Not valid for AVP-04 (100+km GNSS-denied). | Explicit limitation in any AVP-04 performance document. | GAP-11 |
-| OI-55 — cross_track_error_m absent from SystemInputs | Open investigation | OPEN | CORRIDOR_VIOLATION event payload (added OI-54) cannot include breach magnitude. Fix: add field to SystemInputs; populate from NavigationManager. | Define and implement before HIL. | OI-55; QA-050 |
+| OI-55 — cross_track_error_m added to SystemInputs | Resolved | CLOSED | cross_track_error_m: float = 0.0 added to SystemInputs dataclass at 3e79805. CORRIDOR_VIOLATION payload now includes cross_track_error_m field. OI-55 CLOSED. | None. | OI-55; 3e79805 |
 | NIS measurement model limitation (AD-17) | Architecture caveat | STANDING | OpenVINS NIS values do not correctly reflect inter-frame innovation noise. Must not cite NIS as filter calibration evidence without caveat. | Apply AD-17 caveat to any report presenting NIS data. | AD-17 |
-| OI-40 §16 Corridor Violation row | Governance action | PARTIAL | Deputy 1 ownership ruling complete (QA-050). SRS v1.4 §16 row authored. Pending commit by Agent 2. | Week 1 Item 3: Agent 2 commits §16 row to SRS v1.4 | OI-40; QA-050 |
+| OI-40 §16 Corridor Violation row | Governance action | CLOSED | Deputy 1 ownership ruling complete (QA-050). SRS_V1_4_DELTA.md committed 26 Apr 2026. §16 row: Detects=Navigation Manager, Decides/Executes=NanoCorteXFSM (5 states), Logs=_log_corridor_violation_event(). OI-40 CLOSED. OI-55 CLOSED. §16 matrix row Current Status updated OPEN→CLOSED this session. | None. | OI-40; QA-050; W2 reconciliation |
 
 ---
 
