@@ -365,12 +365,22 @@ class MissionManager:
         # --- Nominal resume path --------------------------------------------
         # pending_operator_clearance_required is False; resume autonomously.
         # Log MISSION_RESUME_AUTHORISED (PX4-04 D8a gate nominal outcome).
+        resume_ts = self._clock_fn()
         self._event_log.append({
             "event":        "MISSION_RESUME_AUTHORISED",
             "req_id":       "PX4-04",
             "severity":     "INFO",
             "module_name":  "MissionManager",
-            "timestamp_ms": self._clock_fn(),
+            "timestamp_ms": resume_ts,
+        })
+        # SRS §8.4 PX4-04 D8a — AUTONOMOUS_RESUME_APPROVED (SRS canonical name)
+        self._event_log.append({
+            "event":                              "AUTONOMOUS_RESUME_APPROVED",
+            "req_id":                             "PX4-04",
+            "severity":                           "INFO",
+            "module_name":                        "MissionManager",
+            "timestamp_ms":                       resume_ts,
+            "pending_operator_clearance_required": False,
         })
         self._state = MissionState.ACTIVE
         return True

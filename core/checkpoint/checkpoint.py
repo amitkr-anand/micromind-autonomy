@@ -336,14 +336,17 @@ class CheckpointStore:
             self._emit_corrupt(path, reason="schema_invalid")
             raise
 
+        now_ms = int(self._clock_fn() * 1000) if self._clock_fn is not None else 0
         self._event_log.append({
-            "event":         "CHECKPOINT_RESTORED",
-            "req_id":        "PX4-05",
-            "severity":      "INFO",
-            "module_name":   "CheckpointStore",
-            "checkpoint_id": cp.checkpoint_id,
-            "path":          str(path),
-            "timestamp_ms":  cp.timestamp_ms,
+            "event":              "CHECKPOINT_RESTORED",
+            "req_id":             "PX4-05",
+            "severity":           "INFO",
+            "module_name":        "CheckpointStore",
+            "checkpoint_id":      cp.checkpoint_id,
+            "path":               str(path),
+            "timestamp_ms":       cp.timestamp_ms,
+            "checkpoint_age_ms":  max(0, now_ms - cp.timestamp_ms),
+            "waypoint_index":     cp.waypoint_index,
         })
         return cp
 

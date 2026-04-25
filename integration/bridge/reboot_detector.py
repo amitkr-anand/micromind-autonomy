@@ -147,13 +147,16 @@ class RebootDetector:
             if backward_dist > self._seq_threshold and forward_dist > self._seq_threshold:
                 # Genuine reboot: large backward jump, NOT the normal rollover
                 elapsed_ms = int((wall_t - self._last_hb_wall_t) * 1000)
+                recovery_start_ms = self._clock_fn()
                 self._event_log.append({
-                    "event":        "PX4_REBOOT_DETECTED",
-                    "req_id":       "PX4-04",
-                    "severity":     "WARNING",
-                    "module_name":  "MAVLinkBridge",
-                    "timestamp_ms": self._clock_fn(),
-                    "payload":      {"elapsed_detection_ms": elapsed_ms},
+                    "event":              "PX4_REBOOT_DETECTED",
+                    "req_id":             "PX4-04",
+                    "severity":           "WARNING",
+                    "module_name":        "MAVLinkBridge",
+                    "timestamp_ms":       recovery_start_ms,
+                    "seq_reset_value":    seq,
+                    "recovery_start_ms":  recovery_start_ms,
+                    "payload":            {"elapsed_detection_ms": elapsed_ms},
                 })
                 detected = True
 
