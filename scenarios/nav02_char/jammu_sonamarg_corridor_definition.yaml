@@ -1,0 +1,145 @@
+corridor_id: "jammu_sonamarg_nh1_v1"
+version: "1.0"
+authority: "Deputy 1"
+date: "2026-04-27"
+crs_tci: "EPSG:32643"
+description: >
+  Jammu to Sonamarg corridor via NH-1.
+  230km total, GNSS-denied from km 30.
+  Confirmed-good imagery on 5 western WPs
+  (lap_var > 1200, sat < 35%) and 2 eastern WPs.
+  Kashmir valley floor suppression zone km 120-180
+  is expected and operationally representative.
+  NOT a validated navigation performance corridor.
+  EC-13 partial characterisation pending Run 4.
+  Deputy 1 approved 2026-04-27.
+
+operational_note: >
+  This corridor is structurally identical to
+  Shimla-Manali: mountain approach → valley
+  suppression gap → mountain reconnect.
+  Demonstrates correct system behaviour:
+  TRN active on terrain, INS-only through valley,
+  TRN resumes when terrain texture returns.
+
+dem_tiles:
+  - path: "data/terrain/Jammu_leh_corridor_COP30/TILE1/rasters_COP30/output_hh.tif"
+    coverage: "TILE1 — western sector"
+  - path: "data/terrain/Jammu_leh_corridor_COP30/TILE2/rasters_COP30/output_hh.tif"
+    coverage: "TILE2 — central sector"
+
+tci_tiles:
+  - path: "/home/mmuser/micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/T43SDS_TCI_10m.tif"
+    tile_code: "T43SDS"
+    acquisition: "2025-11-27"
+    coverage: "73.9-75.1°E, 32.4-33.4°N"
+  - path: "/home/mmuser/micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/T43SES_TCI_10m.tif"
+    tile_code: "T43SES"
+    acquisition: "2025-11-27"
+    coverage: "75.0-76.2°E, 32.4-33.4°N"
+  - path: "/home/mmuser/micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/T43SDT_TCI_10m.tif"
+    tile_code: "T43SDT"
+    acquisition: "2025-11-27"
+    coverage: "73.9-75.1°E, 33.3-34.3°N"
+  - path: "/home/mmuser/micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/T43SET_TCI_10m.tif"
+    tile_code: "T43SET"
+    acquisition: "2025-11-27"
+    coverage: "75.0-76.2°E, 33.3-34.3°N"
+
+waypoints:
+  - id: "WP00"
+    name: "Jammu departure"
+    lon: 74.86
+    lat: 32.73
+    tile: "T43SDS"
+    corridor_km: 0
+    lap_var: 1509
+    sat_pct: 31.1
+    quality: "GOOD"
+    gnss_denied: false
+  - id: "WP01"
+    name: "Udhampur ridge"
+    lon: 75.14
+    lat: 32.92
+    tile: "T43SES"
+    corridor_km: 50
+    lap_var: 1326
+    sat_pct: 24.7
+    quality: "GOOD"
+    gnss_denied: true
+  - id: "WP02"
+    name: "Ramban gorge"
+    lon: 75.24
+    lat: 33.24
+    tile: "T43SES"
+    corridor_km: 90
+    lap_var: 1359
+    sat_pct: 27.3
+    quality: "GOOD"
+    gnss_denied: true
+  - id: "WP03"
+    name: "Banihal pass"
+    lon: 75.18
+    lat: 33.40
+    tile: "T43SES"
+    corridor_km: 120
+    lap_var: 1270
+    sat_pct: 5.1
+    quality: "GOOD — best imagery point"
+    gnss_denied: true
+  - id: "WP_GAP_START"
+    name: "Kashmir valley entry"
+    lon: 75.10
+    lat: 33.50
+    tile: "T43SET"
+    corridor_km: 130
+    lap_var: 0
+    sat_pct: 100
+    quality: "SUPPRESS — cloud/valley floor"
+    gnss_denied: true
+    note: "INS-only zone begins ~km 130"
+  - id: "WP04"
+    name: "Kangan / Sind Valley"
+    lon: 75.00
+    lat: 34.19
+    tile: "T43SDT"
+    corridor_km: 180
+    lap_var: 1269
+    sat_pct: 34.0
+    quality: "GOOD"
+    gnss_denied: true
+    note: "TRN resumes after valley gap"
+  - id: "WP05"
+    name: "Sonamarg"
+    lon: 75.29
+    lat: 34.30
+    tile: "T43SET"
+    corridor_km: 230
+    lap_var: 987
+    sat_pct: 41.9
+    quality: "GOOD"
+    gnss_denied: true
+
+corridor_segments:
+  - name: "Western mountain approach"
+    from_km: 0
+    to_km: 120
+    trn_status: "ACTIVE"
+    quality: "GOOD — lap_var 1200-1500"
+  - name: "Kashmir valley floor"
+    from_km: 120
+    to_km: 180
+    trn_status: "SUPPRESS"
+    quality: "POOR — cloud/valley floor"
+    note: "INS-only. Expected. Operationally representative."
+  - name: "Sind Valley reconnect"
+    from_km: 180
+    to_km: 230
+    trn_status: "ACTIVE"
+    quality: "GOOD — lap_var 987-1269"
+
+future_extension:
+  note: >
+    Kargil to Leh (km 230-370) blocked by T43SFT/T43SGT
+    saturation. Requires October 2025 acquisition.
+    OI-JL-01 open.
