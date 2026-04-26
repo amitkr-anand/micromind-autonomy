@@ -1,6 +1,6 @@
 # MicroMind / NanoCorteX — Project Context
 **Classification:** Programme Confidential  
-**Last Updated:** 26 April 2026 (QA-065 session close: OI-40 CLOSED, matrix v4 reconciliation — 542/542)  
+**Last Updated:** 27 April 2026 (QA-069 session close: JL-CORRIDOR-COMMIT complete — Jammu-Sonamarg corridor v1.0, NAV02-CHAR-RUN4 READY)  
 **Role of this file:** Loaded ONCE at session start. Replaces all verbal re-briefing.
 
 ---
@@ -56,7 +56,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 | Repo | Purpose | State |
 |---|---|---|
-| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 536/536 certified baseline, HEAD 1dbfc29 (IT-D6-TIMEOUT-01 CLOSED + D6 CLOSED, 26 Apr 2026) |
+| `amitkr-anand/micromind-autonomy` | Main autonomy stack | Gates 1–7 LOCKED, 542/542 certified baseline, HEAD b9de176 (JL-CORRIDOR-COMMIT: Jammu-Sonamarg v1.0, 27 Apr 2026) |
 | `amitkr-anand/nep-vio-sandbox` | VIO selection + OpenVINS integration | S-NEP-01/02 complete (424/424 tests), S-NEP-03 ready to start |
 
 **Environment (dev):** Python 3.11 conda micromind-autonomy / Ubuntu 24.04.4 / micromind-node01 (192.168.1.44)
@@ -106,6 +106,9 @@ All test scenarios must be designed against these profiles. No other baseline is
 | EC-13 NAV-02 Char Run 1 — Trinity 10m+30m, 3-WP | ✅ COMPLETE | All SUPPRESS (GSD bypass). DI-03 / DEMO-BUG-001 logged. | a99aeb5 |
 | EC-13 NAV-02 Char Run 2 — Trinity production GSD clamping | ✅ COMPLETE | 10m trn_gsd=5.24m: WP0=SUPP WP1/2=REJ. 30m trn_gsd=15.72m: all REJ conf=0.099–0.138. DEMO-BUG-001 fix applied. | a99aeb5 |
 | EC-13 NAV-02 Char Run 3 — Shimla-Manali Sentinel TCI 4-WP | ✅ COMPLETE | WP0–3 all REJECTED conf=0.029–0.037. Suitability all ACCEPT (valley floor WP2 SUPPRESS expectation not met — coord re-selection needed). 3/4 expected-match. Dark imagery finding (mean 44–66/255). | a99aeb5 |
+| JL-GRID-VERIFY — geographic extent verification + Sep 2025 quality assessment | ✅ COMPLETE | All 16 ZIP extents verified via vsizip gdalinfo. MGRS row orientation confirmed: S < T < U (north). Sep 2025 tiles (T43SFS/SFT/SGS/SGT) equally or MORE saturated than Nov 2025 — OI-JL-01 remains open, acquisition target revised to Oct. | docs | QA-068 |
+| JL-ROUTE-DESIGN — Jammu-Sonamarg NH-1 route survey | ✅ COMPLETE | T43SDS/SDT/SET quality-checked. 6 GOOD waypoints identified (Jammu, Udhampur, Ramban, Banihal, Kangan, Sonamarg; lap_var 987–1509). Kashmir valley suppression gap km 130–180 expected. Structurally mirrors Shimla-Manali. 230km corridor viable. | docs | QA-068 |
+| JL-CORRIDOR-COMMIT — Corridor definition + status update | ✅ COMPLETE | T43SDS/T43SDT TCI copied to canonical TCI_DIR (8 tiles, ~1.1 GB). `scenarios/nav02_char/jammu_sonamarg_corridor_definition.yaml` committed (7 WPs, 3 segments, 4 TCI tiles, 2 DEM tiles). CORRIDOR_STATUS.md Corridor 2 updated to CHARACTERISATION READY — READY FOR NAV02-CHAR-RUN4. OI-JL-04 unblocked. | docs + data | `b9de176` |
 | SB-5 Gate 6 — Cross-Modal TRN Pre-Work (Blender Frame Ingestor + Evaluator) | ✅ COMPLETE | CM-01..04 PASS (15/15 gate tests). BlenderFrameIngestor: load/validate 640×640 PNG frames, GSD computation (0.270 m/px at 150m/60°FOV). CrossModalEvaluator: clamp TRN GSD to max(camera_gsd, dem_res×0.5) — prevents DEM over-upsampling SUPPRESS. Real Blender frames (12 frames, 5km intervals): all GOOD quality (lap_var 225–340). Cross-modal peaks: 0.09–0.11 (vs current threshold 0.15) — REJECTED. Calibrated threshold: 0.091 (P10 of distribution). Operational finding: RGB/hillshade cross-modal peaks are lower than CAS paper IR/hillshade prediction (0.3–0.7). OI-42 RESOLVED: shimla_texture.png committed, Laplacian variance=3642, corners=1000. SIL 442 certified + 19 Gate 4 + 17 Gate 5 + 15 Gate 6 = 457/457. | QA-034 |
 | HIL H-1 Environment | ✅ PASS | 483/483 on Orin, Python 3.11, terrain 415MB min set, sudo configured | `e0eb921` |
 | HIL H-2 Certified baseline | ✅ PASS | 483/483 at max clocks, 18m25s, frozen files MATCH | `e0eb921` |
@@ -321,9 +324,9 @@ SRS_COMPLIANCE_MATRIX.md Appendix B: ROUTING row Impl Status corrected from "Par
 | ~~OI-35~~ **CLOSED** cd8b4f0 — `_start_setpoint_stream()` added to `simulation/run_mission.py`. Two call-sites in `mission_vehicle_a()`: thread starts before `_arm_and_offboard()`, stops (with `.join(timeout=1.0)`) after ACK. Live SITL verification 08 Apr 2026: VEH A ARM ✅ OFFBOARD ✅ altitude 95 m ✅ lap 1 complete T+107.7s ✅. Two infrastructure findings fixed this session: (1) `~/.gz/sim/8/server.config` updated to include PX4 sensor system plugins (Imu, NavSat, AirPressure, Magnetometer, Contact) — root cause of EKF2 alignment failures in all previous headless SITL attempts on this machine; (2) two Gazebo instance accumulation risk documented for OI-30 cleanup phase. | Code | CLOSED |
 | ~~OI-JL-01~~ | **CLOSED** JL-TCI-VALIDATE 26 Apr 2026 — western tiles (T43SES/SET/SFS) usable; eastern tiles (T43SFT/SGS/SGT) cloud/snow-saturated. WP_UDHAMPUR ACCEPT (lap=1232, 2% sat). WP_KARGIL WHITE OUT (99.9% sat, also outside DEM). WP_LEH MARGINAL (83% sat). ZIP retention recommended. NAV02-CHAR-RUN4 NOT READY. | QA | CLOSED |
 | OI-JL-02 | T43SDT extraction (Srinagar western gap) — DEFERRED by Deputy 1 (JL-TCI-VALIDATE directive). | Data | DEFERRED |
-| OI-JL-03 | JL NAV-02 characterisation run — corridor definition YAML + harness for Jammu-Leh TCI once DEM tiles confirmed. shimla/manali tiles only cover 76.4–77.9°E; full JL corridor (74.8–77.6°E) needs DEMLoader tile set. | Code | MEDIUM — before EC-13 JL run |
+| ~~OI-JL-03a~~ | **CLOSED** `b9de176` — `scenarios/nav02_char/jammu_sonamarg_corridor_definition.yaml` committed. 7 waypoints (WP00–WP05 + WP_GAP), 3 segments (mountain approach / valley suppress / Sind Valley reconnect), 4 TCI tiles (T43SDS/SES/SDT/SET), 2 DEM tiles (TILE1/TILE2). Route redesigned Jammu→Sonamarg (230km) avoiding Kargil gap. Corridor definition complete. | Code | CLOSED |
 | OI-JL-03 | Kargil DEM gap — COP30 tile N33E076 needed. TILE2 east edge 76.10°E misses Kargil (76.18°E) by 0.08°. Blocks NAV02-CHAR-RUN4. | Data | MEDIUM — before NAV02-CHAR-RUN4 |
-| OI-JL-04 | NAV02-CHAR-RUN4 BLOCKED — requires OI-JL-01 (summer TCI) and OI-JL-03 (Kargil DEM). Deputy 1 to activate when data available. | Code | HIGH — BLOCKED |
+| OI-JL-04 | NAV02-CHAR-RUN4 **READY** — unblocked by Jammu-Sonamarg route redesign (avoids Kargil DEM gap and winter-saturated eastern tiles). Corridor definition committed at `b9de176`. Run harness implementation needed for JL corridor profile. | Code | HIGH — READY TO START |
 | OI-JL-05 | Summer Sentinel-2 re-acquisition for T43SFS/T43SFT/T43SGS/T43SGT (eastern corridor). Winter 2025 tiles cloud/snow-saturated. Target Aug–Sep <10% cloud. | Data | HIGH — before NAV02-CHAR-RUN4 |
 | OI-41 | `core/bim/bim.py` structured log debt — bim.py uses stdlib `logging` (pattern from vio_mode.py, introduced at OI-39 fix) but does not use the programme's structured event log dict pattern (req_id, severity, module_name, timestamp_ms). All other modules introduced in SB-5 Phase A/B use the event_log dict pattern. bim.py should be migrated to structured logging before SRS external review. Not blocking — stdlib log is auditable but not machine-parseable via the programme log schema. | Code | LOW — tech debt, not blocking |
 | ~~OI-42~~ **CLOSED** QA-034 — `simulation/terrain/shimla/shimla_texture.png` committed (viz.hh_hillshade-color.png from OpenTopography download). World file updated: OGRE2 PBR plane at Z=1800m carries texture via `albedo_map`. Laplacian variance=3642, Shi-Tomasi corners=1000. VIO confidence measurement unblocked for next SITL session. | Code | CLOSED |

@@ -4,6 +4,53 @@
 
 ---
 
+## Entry QA-069 — 27 April 2026 (Session Close)
+**Session Type:** JL-CORRIDOR-COMMIT — Jammu-Sonamarg corridor definition and status update
+**HEAD at close:** b9de176
+**SIL:** 542/542 (documentation + data only, no production code changes)
+
+### Work Completed
+
+**JL-GRID-VERIFY (prior session continuation):**
+All 16 ZIP geographic extents verified via vsizip gdalinfo. MGRS row orientation
+definitively confirmed S < T < U (north). Sep 2025 tiles (T43SFS/SFT/SGS/SGT)
+equally or more saturated than Nov 2025 — OI-JL-01 remains open; acquisition target
+revised to October (not Aug–Sep).
+
+**JL-ROUTE-DESIGN (prior session continuation):**
+T43SDS, T43SDT, T43SET quality-checked at NH-1 waypoints. 6 confirmed-good waypoints
+identified (lap_var 987–1509, sat_pct 5–34%). Kashmir valley floor (33.6°–34.1°N)
+whited out in all available tiles — treated as expected suppression gap. Corridor
+redesigned Jammu→Sonamarg (230km) as viable secondary corridor.
+
+**Task A — TCI canonical placement:**
+T43SDS_TCI_10m.tif (220MB) and T43SDT_TCI_10m.tif (110MB) copied to
+`micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/`. TCI_DIR now 8 tiles (~1.1GB).
+
+**Task B — Corridor definition YAML:**
+`scenarios/nav02_char/jammu_sonamarg_corridor_definition.yaml` created. Deputy 1
+authority. 7 waypoints (WP00–WP05 + WP_GAP), 3 segments, 4 TCI tiles, 2 DEM tiles.
+CRS: EPSG:32643. Operational note: structurally mirrors Shimla-Manali.
+
+**Task C — CORRIDOR_STATUS.md update:**
+Corridor 2 section replaced: "Jammu-Leh (IN PREPARATION)" → "Jammu-Sonamarg
+(CHARACTERISATION READY)". 6-WP table with lap_var/sat_pct metrics. OI-JL-04 updated
+to READY. Structural pattern documented.
+
+**Task D — Commit + push:**
+Committed `b9de176` to main. Pushed to origin/main. Orin sync attempted —
+node offline (192.168.1.53 no route to host). Will sync on next network availability.
+
+### Open Items Carried Forward
+- OI-JL-01: Summer TCI (eastern tiles T43SFS/SFT/SGS/SGT). Sep 2025 inadequate — Oct target.
+- OI-JL-03: Kargil DEM gap COP30 tile N33E076. Not blocking Jammu-Sonamarg Run 4.
+- OI-JL-04: NAV02-CHAR-RUN4 READY. Run harness implementation for JL corridor pending.
+- OI-JL-05: Summer re-acquisition guidance unchanged.
+
+### No production code changes this session. SIL baseline unchanged at 542/542.
+
+---
+
 ## Entry QA-068 — 26 April 2026 (Session Close)
 **Session Type:** JL-STATUS-UPDATE — corridor status documentation
 **HEAD at close:** (see commit below)
