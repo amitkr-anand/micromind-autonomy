@@ -1,0 +1,37 @@
+corridor_id: "trinity_range_char"
+crs: "EPSG:26910"
+description: >
+  Northern California Trinity/Klamath region.
+  Ridge-valley traverse within single NAIP tile.
+  EC-13 partial characterisation only.
+  NOT a validated operational corridor.
+  Deputy 1 approved 26 April 2026.
+
+naip_tile_used: "m_4112364_se_10_060_20220718.tif"
+naip_coverage_utm:
+  ul_easting: 494544
+  ul_northing: 4545900
+  lr_easting: 500202
+  lr_northing: 4538556
+
+corridor_length_km: 6.3
+gnss_denied_from_km: 1.0
+terrain_type: "ridge_valley_structured"
+
+waypoints_utm:
+  - id: WP0
+    easting: 497373
+    northing: 4545400
+    label: "corridor_start"
+  - id: WP1
+    easting: 497373
+    northing: 4542228
+    label: "corridor_mid"
+  - id: WP2
+    easting: 497373
+    northing: 4539056
+    label: "corridor_end"
+
+dem_10m: "scenarios/nav02_char/data/dem_10m_utm10n.tif"
+dem_30m: "scenarios/nav02_char/data/dem_30m_utm10n.tif"
+orthophoto_rgb: "scenarios/nav02_char/data/naip_rgb_central.tif"
