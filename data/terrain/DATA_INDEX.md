@@ -44,3 +44,54 @@ never commit derivatives to git. Canonical raw files only.
 | 2026-04-26 | Phase 1+2: Downloads/Trash cleanup + sentinel_tci_mosaic_utm43 deletion; srinagar DEMs rescued to micromind_data/raw/dem/srinagar/; sentinel mosaic moved to micromind_data/raw/imagery/sentinel/ | ~2.51 GB |
 | 2026-04-26 | Phase 3: Blender sandbox dedup — 14 Group C viz files + 6 Group E shimla_corridor files deleted | ~652 MB |
 | 2026-04-26 | Phase 4: SHIMLA-1 symlinks — simulation/terrain/shimla/ + shimla_manali_corridor/shimla_tile.tif | ~58 MB |
+
+---
+
+## Sentinel-2 Imagery (L2A, 10m TCI)
+
+| Tile | TCI File | Canonical Path | Acquisition | Coverage |
+|------|----------|----------------|-------------|----------|
+| T43RGQ | T43RGQ_20251017T053241_TCI_10m.jp2 | micromind_data/raw/imagery/sentinel2/shimla_corridor/T43RGQ_20251017.../GRANULE/.../IMG_DATA/R10m/ | 2025-10-17 | Eastern Shimla (77°E+), ~135 MB |
+| T43RFQ | T43RFQ_20251017T053241_TCI_10m.jp2 | micromind_data/raw/imagery/sentinel2/shimla_corridor/T43RFQ_20251017.../GRANULE/.../IMG_DATA/R10m/ | 2025-10-17 | Western Shimla (76.8°E), ~135 MB |
+
+Full SAFE packages retained (QI_DATA cloud/snow masks included).
+Do NOT copy SAFE packages into the repo. Reference TCI JP2 by absolute path.
+
+## UAV VisLoc Dataset — LightGlue Validation Corpus
+
+**Canonical path:** `micromind_data/raw/imagery/uav_visloc/UAV_VisLoc/`
+**Symlink (sandbox backward compat):** `micromind_blender_sandbox/matching_sandbox/data/uav_visloc/UAV_VisLoc/`
+**Source:** Xu et al., arXiv:2405.11936, 2024. DO NOT DELETE.
+
+| Site | File | Size | Status |
+|------|------|------|--------|
+| 01 | satellite01.tif | 0.81 GB | Active |
+| 02 | satellite02.tif | 1.19 GB | Active |
+| 03 | satellite03.tif | 2.58 GB | Active |
+| 04 | satellite04.tif | 2.11 GB | **Primary HIL benchmark** (H-4/H-5/H-6). Orin copy at /home/mmuser-orin/hil_benchmark/ |
+| 05 | satellite05.tif | 0.17 GB | Active |
+| 06 | satellite06.tif | 0.25 GB | Active |
+| 07 | — | — | UAV frames only, no satellite tile |
+| 08 | satellite08.tif | 2.85 GB | Excluded QA-042 (temporal change — greenhouses post-acquisition) |
+| 09 | satellite09_01-01/01-02/02-01/02-02.tif | 4.47 GB | 4 sub-tiles; excluded QA-042 (highway construction) |
+| 10 | satellite10.tif | 0.10 GB | Active |
+| 11 | satellite11.tif | 1.48 GB | Active |
+
+## Other Imagery
+
+| File | Canonical Path | Size | Notes |
+|------|----------------|------|-------|
+| ORTHOUV2018.tif | micromind_data/raw/imagery/colombia/ | 157 MB | Colombia orthophoto — speculative, not yet gate-tested |
+| output_hh_utm43.tif | micromind_data/raw/dem/shimla_local/ | 32.7 MB | UTM43N reprojection of Shimla DEM raw (WGS84 source: output_hh.tif) |
+| sentinel_tci_mosaic.tif | micromind_data/raw/imagery/sentinel/ | 691 MB | Sentinel-2 TCI mosaic, 10m GSD, UTM43N metric space |
+| sentinel_tci_mosaic_utm43.tif | micromind_data/raw/imagery/sentinel/ | 691 MB | UTM43N reprojection — retain, different projection from mosaic |
+
+## Imagery Housekeeping Log
+
+| Date | Action | Recovery |
+|------|--------|----------|
+| 2026-04-26 | Phase I-1: Deleted S2 SAFE QI_DATA from repo | 5.4 MB |
+| 2026-04-26 | Phase I-2: Moved S2 SAFE packages to imagery/sentinel2/ | structural |
+| 2026-04-26 | Phase I-3: Moved UAV VisLoc (16 GB) to micromind_data/raw/imagery/; symlink at sandbox | structural |
+| 2026-04-26 | Phase I-4: Moved Colombia orthophoto to micromind_data/raw/imagery/ | structural |
+| 2026-04-26 | Phase I-5: Moved output_hh_utm43.tif to micromind_data/raw/dem/shimla_local/ | structural |
