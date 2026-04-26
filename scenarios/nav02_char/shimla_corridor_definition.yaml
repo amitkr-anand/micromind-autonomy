@@ -1,0 +1,49 @@
+corridor_id: "shimla_manali_char_run3"
+crs_dem: "EPSG:4326"
+crs_sentinel: "EPSG:32643"
+description: >
+  Shimla-Manali corridor characterisation.
+  EC-13 partial — NAV-02 remains PARTIAL.
+  4-waypoint design: ACCEPT/CAUTION/SUPPRESS/ACCEPT
+  terrain transition deliberately captured.
+  tile_size_m=2000 (133x133px at trn_gsd=15m).
+  Deputy 1 approved 26 April 2026.
+
+dem_path: "data/terrain/shimla_manali_corridor/shimla_tile.tif"
+sentinel_path: "/home/mmuser/micromind_data/raw/imagery/sentinel/sentinel_tci_mosaic.tif"
+tile_size_m: 2000.0
+alt_m: 150.0
+
+# B2 waypoint verification notes:
+# WP0 (77.10, 31.20): shimla=OK sentinel=OK — no adjustment
+# WP1 (76.95, 31.35): shimla=OK sentinel=OK — no adjustment
+# WP2: original lat=31.45 is 0.009deg N of shimla_tile boundary (31.441N)
+#       adjusted lat=31.43 (2.2km south) — valley character maintained
+# WP3: original (77.05, 31.55) is 0.109deg N of shimla_tile boundary
+#       adjusted to (77.20, 31.38) — ridge terrain east of valley,
+#       both shimla and sentinel confirmed in-bounds
+waypoints_wgs84:
+  - id: WP0
+    lon: 77.10
+    lat: 31.20
+    label: "ridge_shimla_approach"
+    expected: "ACCEPT"
+    corridor_km: 20
+  - id: WP1
+    lon: 76.95
+    lat: 31.35
+    label: "valley_transition"
+    expected: "CAUTION"
+    corridor_km: 50
+  - id: WP2
+    lon: 76.85
+    lat: 31.43
+    label: "kashmir_valley_floor"
+    expected: "SUPPRESS"
+    corridor_km: 80
+  - id: WP3
+    lon: 77.20
+    lat: 31.38
+    label: "post_gap_ridge"
+    expected: "ACCEPT"
+    corridor_km: 130

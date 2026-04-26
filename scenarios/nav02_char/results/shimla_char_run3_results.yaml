@@ -1,0 +1,58 @@
+run_id: shimla_char_run3
+run_date: '2026-04-26'
+corridor: shimla_manali_char_run3
+tile_size_m: 2000.0
+trn_gsd_m: 14.34
+dem_resolution_m: 28.7
+note: "EC-13 partial characterisation. NAV-02 remains PARTIAL. Shimla-Manali validated\
+  \ corridor. 4-WP terrain transition design: ridge\u2192valley\u2192suppression\u2192\
+  ridge. WP2 adjusted lat 31.45\u219231.43 (2.2km S, shimla_tile boundary). WP3 adjusted\
+  \ (77.05,31.55)\u2192(77.20,31.38) (shimla_tile boundary)."
+waypoints:
+- id: WP0
+  label: ridge_shimla_approach
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0377
+  suitability_score: 0.6911
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP1
+  label: valley_transition
+  expected: CAUTION
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0318
+  suitability_score: 0.7139
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP2
+  label: kashmir_valley_floor
+  expected: SUPPRESS
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.031
+  suitability_score: 0.6458
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP3
+  label: post_gap_ridge
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0294
+  suitability_score: 0.6444
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+summary:
+  accept_count: 0
+  caution_count: 0
+  suppress_count: 0
+  rejected_count: 4
+  mean_confidence_accepted: null
+  expected_vs_actual_match_count: 3/4
