@@ -4,6 +4,60 @@
 
 ---
 
+## Entry QA-066 — 26 April 2026 (Session Close)
+**Session Type:** JL-SENTINEL-EXTRACT (Steps 3–6) + EC-13 NAV-02 Char Runs 1–3 complete
+**HEAD at close:** a99aeb5
+**SIL:** 542/542 (no code change this session — characterisation and data work only)
+
+### Work Completed
+
+**JL-SENTINEL-EXTRACT Step 3 — TCI extraction (all 6 priority tiles):**
+- T43SES: completed prior session (261 MB)
+- T43SET: extracted (149 MB) — S2C 2025-11-27
+- T43SFS: extracted (137 MB) — S2A 2025-11-29
+- T43SFT: extracted (105 MB) — S2C 2025-11-27
+- T43SGS: extracted (53 MB) — S2A 2025-11-26
+- T43SGT: extracted (85 MB) — S2A 2025-11-26
+- Method: `gdalbuildvrt -separate` (B04/B03/B02) + `gdal_translate -ot Byte -scale 0 2000 0 255 -co COMPRESS=DEFLATE -co TILED=YES`
+- All VRT temps cleaned. All 6 gdalinfo verified: 10980×10980px, 3-band Byte, EPSG:32643.
+- Total TCI output: 790 MB at `/home/mmuser/micromind_data/raw/imagery/sentinel2/Jammu_Leh_TCI/`
+
+**JL-SENTINEL-EXTRACT Step 4 — Coverage assessment:**
+- 6 tiles form a 2-row × 3-column grid, contiguous with 6–9 km overlaps at all junctions.
+- Combined extent: 74°59'59"E–78°19'36"E × 32°24'22"N–34°20'30"N.
+- Core corridor (75°–78.3°E): COMPLETE. Leh (77.57°E, 34.17°N): COVERED (T43SGT).
+- Gap: Jammu (74.87°E) and Srinagar (74.80°E) are 0.13°–0.20° west of left tile edge.
+  T43SDT extraction would close Srinagar gap (Deputy 1 decision required).
+- Verdict: CONTIGUOUS PARTIAL — operationally sufficient for Leh-approach characterisation.
+
+**JL-SENTINEL-EXTRACT Step 5 — Disk management:**
+- Raw ZIPs: 12 files, 14 GB total.  Priority 6: ~7.1 GB.  Secondary 6: ~6.9 GB.
+- TCI 6× smaller than ZIP average (3-band byte vs 13-band uint16 JP2).
+- Disk: 1.2 TB free. No disk pressure. ZIP deletion deferred to Deputy 1 quality ruling.
+- Options: delete secondary ZIPs (~6.9 GB), delete all ZIPs after validation (~14 GB).
+
+**JL-SENTINEL-EXTRACT Step 6 — Inventory document:**
+- `docs/data/JAMMU_LEH_SENTINEL_INVENTORY.md` created. Sections: purpose, TCI table,
+  coverage assessment, source ZIP inventory (12 entries), disk management, extraction log,
+  open items (OI-JL-01..05).
+
+**EC-13 NAV-02 characterisation (carried from prior sessions — for QA log completeness):**
+- Char Run 1 (Trinity, gsd_m=0.60): all SUPPRESSED — DEMO-BUG-001 identified (GSD bypass).
+- Char Run 2 (Trinity, clamped GSD): 10m trn_gsd=5.24m WP0=SUPP WP1/2=REJ; 30m trn_gsd=15.72m all REJ.
+- Char Run 3 (Shimla Sentinel TCI, clamped GSD): WP0–3 all REJECTED conf=0.029–0.037.
+  3/4 expected-match (WP2 SUPPRESS not exercised — valley floor coord needs re-selection).
+  Dark imagery finding: mean pixel 44–66/255 (winter haze/cloud in mosaic).
+
+### Open Items Carried Forward
+- OI-JL-01: JL TCI quality validation before ZIP retention decision
+- OI-JL-02: T43SDT extraction for Srinagar western gap (Deputy 1 authorisation)
+- OI-JL-03: JL NAV-02 characterisation run (DEM tile set needed for full corridor)
+- EC-13 NAV-02: WP2 SUPPRESS coord re-selection (~31.10–31.15°N valley floor)
+- EC-13 NAV-02: Sentinel TCI dark imagery investigation (winter mosaic)
+- EC-13 NAV-02: NAV-02 remains PARTIAL — no SRS closure this session
+
+---
+
 ## Entry QA-065 — 26 April 2026 (Session Close)
 **Session Type:** OI-40 CLOSE + Compliance Matrix Full Reconciliation v4
 **HEAD at close:** 3230ba6
