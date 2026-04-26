@@ -104,7 +104,9 @@ NOT_RESTARTABLE row: CLOSED → PARTIAL (downgraded QA-062).
 RESTARTABLE row: PARTIAL/Implemented → OPEN/NOT IMPLEMENTED.
 E-03 row: PARTIAL/Partially Implemented → OPEN/NOT IMPLEMENTED.
 
-**UT-RS-03 CLOSED (3fc84bc):**
+**UT-RS-03 PARTIAL (3fc84bc) — ProcessWatchdog decision logic 6 tests
+PASS 542/542. ST-RESTART-01 (real SIGKILL stimulus) remains
+Phase D. QA log header corrected per QFR-001 Deputy 2 finding:**
 core/watchdog/process_watchdog.py — PROCESS_REGISTRY (6 entries):
   EWManager, LogBus: RESTARTABLE_WITHOUT_SHM
   NavigationManager, MissionManager, PX4Bridge: RESTARTABLE_WITH_SHM
