@@ -15,7 +15,7 @@ Authority: Deputy 1 | Date: 26 April 2026
 | Srinagar DEM | Documents/MicroMind-X/.../DEM FILES/srinagar_dem.tif | AVAILABLE-UNUSED | Kashmir valley — SAL-3 suppression gap |
 | Colorado USGS 10m | micromind_data/raw/dem/colorado_test/ | AVAILABLE-UNUSED | Algorithm testing only |
 | Sentinel TCI mosaic | Downloads/sentinel_tci_mosaic.tif | AVAILABLE — coverage TBD | Optical landmark reference |
-| UAV VisLoc (11 sites) | micromind_blender_sandbox/matching_sandbox/data/uav_visloc/ | AVAILABLE-UNUSED | OI-07 VIO validation |
+| UAV VisLoc (11 sites) | micromind_data/raw/imagery/uav_visloc/UAV_VisLoc/ | AVAILABLE-UNUSED | OI-07 VIO validation |
 | INRIA Aerial (urban) | micromind_data/raw/inria/ | AVAILABLE-UNUSED | Urban landmark detection testing |
 | Indus Basin PDF | micromind_data/raw/dem/ | REFERENCE | Hydrological landmark reference |
 

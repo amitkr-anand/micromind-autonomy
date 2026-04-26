@@ -14,7 +14,7 @@ This gap blocks HIL readiness certification.
 ## Updated Assessment — UAV VisLoc Dataset
 The UAV VisLoc dataset (11 sites, satellite imagery pairs) is
 available at:
-/home/mmuser/micromind_blender_sandbox/matching_sandbox/data/uav_visloc/
+/home/mmuser/micromind_data/raw/imagery/uav_visloc/UAV_VisLoc/
 This dataset provides ground-truth satellite reference images with
 known positions — directly usable for VIO accuracy measurement
 without requiring a physical outdoor rig test.
