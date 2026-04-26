@@ -53,6 +53,10 @@ CORRIDOR_DEF = _REPO_ROOT / "scenarios" / "nav02_char" / "corridor_definition.ya
 RESULTS_DIR  = _REPO_ROOT / "scenarios" / "nav02_char" / "results"
 DEMO_ISSUES  = _REPO_ROOT / "docs" / "demo" / "DEMO_ISSUES.md"
 
+# ── Camera GSD ─────────────────────────────────────────────────────────────
+# NAIP native resolution — the camera tile GSD for this characterisation.
+CAMERA_GSD = 0.60  # m/px
+
 
 # ── UTM → WGS84 ────────────────────────────────────────────────────────────
 
@@ -198,11 +202,19 @@ def run_mode(
         )
 
         bounds = dem_loader.get_bounds()
+        dem_res_m = bounds["resolution_m"]
         print(
             f"  DEM bounds: N={bounds['north']:.5f} S={bounds['south']:.5f} "
             f"E={bounds['east']:.5f} W={bounds['west']:.5f} "
-            f"res={bounds['resolution_m']:.2f}m"
+            f"res={dem_res_m:.2f}m"
         )
+
+        # Production GSD clamping per CrossModalEvaluator:
+        # gsd_m = max(camera_gsd, dem_res_m * 0.5)
+        # Direct call — same clamping applied manually.
+        # See DEMO-BUG-001.
+        trn_gsd = max(CAMERA_GSD, dem_res_m * 0.5)
+        print(f"  trn_gsd = max({CAMERA_GSD}, {dem_res_m:.2f}×0.5) = {trn_gsd:.2f}m")
 
         wp_results = []
         for wp_idx, wp in enumerate(corridor["waypoints_utm"]):
@@ -236,7 +248,7 @@ def run_mode(
                 lat_estimate=lat,
                 lon_estimate=lon,
                 alt_m=150.0,
-                gsd_m=0.60,
+                gsd_m=trn_gsd,
                 mission_time_ms=int(wp_idx * 10000),
             )
 
@@ -346,13 +358,10 @@ def write_results(mode1: dict, mode2: dict, summary: dict) -> None:
         "note": (
             "EC-13 partial characterisation only. "
             "NAV-02 remains PARTIAL. Not SRS closure. "
-            "FINDING DI-03: All waypoints SUPPRESSED both modes. "
-            "Root cause: direct PhaseCorrelationTRN.match() at gsd_m=0.60 bypasses "
-            "CrossModalEvaluator GSD clamping (max(camera_gsd, dem_res*0.5)). "
-            "10m DEM upsampled 16.7x to 0.60m → hillshade texture_variance=5.18 < "
-            "threshold 50.0 → SUPPRESS. Relief is good (285m). "
-            "Production CrossModalEvaluator would clamp trn_gsd to 5.0m (10m DEM) "
-            "or 15.0m (30m DEM). Deputy 1 to rule on char run 2 with clamped GSD."
+            "Run 2: production GSD clamping applied per DEMO-BUG-001 fix. "
+            "trn_gsd = max(camera_gsd=0.60, dem_res*0.5). "
+            "Mode 1 (10m DEM): trn_gsd=5.0m. Mode 2 (30m DEM): trn_gsd=15.0m. "
+            "Direct PhaseCorrelationTRN call — same clamping as CrossModalEvaluator."
         ),
         "mode_1_10m": {
             "dem_resolution_m": mode1["dem_resolution_m"],
@@ -426,7 +435,8 @@ def main() -> None:
     print(f"\nCorridor  : {corridor['corridor_id']}")
     print(f"Length    : {corridor['corridor_length_km']} km")
     print(f"Waypoints : {len(corridor['waypoints_utm'])}")
-    print(f"Note      : pyproj absent — UTM→WGS84 fallback formula in use (DI-02)")
+    print(f"Note      : UTM→WGS84 via rasterio.warp.transform (accurate). pyproj absent (DI-02).")
+    print(f"Note      : Run 2 — production GSD clamping active (DEMO-BUG-001 fix)")
 
     naip_path  = str(_REPO_ROOT / corridor["orthophoto_rgb"])
     dem10_path = str(_REPO_ROOT / corridor["dem_10m"])

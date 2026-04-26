@@ -1,12 +1,9 @@
 run_date: '2026-04-26'
 corridor: trinity_range_char
 note: "EC-13 partial characterisation only. NAV-02 remains PARTIAL. Not SRS closure.\
-  \ FINDING DI-03: All waypoints SUPPRESSED both modes. Root cause: direct PhaseCorrelationTRN.match()\
-  \ at gsd_m=0.60 bypasses CrossModalEvaluator GSD clamping (max(camera_gsd, dem_res*0.5)).\
-  \ 10m DEM upsampled 16.7x to 0.60m \u2192 hillshade texture_variance=5.18 < threshold\
-  \ 50.0 \u2192 SUPPRESS. Relief is good (285m). Production CrossModalEvaluator would\
-  \ clamp trn_gsd to 5.0m (10m DEM) or 15.0m (30m DEM). Deputy 1 to rule on char run\
-  \ 2 with clamped GSD."
+  \ Run 2: production GSD clamping applied per DEMO-BUG-001 fix. trn_gsd = max(camera_gsd=0.60,\
+  \ dem_res*0.5). Mode 1 (10m DEM): trn_gsd=5.0m. Mode 2 (30m DEM): trn_gsd=15.0m.\
+  \ Direct PhaseCorrelationTRN call \u2014 same clamping as CrossModalEvaluator."
 mode_1_10m:
   dem_resolution_m: 10
   waypoints:
@@ -22,18 +19,18 @@ mode_1_10m:
   - id: WP1
     lat: 41.0312627
     lon: -123.0312508
-    status: SUPPRESSED
-    confidence: 0.0
-    suitability_recommendation: SUPPRESS
+    status: REJECTED
+    confidence: 0.0446
+    suitability_recommendation: CAUTION
     correction_north_m: 0.0
     correction_east_m: 0.0
     latency_ms: 0
   - id: WP2
     lat: 41.0026887
     lon: -123.0312373
-    status: SUPPRESSED
-    confidence: 0.0
-    suitability_recommendation: SUPPRESS
+    status: REJECTED
+    confidence: 0.0452
+    suitability_recommendation: CAUTION
     correction_north_m: 0.0
     correction_east_m: 0.0
     latency_ms: 0
@@ -43,27 +40,27 @@ mode_2_30m:
   - id: WP0
     lat: 41.0598366
     lon: -123.0312643
-    status: SUPPRESSED
-    confidence: 0.0
-    suitability_recommendation: SUPPRESS
+    status: REJECTED
+    confidence: 0.0998
+    suitability_recommendation: ACCEPT
     correction_north_m: 0.0
     correction_east_m: 0.0
     latency_ms: 0
   - id: WP1
     lat: 41.0312627
     lon: -123.0312508
-    status: SUPPRESSED
-    confidence: 0.0
-    suitability_recommendation: SUPPRESS
+    status: REJECTED
+    confidence: 0.119
+    suitability_recommendation: ACCEPT
     correction_north_m: 0.0
     correction_east_m: 0.0
     latency_ms: 0
   - id: WP2
     lat: 41.0026887
     lon: -123.0312373
-    status: SUPPRESSED
-    confidence: 0.0
-    suitability_recommendation: SUPPRESS
+    status: REJECTED
+    confidence: 0.1382
+    suitability_recommendation: CAUTION
     correction_north_m: 0.0
     correction_east_m: 0.0
     latency_ms: 0
@@ -72,7 +69,7 @@ summary:
   mode_1_suppress_count: 3
   mode_2_accept_count: 0
   mode_2_suppress_count: 3
-  mode_1_mean_confidence: 0.0
-  mode_2_mean_confidence: 0.0
+  mode_1_mean_confidence: 0.0299
+  mode_2_mean_confidence: 0.119
   mode_1_mean_correction_magnitude_m: 0.0
   mode_2_mean_correction_magnitude_m: 0.0
