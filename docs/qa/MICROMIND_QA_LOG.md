@@ -4,6 +4,30 @@
 
 ---
 
+## Entry QA-068 — 26 April 2026 (Session Close)
+**Session Type:** JL-STATUS-UPDATE — corridor status documentation
+**HEAD at close:** (see commit below)
+**SIL:** 542/542 (documentation only)
+
+### Work Completed
+
+**DEMO_ISSUES.md:** OI-JL-01 through OI-JL-04 rewritten per Deputy 1 directive.
+OI-JL-01 OPEN (summer re-acquisition pending). OI-JL-02 DEFERRED. OI-JL-03 OPEN
+(Kargil DEM gap N33E076). OI-JL-04 BLOCKED (pending OI-JL-01 + OI-JL-03).
+
+**docs/data/CORRIDOR_STATUS.md created:** Canonical two-corridor status sheet.
+Corridor 1 (Shimla-Manali) READY. Corridor 2 (Jammu-Leh) NOT READY.
+Acquisition guidance for summer re-download included.
+
+**TERRAIN_CLASS_MATRIX_v1.md:** Jammu-Leh tactical row added.
+
+### Open Items Carried Forward
+- OI-JL-01: Summer TCI re-acquisition (Aug–Sep, <10% cloud)
+- OI-JL-03: COP30 tile N33E076 (Kargil DEM gap)
+- OI-JL-04: NAV02-CHAR-RUN4 BLOCKED
+
+---
+
 ## Entry QA-067 — 26 April 2026 (Session Close)
 **Session Type:** JL-TCI-VALIDATE — Jammu-Leh TCI quality validation, corridor viability
 **HEAD at close:** (see commit below)

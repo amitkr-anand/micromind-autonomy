@@ -67,7 +67,7 @@ All test scenarios must be designed against these profiles. No other baseline is
 
 ---
 
-## 6. Current Programme State (26 April 2026 — updated QA-067)
+## 6. Current Programme State (26 April 2026 — updated QA-068)
 
 ### micromind-autonomy
 | Sprint | Status | Gates | Tag |
@@ -322,8 +322,9 @@ SRS_COMPLIANCE_MATRIX.md Appendix B: ROUTING row Impl Status corrected from "Par
 | ~~OI-JL-01~~ | **CLOSED** JL-TCI-VALIDATE 26 Apr 2026 — western tiles (T43SES/SET/SFS) usable; eastern tiles (T43SFT/SGS/SGT) cloud/snow-saturated. WP_UDHAMPUR ACCEPT (lap=1232, 2% sat). WP_KARGIL WHITE OUT (99.9% sat, also outside DEM). WP_LEH MARGINAL (83% sat). ZIP retention recommended. NAV02-CHAR-RUN4 NOT READY. | QA | CLOSED |
 | OI-JL-02 | T43SDT extraction (Srinagar western gap) — DEFERRED by Deputy 1 (JL-TCI-VALIDATE directive). | Data | DEFERRED |
 | OI-JL-03 | JL NAV-02 characterisation run — corridor definition YAML + harness for Jammu-Leh TCI once DEM tiles confirmed. shimla/manali tiles only cover 76.4–77.9°E; full JL corridor (74.8–77.6°E) needs DEMLoader tile set. | Code | MEDIUM — before EC-13 JL run |
-| OI-JL-04 | Supplementary COP30 DEM tile for Kargil gap (76.18°E, 33.55°N). TILE2 east edge 76.10°E misses by 0.08°. Blocks NAV02-CHAR-RUN4 Kargil waypoint. | Data | HIGH — before NAV02-CHAR-RUN4 |
-| OI-JL-05 | Summer/clear-air Sentinel-2 TCI acquisition for eastern corridor (Kargil, Leh). Winter 2025 tiles saturated. Blocks NAV02-CHAR-RUN4 eastern segment ACCEPT validation. | Data | HIGH — before NAV02-CHAR-RUN4 |
+| OI-JL-03 | Kargil DEM gap — COP30 tile N33E076 needed. TILE2 east edge 76.10°E misses Kargil (76.18°E) by 0.08°. Blocks NAV02-CHAR-RUN4. | Data | MEDIUM — before NAV02-CHAR-RUN4 |
+| OI-JL-04 | NAV02-CHAR-RUN4 BLOCKED — requires OI-JL-01 (summer TCI) and OI-JL-03 (Kargil DEM). Deputy 1 to activate when data available. | Code | HIGH — BLOCKED |
+| OI-JL-05 | Summer Sentinel-2 re-acquisition for T43SFS/T43SFT/T43SGS/T43SGT (eastern corridor). Winter 2025 tiles cloud/snow-saturated. Target Aug–Sep <10% cloud. | Data | HIGH — before NAV02-CHAR-RUN4 |
 | OI-41 | `core/bim/bim.py` structured log debt — bim.py uses stdlib `logging` (pattern from vio_mode.py, introduced at OI-39 fix) but does not use the programme's structured event log dict pattern (req_id, severity, module_name, timestamp_ms). All other modules introduced in SB-5 Phase A/B use the event_log dict pattern. bim.py should be migrated to structured logging before SRS external review. Not blocking — stdlib log is auditable but not machine-parseable via the programme log schema. | Code | LOW — tech debt, not blocking |
 | ~~OI-42~~ **CLOSED** QA-034 — `simulation/terrain/shimla/shimla_texture.png` committed (viz.hh_hillshade-color.png from OpenTopography download). World file updated: OGRE2 PBR plane at Z=1800m carries texture via `albedo_map`. Laplacian variance=3642, Shi-Tomasi corners=1000. VIO confidence measurement unblocked for next SITL session. | Code | CLOSED |
 | ~~OI-44~~ **CLOSED as ARCHITECTURAL** QA-036 — Cross-modal (RGB vs DEM hillshade) NCC ceiling 0.09–0.11 is the EXPECTED result for different modalities. AD-01 requires same-modality (Sentinel-2 vs Sentinel-2), not cross-modal. OI-45 (same-modal validation) resolves this. No threshold change needed for correct operational mode. | Architecture | CLOSED |

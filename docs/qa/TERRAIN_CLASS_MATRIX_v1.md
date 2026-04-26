@@ -27,6 +27,7 @@ Authority: Deputy 1 | Date: 26 April 2026
 | Kashmir valley floor | Shimla-Manali km 60-120 | SUPPRESS | YES | Srinagar DEM + Sentinel TCI |
 | Mountain pass (Rohtang) | Shimla-Manali km 100-120 | CAUTION-SUPPRESS | Boundary | Shimla-Manali COP30 |
 | High-altitude desert | Jammu-Leh km 280-330 | SUPPRESS | YES | JL TILE3 |
+| Jammu-Leh tactical | Udhampur–Leh 330 km | TILE1-3 in repo | T43SES usable; T43SFS–SGT winter-saturated | Aug–Sep acquisition needed | ACCEPT expected (DEM suitability 0.65–0.95) |
 | Plains corridor | low_observability -1/-2 | SUPPRESS | YES (stress test) | Available-unused |
 | Mixed observability | mixed_observability corridor | CAUTION | Boundary | Available-unused |
 | Spiti high altitude | Spiti Valley | SUPPRESS | YES (AVP-04) | Available-unused |
