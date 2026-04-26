@@ -4,6 +4,56 @@
 
 ---
 
+## Entry QA-067 — 26 April 2026 (Session Close)
+**Session Type:** JL-TCI-VALIDATE — Jammu-Leh TCI quality validation, corridor viability
+**HEAD at close:** (see commit below)
+**SIL:** 542/542 (no code change — data/docs work only)
+
+### Work Completed
+
+**Step 1 — Tile-level statistics:**
+All 6 TCI tiles assessed via `gdalinfo -stats`. Eastern tiles severely saturated:
+- T43SES: mean=201, std=42 → MODERATE (usable)
+- T43SET: mean=233, std=37 → BRIGHT (partial cloud/snow)
+- T43SFS: mean=225, std=57 → MODERATE-BRIGHT (best texture in set)
+- T43SFT: mean=246, std=24 → VERY BRIGHT (significant cloud/snow)
+- T43SGS: mean=253, std=14 → NEAR SATURATED
+- T43SGT: mean=250, std=16 → NEAR SATURATED
+
+**Step 2 — Tactical waypoint pixel windows (100×100px via GDAL/numpy):**
+- WP_UDHAMPUR (75.15°E, 33.00°N, T43SES): mean=212.8, std=27.0, lap_var=1232, sat=2% → USABLE
+- WP_KARGIL (76.18°E, 33.55°N, T43SFT): mean=255.0, std=0.3, lap_var=1.49, sat=99.9% → WHITE OUT
+- WP_LEH (77.57°E, 34.17°N, T43SGT): mean=253.5, std=5.8, lap_var=166, sat=83% → MARGINAL
+
+**Step 3 — TerrainSuitabilityScorer (conda env, trn_gsd=15m):**
+- WP_UDHAMPUR (TILE1, 28.40m res): ACCEPT score=0.6457, texture_var=271, relief=670m ✓
+- WP_KARGIL: OUTSIDE_DEM_COVERAGE — TILE2 east edge 76.10°E; Kargil 76.18°E outside by 0.08°
+- WP_LEH (TILE3, 28.22m res): ACCEPT score=0.9497, texture_var=35899, relief=189m ✓
+
+DEM finding: No COP30 tile covers Kargil (76.18°E, 33.55°N). Gap between TILE2 east (76.10°E)
+and TILE3 south (34.05°N). Supplementary tile required.
+
+**Step 4 — Verdict:**
+NAV02-CHAR-RUN4 NOT READY. Two blockers:
+1. Eastern TCI cloud/snow saturation — summer re-acquisition required for Kargil/Leh ACCEPT validation
+2. DEM gap at Kargil — supplementary COP30 tile needed
+
+WP_UDHAMPUR is clear for characterisation now.
+
+**Step 5 — DEMO_ISSUES.md:**
+OI-JL-01: CLOSED (validated). OI-JL-02: DEFERRED by Deputy 1.
+
+**Step 6 — Inventory doc updated:**
+JAMMU_LEH_SENTINEL_INVENTORY.md: Sections 7 and 8 added with full validation findings,
+waypoint table, DEM coverage map, viability verdict, updated open items.
+
+### Open Items Carried Forward
+- OI-JL-04: Kargil DEM gap (supplementary COP30 tile needed)
+- OI-JL-05: Summer/clear-air TCI for eastern corridor
+- NAV02-CHAR-RUN4: Deputy 1 ruling pending — blocker list documented
+
+---
+
 ## Entry QA-066 — 26 April 2026 (Session Close)
 **Session Type:** JL-SENTINEL-EXTRACT (Steps 3–6) + EC-13 NAV-02 Char Runs 1–3 complete
 **HEAD at close:** a99aeb5

@@ -1,6 +1,6 @@
 # Jammu-Leh Sentinel-2 TCI Inventory
 
-Authority: Deputy 1 | Created: 2026-04-26 | Directive: JL-SENTINEL-EXTRACT
+Authority: Deputy 1 | Created: 2026-04-26 | Updated: 2026-04-26 | Directives: JL-SENTINEL-EXTRACT, JL-TCI-VALIDATE
 
 ---
 
@@ -129,12 +129,80 @@ switching to `gdalbuildvrt -separate` + `gdal_translate -scale`.
 
 ---
 
-## 7. Open Items
+## 7. TCI Quality Validation (JL-TCI-VALIDATE, 2026-04-26)
+
+### Step 1 — Tile-level statistics (Band 1 / Red channel)
+
+| Tile    | Mean  | StdDev | Assessment                           |
+|---------|-------|--------|--------------------------------------|
+| T43SES  | 201.2 | 42.0   | MODERATE — usable texture            |
+| T43SET  | 232.7 | 37.4   | BRIGHT — partial cloud/snow at elev. |
+| T43SFS  | 225.2 | 57.0   | MODERATE-BRIGHT — best stddev, rock/vegetation mix |
+| T43SFT  | 246.0 | 23.6   | VERY BRIGHT, low texture — significant cloud/snow |
+| T43SGS  | 252.6 | 13.5   | NEAR SATURATED — cloud/snow dominant |
+| T43SGT  | 250.4 | 15.7   | NEAR SATURATED — cloud/snow dominant |
+
+### Step 2 — Tactical waypoint pixel windows (100×100px)
+
+| Waypoint      | Lon (°E) | Lat (°N) | Tile    | mean_gray | std_gray | lap_var  | sat_frac | Assessment          |
+|---------------|----------|----------|---------|-----------|----------|----------|----------|---------------------|
+| WP_UDHAMPUR   | 75.15    | 33.00    | T43SES  | 212.8     | 27.0     | 1232.28  | 2.1%     | USABLE — good texture |
+| WP_KARGIL     | 76.18    | 33.55    | T43SFT  | 255.0     | 0.3      | 1.49     | 99.9%    | WHITE OUT — cloud saturation |
+| WP_LEH        | 77.57    | 34.17    | T43SGT  | 253.5     | 5.8      | 166.46   | 83.2%    | MARGINAL — high saturation |
+
+### Step 3 — TerrainSuitabilityScorer at tactical waypoints
+
+DEM tiles: TILE1 (EPSG:4326, 28.40m/px), TILE2 (EPSG:4326, 28.40m/px), TILE3 (EPSG:4326, 28.22m/px).
+trn_gsd = max(10, 28.4×0.5) = 15.0m.
+
+| Waypoint    | DEM Tile | DEM Coverage | suitability | score  | texture_var | relief_m |
+|-------------|----------|--------------|-------------|--------|-------------|----------|
+| WP_UDHAMPUR | TILE1    | ✓ COVERED    | ACCEPT      | 0.6457 | 271.31      | 670.63   |
+| WP_KARGIL   | —        | ✗ OUTSIDE DEM COVERAGE (TILE2 east edge 76.10°E; Kargil at 76.18°E) | — | — | — | — |
+| WP_LEH      | TILE3    | ✓ COVERED    | ACCEPT      | 0.9497 | 35899.29    | 189.46   |
+
+DEM gap finding: No COP30 tile covers the Kargil region (76.18°E, 33.55°N). TILE2 ends at
+76.10°E east and 33.55°N south. TILE3 starts at 34.05°N north. Gap is ~0.08° east and ~0.50°
+latitude. A supplementary DEM tile centred on Kargil is needed for NAV02-CHAR-RUN4.
+
+### Step 4 — Corridor Viability Verdict
+
+```
+┌──────────────┬────────────┬──────────────┬─────────────┬────────────┐
+│   Waypoint   │ TCI Texture│ DEM Coverage │ Suitability │  Usable?   │
+├──────────────┼────────────┼──────────────┼─────────────┼────────────┤
+│ WP_UDHAMPUR  │ YES        │ TILE1 ✓      │ ACCEPT 0.65 │ YES        │
+│ (75.15°E)    │ lap=1232   │              │             │            │
+├──────────────┼────────────┼──────────────┼─────────────┼────────────┤
+│ WP_KARGIL    │ NO         │ OUTSIDE ✗    │ UNKNOWN     │ NO         │
+│ (76.18°E)    │ lap=1.5    │ DEM gap      │             │ (dual gap) │
+│              │ 99.9% sat  │              │             │            │
+├──────────────┼────────────┼──────────────┼─────────────┼────────────┤
+│ WP_LEH       │ MARGINAL   │ TILE3 ✓      │ ACCEPT 0.95 │ MARGINAL   │
+│ (77.57°E)    │ lap=166    │              │             │ (83% sat.) │
+│              │ 83% sat    │              │             │            │
+└──────────────┴────────────┴──────────────┴─────────────┴────────────┘
+```
+
+**NAV02-CHAR-RUN4 readiness:** NOT READY as currently configured.
+- WP_UDHAMPUR: clear for characterisation.
+- WP_KARGIL: requires (a) clear-air/summer TCI acquisition and (b) supplementary COP30 DEM tile.
+- WP_LEH: DEM suitable (score 0.95), but TCI winter saturation at 83% will suppress matching.
+  Acceptable for SUPPRESS/REJECT characterisation. For ACCEPT validation: clear-air acquisition needed.
+
+**ZIP retention:** RECOMMENDED. Current TCI is Winter 2025 — unsuitable for eastern corridor
+TRN matching. Do not delete ZIPs; re-acquisition from Copernicus for summer imagery is the path
+forward. Deleting ZIPs does not change the TCI quality problem.
+
+---
+
+## 8. Open Items
 
 | ID  | Item                                                                                 | Status |
 |-----|--------------------------------------------------------------------------------------|--------|
-| OI-JL-01 | Validate TCI pixel quality (cloud cover, dark pixels) for NAV-02 use        | OPEN   |
-| OI-JL-02 | Extract T43SDT TCI to close Srinagar western gap (Deputy 1 decision)        | OPEN   |
+| OI-JL-01 | TCI quality validation — complete (JL-TCI-VALIDATE 26 Apr 2026)             | **CLOSED** |
+| OI-JL-02 | Extract T43SDT TCI to close Srinagar western gap                             | **DEFERRED** (Deputy 1) |
 | OI-JL-03 | Assess mosaic feasibility across 6 tiles for contiguous corridor use        | OPEN   |
-| OI-JL-04 | Obtain DEM tiles (shimla corridor DEM covers 76.4–77.9°E; JL corridor needs broader coverage) | OPEN |
-| OI-JL-05 | Deputy 1 to authorise ZIP deletion after TCI quality validation             | OPEN   |
+| OI-JL-04 | Supplementary COP30 DEM tile for Kargil gap (76.18°E, 33.55°N)             | OPEN — blocks NAV02-CHAR-RUN4 |
+| OI-JL-05 | Summer/clear-air TCI acquisition for Kargil and Leh (eastern corridor)      | OPEN — blocks NAV02-CHAR-RUN4 |
+| OI-JL-06 | Deputy 1 to authorise ZIP deletion — RECOMMENDATION: RETAIN (winter TCI insufficient for TRN, re-acquisition needed) | OPEN |
