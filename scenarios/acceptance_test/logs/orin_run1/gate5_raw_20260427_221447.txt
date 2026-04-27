@@ -1,0 +1,31 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0 -- /home/mmuser-orin/miniforge3/envs/micromind-autonomy/bin/python
+cachedir: .pytest_cache
+rootdir: /home/mmuser-orin/micromind-autonomy
+configfile: pytest.ini
+collecting ... collected 17 items
+
+tests/test_gate5_corridor.py::TestNAV13MergedDEMCoverage::test_nav13_all_waypoints_in_bounds PASSED [  5%]
+tests/test_gate5_corridor.py::TestNAV13MergedDEMCoverage::test_nav13_all_waypoints_valid_elevation PASSED [ 11%]
+tests/test_gate5_corridor.py::TestNAV13MergedDEMCoverage::test_nav13_merged_north_bound PASSED [ 17%]
+tests/test_gate5_corridor.py::TestNAV13MergedDEMCoverage::test_nav13_terrain_zones_defined PASSED [ 23%]
+tests/test_gate5_corridor.py::TestNAV14TerrainSuitabilityVariation::test_nav14_scores_vary_across_zones PASSED [ 29%]
+tests/test_gate5_corridor.py::TestNAV14TerrainSuitabilityVariation::test_nav14_at_least_one_usable_zone PASSED [ 35%]
+tests/test_gate5_corridor.py::TestNAV15MonteCarlo180km::test_nav15_trn_reduces_p99_all_checkpoints PASSED [ 41%]
+tests/test_gate5_corridor.py::TestNAV15MonteCarlo180km::test_nav15_none_mode_monotonic PASSED [ 47%]
+tests/test_gate5_corridor.py::TestNAV15MonteCarlo180km::test_nav15_trn_non_monotonic PASSED [ 52%]
+tests/test_gate5_corridor.py::TestNAV15MonteCarlo180km::test_nav15_result_has_all_checkpoints PASSED [ 58%]
+tests/test_gate5_corridor.py::TestNAV15MonteCarlo180km::test_nav15_p5_positive PASSED [ 64%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_shm_not_triggered
+-------------------------------- live log setup --------------------------------
+WARNING  core.fusion.vio_mode:vio_mode.py:166 VIO_OUTAGE_DETECTED: dt_since_vio=2.200s outage_event=1
+INFO     core.fusion.vio_mode:vio_mode.py:214 VIO_RESUMPTION_STARTED: outage_events=1
+INFO     core.fusion.vio_mode:vio_mode.py:227 VIO_NOMINAL_RESTORED: resumption_cycles=2
+PASSED                                                                   [ 70%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_trn_only_entered_vio_degradation PASSED [ 76%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_mode_transitions_logged PASSED [ 82%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_system_reaches_180km PASSED [ 88%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_nominal_at_gnss_phase PASSED [ 94%]
+tests/test_gate5_corridor.py::TestNAV16CompoundFaultSurvival::test_nav16_no_abort_events PASSED [100%]
+
+============================== 17 passed in 1.71s ==============================
