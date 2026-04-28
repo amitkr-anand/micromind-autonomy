@@ -22,9 +22,12 @@ References: DD-02, NFR-013, FR-101 (BIM), FR-103 (DMRL),
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from dataclasses import dataclass, field, asdict
+from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -410,3 +413,202 @@ class MissionLog:
 
     def __repr__(self) -> str:
         return f"MissionLog(mission_id={self.mission_id!r}, entries={self.count()})"
+
+
+# ---------------------------------------------------------------------------
+# Critical categories (P0) — always preserved, never dropped
+# ---------------------------------------------------------------------------
+
+CRITICAL_CATEGORIES: frozenset = frozenset({
+    LogCategory.L10S_SE,
+    LogCategory.MISSION_START,
+    LogCategory.MISSION_END,
+    LogCategory.STATE_TRANSITION,
+})
+
+
+# ---------------------------------------------------------------------------
+# RS-02 Rolling mission log
+# ---------------------------------------------------------------------------
+
+class RollingMissionLog:
+    """
+    RS-02 compliant rolling mission log writer.
+
+    Rolls on: max_size_mb (default 200) OR max_age_min (default 30), whichever
+    occurs first. Each roll emits a LOG_ROLLED system entry in the new file.
+
+    CRITICAL (P0) entries (L10S_SE, MISSION_START, MISSION_END,
+    STATE_TRANSITION) are written to both the current JSONL file AND
+    critical_log_path.  dropped_critical_events_count is invariantly 0.
+
+    Non-critical entries are dropped (and dropped_records_total incremented)
+    when max_buffer_entries capacity is exhausted.  LOG_BUFFER_HIGH is emitted
+    as a system entry when the non-critical entry count in the current file
+    reaches 80 % of max_buffer_entries.
+
+    File format : JSON Lines (.jsonl) — one MissionLogEntry dict per line.
+    File naming : mission_log_<UTC-ISO-timestamp>.jsonl
+    """
+
+    def __init__(
+        self,
+        output_dir: Path,
+        critical_log_path: Path,
+        max_size_mb: float = 200.0,
+        max_age_min: float = 30.0,
+        max_buffer_entries: Optional[int] = None,
+        _clock_fn=None,
+    ) -> None:
+        self.output_dir = Path(output_dir)
+        self.critical_log_path = Path(critical_log_path)
+        self.max_size_bytes: int = int(max_size_mb * 1024 * 1024)
+        self.max_age_s: float = max_age_min * 60.0
+        self.max_buffer_entries: Optional[int] = max_buffer_entries
+        self._clock_fn = _clock_fn or time.monotonic
+
+        # Public RS-02 counters
+        self.dropped_records_total: int = 0
+        self.dropped_critical_events_count: int = 0  # invariant: always 0
+
+        # File state
+        self._current_file: Optional[Any] = None
+        self._current_file_path: Optional[Path] = None
+        self.current_size_bytes: int = 0
+        self._noncrit_entries_in_file: int = 0
+        self._roll_start_time: float = self._clock_fn()
+        self._buffer_high_warned: bool = False
+        self._rolled_files: List[Path] = []
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.critical_log_path.parent.mkdir(parents=True, exist_ok=True)
+        self._open_new_file()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _is_critical(self, entry: MissionLogEntry) -> bool:
+        return entry.category in CRITICAL_CATEGORIES
+
+    def _open_new_file(self) -> None:
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%f")
+        self._current_file_path = self.output_dir / f"mission_log_{ts}.jsonl"
+        self._current_file = open(self._current_file_path, "w", encoding="utf-8")
+        self.current_size_bytes = 0
+        self._noncrit_entries_in_file = 0
+        self._buffer_high_warned = False
+        self._roll_start_time = self._clock_fn()
+
+    def _should_roll(self) -> bool:
+        if self.current_size_bytes >= self.max_size_bytes:
+            return True
+        return (self._clock_fn() - self._roll_start_time) >= self.max_age_s
+
+    def _buffer_full(self) -> bool:
+        if self.max_buffer_entries is None:
+            return False
+        return self._noncrit_entries_in_file >= self.max_buffer_entries
+
+    def _at_high_water(self) -> bool:
+        if self.max_buffer_entries is not None:
+            return self._noncrit_entries_in_file >= int(0.8 * self.max_buffer_entries)
+        return self.current_size_bytes >= int(0.8 * self.max_size_bytes)
+
+    def _write_line(self, entry: MissionLogEntry) -> int:
+        line = json.dumps(entry.to_dict(), default=str) + "\n"
+        self._current_file.write(line)
+        self._current_file.flush()
+        return len(line.encode("utf-8"))
+
+    def _write_critical_log(self, entry: MissionLogEntry) -> None:
+        with open(self.critical_log_path, "a", encoding="utf-8") as fh:
+            line = json.dumps(entry.to_dict(), default=str) + "\n"
+            fh.write(line)
+
+    def _emit_system_entry(self, state: str, notes_dict: Dict[str, Any]) -> None:
+        entry = MissionLogEntry(
+            category=LogCategory.SYSTEM_ALERT,
+            state=state,
+            notes=json.dumps(notes_dict),
+        )
+        nb = self._write_line(entry)
+        self.current_size_bytes += nb
+
+    def _roll(self) -> None:
+        prev_path = str(self._current_file_path) if self._current_file_path else ""
+        prev_size_mb = round(self.current_size_bytes / (1024 * 1024), 6)
+
+        if self._current_file:
+            self._current_file.close()
+        if self._current_file_path:
+            self._rolled_files.append(self._current_file_path)
+
+        self._open_new_file()
+
+        self._emit_system_entry(
+            "LOG_ROLLED",
+            {
+                "event": "LOG_ROLLED",
+                "new_file_path": str(self._current_file_path),
+                "previous_file_path": prev_path,
+                "previous_file_size_mb": prev_size_mb,
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Public interface
+    # ------------------------------------------------------------------
+
+    def add(self, entry: MissionLogEntry) -> None:
+        """Add a log entry.  CRITICAL (P0) entries are never dropped."""
+        critical = self._is_critical(entry)
+
+        # CRITICAL path: mirror to critical_events log unconditionally
+        if critical:
+            self._write_critical_log(entry)
+
+        if not critical:
+            # High-water warning (before the entry that crosses 80 %)
+            if not self._buffer_high_warned and self._at_high_water():
+                self._buffer_high_warned = True
+                self._emit_system_entry(
+                    "LOG_BUFFER_HIGH",
+                    {
+                        "event": "LOG_BUFFER_HIGH",
+                        "noncrit_entries_in_file": self._noncrit_entries_in_file,
+                    },
+                )
+
+            # Drop non-critical when buffer capacity exhausted
+            if self._buffer_full():
+                self.dropped_records_total += 1
+                return
+
+        # Write entry to current file
+        nb = self._write_line(entry)
+        self.current_size_bytes += nb
+        if not critical:
+            self._noncrit_entries_in_file += 1
+
+        # Post-write roll check (size or time threshold)
+        if not critical and self._should_roll():
+            self._roll()
+
+    def close(self) -> None:
+        """Flush and close the current log file."""
+        if self._current_file:
+            self._current_file.close()
+            self._current_file = None
+
+    @property
+    def current_file_path(self) -> Optional[Path]:
+        return self._current_file_path
+
+    @property
+    def all_log_files(self) -> List[Path]:
+        """All files written (rolled + current)."""
+        files = list(self._rolled_files)
+        if self._current_file_path:
+            files.append(self._current_file_path)
+        return files

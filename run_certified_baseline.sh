@@ -57,5 +57,8 @@ $CONDA python -m pytest tests/test_it_d6_timeout.py -v
 echo "=== UT-RS-03 — ProcessWatchdog restartability decision logic (6) ==="
 $CONDA python -m pytest tests/test_ut_rs03.py -v
 
+echo "=== UT-RS-02 — Log rolling policy RS-02/E-04 GAP-09 (5) ==="
+$CONDA python -m pytest tests/test_ut_rs02.py -v
+
 echo "=== CERTIFIED BASELINE COMPLETE ==="
-echo "Expected: 542/542"
+echo "Expected: 547/547"
