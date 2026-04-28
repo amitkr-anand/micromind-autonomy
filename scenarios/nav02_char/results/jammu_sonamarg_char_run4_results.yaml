@@ -1,0 +1,93 @@
+run_id: jammu_sonamarg_char_run4
+run_date: '2026-04-28'
+corridor: jammu_sonamarg_nh1_v1
+tile_size_m: 2000.0
+trn_gsd_m: 14.16
+dem_resolution_m: 28.3
+dem_tiles: TILE1+TILE2 merged (from_directory)
+tci_tiles: T43SDS/T43SES/T43SDT/T43SET per-waypoint
+note: "EC-13 partial characterisation. NAV-02 remains PARTIAL. Not SRS closure. 6-WP\
+  \ confirmed-good imagery corridor. WP_GAP_START excluded (INS-only zone). WP00 (lat=32.73N)\
+  \ is south of merged DEM boundary (32.80N) \u2014 OUTSIDE_COVERAGE expected. Cross-modal\
+  \ TRN: DEM hillshade vs Sentinel TCI RGB. Peak ceiling documented: 0.09-0.11 cross-modal\
+  \ (Gate 6 finding OI-44 CLOSED ARCHITECTURAL)."
+waypoints:
+- id: WP00
+  label: Jammu departure
+  tile: T43SDS
+  corridor_km: 0
+  expected: ACCEPT
+  actual_status: OUTSIDE_COVERAGE
+  actual_suitability: SUPPRESS
+  confidence: 0.0
+  suitability_score: 0.0
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP01
+  label: Udhampur ridge
+  tile: T43SES
+  corridor_km: 50
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: CAUTION
+  confidence: 0.0283
+  suitability_score: 0.3975
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP02
+  label: Ramban gorge
+  tile: T43SES
+  corridor_km: 90
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0297
+  suitability_score: 0.6236
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP03
+  label: Banihal pass
+  tile: T43SES
+  corridor_km: 120
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0368
+  suitability_score: 0.6438
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP04
+  label: Kangan / Sind Valley
+  tile: T43SDT
+  corridor_km: 180
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0335
+  suitability_score: 0.975
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+- id: WP05
+  label: Sonamarg
+  tile: T43SET
+  corridor_km: 230
+  expected: ACCEPT
+  actual_status: REJECTED
+  actual_suitability: ACCEPT
+  confidence: 0.0292
+  suitability_score: 0.975
+  correction_north_m: null
+  correction_east_m: null
+  latency_ms: 0
+summary:
+  accept_count: 0
+  suppress_count: 0
+  rejected_count: 5
+  outside_coverage_count: 1
+  mean_confidence_accepted: null
+  expected_vs_actual_match_count: 6/6
